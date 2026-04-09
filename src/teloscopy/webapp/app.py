@@ -581,7 +581,7 @@ async def debug_templates(request: Request) -> dict[str, Any]:
 
     # Try rendering index.html to catch the actual error
     try:
-        resp = templates.TemplateResponse("index.html", {"request": request})
+        resp = templates.TemplateResponse(request=request, name="index.html")
         diag["index_render"] = "OK"
         diag["index_status"] = resp.status_code
     except Exception as exc:
