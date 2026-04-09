@@ -7262,7 +7262,7 @@ BUILTIN_VARIANT_DB: list[GeneticVariant] = [
         "rs2200733",
         "PITX2",
         "4",
-        111710170,
+        111710169,
         "T",
         "C",
         1.72,
@@ -7312,9 +7312,9 @@ BUILTIN_VARIANT_DB: list[GeneticVariant] = [
     ),
     GeneticVariant(
         "rs6843082",
-        "KCNH2",
-        "7",
-        150976422,
+        "KCNN3",
+        "1",
+        154422067,
         "G",
         "A",
         1.23,
@@ -8340,10 +8340,11 @@ class DiseasePredictor:
         associated with increased cardiovascular and cancer risk.  The
         expected length is approximated as:
 
-            ``expected = 11000 − 30 * age``  (bp)
+            ``expected = 11000 − 40 * age``  (bp)
 
-        A per-kb shortening multiplier is applied to conditions listed in
-        ``_TELOMERE_RISK_MODIFIERS``.
+        using a consensus linear model (Müezzinler et al. 2013;
+        Aubert & Lansdorp 2008).  A per-kb shortening multiplier is
+        applied to conditions listed in ``_TELOMERE_RISK_MODIFIERS``.
 
         Parameters
         ----------
@@ -8361,7 +8362,7 @@ class DiseasePredictor:
             length.
         """
         sex = sex.lower().strip()
-        expected_bp = 11_000.0 - 30.0 * age
+        expected_bp = 11_000.0 - 40.0 * age
         shortening_kb = max(0.0, (expected_bp - mean_length_bp) / 1000.0)
 
         risks: list[DiseaseRisk] = []
@@ -8424,9 +8425,17 @@ class DiseasePredictor:
 
         risks: list[DiseaseRisk] = []
 
-        # Use mean intensity as a telomere-length proxy (calibrated via
-        # an approximate linear model: bp ≈ intensity * 1.5).
+        # Use mean intensity as a telomere-length proxy.  This is an
+        # *approximate* conversion that depends heavily on microscope
+        # settings, probe efficiency, and exposure time.  Properly
+        # calibrated conversion should use quantification.Calibration.
         if mean_intensity is not None and mean_intensity > 0:
+            warnings.warn(
+                "Using uncalibrated intensity→bp proxy (×1.5); "
+                "results are approximate.  Use quantification.Calibration "
+                "for instrument-specific conversion.",
+                stacklevel=2,
+            )
             proxy_bp = float(mean_intensity) * 1.5
             risks.extend(self.predict_from_telomere_data(proxy_bp, age, sex))
 

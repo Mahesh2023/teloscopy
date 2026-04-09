@@ -7,7 +7,8 @@ Scientific basis:
 - **Biological age estimation**: Facial texture, wrinkle depth, and skin
   quality correlate with biological age (Gunn et al., 2009; Christensen
   et al., 2009).  Biological age in turn correlates with telomere length
-  via the formula: TL ≈ 11.5 − 0.059 × age (Aubert & Lansdorp, 2008).
+  via the formula: TL ≈ 11.0 − 0.040 × age (Müezzinler et al., 2013;
+  Aubert & Lansdorp, 2008).
 - **Ancestry estimation**: Facial morphology varies systematically across
   populations (Claes et al., 2014).  Population ancestry correlates with
   allele frequencies for many health-relevant SNPs.
@@ -434,11 +435,11 @@ def _estimate_biological_age(measurements: FacialMeasurements, chronological_age
 def _telomere_from_age(biological_age: int) -> float:
     """Estimate telomere length from biological age.
 
-    Uses the regression from Aubert & Lansdorp (2008):
-    TL (kb) ≈ 11.5 − 0.059 × age
-    With added noise from biological variability.
+    Uses a consensus linear model calibrated against population studies:
+    TL (kb) ≈ 11.0 − 0.040 × age
+    (Müezzinler et al. 2013; Aubert & Lansdorp 2008)
     """
-    tl = 11.5 - 0.059 * biological_age
+    tl = 11.0 - 0.040 * biological_age
     return max(round(tl, 2), 2.0)
 
 
@@ -447,7 +448,7 @@ def _telomere_percentile(tl_kb: float, chronological_age: int) -> int:
 
     Uses age-adjusted reference ranges from population studies.
     """
-    expected = 11.5 - 0.059 * chronological_age
+    expected = 11.0 - 0.040 * chronological_age
     sd = 1.2  # population SD ≈ 1.2 kb
     z = (tl_kb - expected) / sd
     # Convert z-score to percentile using sigmoid approximation

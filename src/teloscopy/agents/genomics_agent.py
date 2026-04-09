@@ -6,10 +6,14 @@ compute multi-dimensional disease-risk scores, project health trajectories,
 and generate prevention recommendations.
 """
 
+# Telomere-age model: TL(bp) ≈ 11000 - 40 × age
+# References: Müezzinler et al. 2013, Aubert & Lansdorp 2008
+
 from __future__ import annotations
 
 import logging
 import math
+import warnings
 from typing import Any
 
 from .base import AgentMessage, AgentState, BaseAgent
@@ -154,10 +158,16 @@ class GenomicsAgent(BaseAgent):
         profile = profile or {}
 
         # Extract telomere length proxy
-        mean_length = telomere_data.get(
-            "mean_length_bp",
-            telomere_data.get("mean_intensity", 0.0),
-        )
+        mean_length = telomere_data.get("mean_length_bp")
+
+        # If mean_length_bp not available, fall back to intensity proxy
+        # (very approximate — not calibrated; see quantification.py for proper calibration)
+        if mean_length is None and telomere_data.get("mean_intensity") is not None:
+            warnings.warn("Using uncalibrated intensity→bp proxy; results are approximate")
+            mean_length = float(telomere_data["mean_intensity"]) * 1.5  # rough proxy
+
+        if mean_length is None:
+            mean_length = 0.0
 
         # Estimate percentile (very simplified model)
         telomere_percentile = self._estimate_percentile(mean_length, profile.get("age", 40))
@@ -221,7 +231,7 @@ class GenomicsAgent(BaseAgent):
         """Project disease-risk trajectory over future years.
 
         Applies an exponential-decay model to the current risk scores,
-        accounting for natural telomere attrition (~50–100 bp per year).
+        accounting for natural telomere attrition (~20–70 bp per year).
 
         Parameters
         ----------
@@ -235,7 +245,7 @@ class GenomicsAgent(BaseAgent):
         dict
             ``timeline`` (list of dicts per year) and ``summary``.
         """
-        annual_attrition = 75.0  # bp/year average
+        annual_attrition = 40.0  # bp/year average (Müezzinler et al. 2013)
         base_length = risk_profile.get("mean_telomere_length", 5000.0)
 
         timeline: list[dict[str, Any]] = []
@@ -408,8 +418,8 @@ class GenomicsAgent(BaseAgent):
         reference age- and sex-stratified normative databases.
         """
         # Approximate population median by age (very simplified)
-        median_at_age = 7000.0 - (age * 30.0)
-        std_at_age = 1500.0
+        median_at_age = 11000.0 - (age * 40.0)
+        std_at_age = 1200.0
 
         if std_at_age == 0:
             return 50.0

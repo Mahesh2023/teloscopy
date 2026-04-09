@@ -9571,8 +9571,9 @@ class DietAdvisor:
         age = int(telomere_data.get("age", 50))
         str(telomere_data.get("sex", "female")).lower()
 
-        # Expected telomere length (same model as disease_risk.py).
-        expected_bp = 11_000.0 - 30.0 * age
+        # Expected telomere length — consensus linear model
+        # (Müezzinler et al. 2013; Aubert & Lansdorp 2008).
+        expected_bp = 11_000.0 - 40.0 * age
         shortening_pct = max(0.0, (expected_bp - mean_bp) / expected_bp) * 100
 
         # Determine urgency multiplier.

@@ -183,6 +183,10 @@ class DiseaseRiskResponse(BaseModel):
     risks: list[DiseaseRisk] = Field(default_factory=list)
     overall_risk_score: float = Field(..., ge=0.0, le=1.0, description="Composite risk score")
     assessed_at: datetime = Field(default_factory=datetime.utcnow)
+    disclaimer: str = Field(
+        default="For research/educational use only — not clinical advice. Results must NOT be used for medical decisions.",
+        description="Legal and scientific disclaimer",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -227,6 +231,10 @@ class DietPlanResponse(BaseModel):
 
     recommendation: DietRecommendation
     generated_at: datetime = Field(default_factory=datetime.utcnow)
+    disclaimer: str = Field(
+        default="For research/educational use only — not clinical advice. Results must NOT be used for medical decisions.",
+        description="Legal and scientific disclaimer",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -355,6 +363,10 @@ class AnalysisResponse(BaseModel):
     report_url: str | None = None
     csv_url: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    disclaimer: str = Field(
+        default="For research/educational use only — not clinical advice. Results must NOT be used for medical decisions.",
+        description="Legal and scientific disclaimer",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -433,6 +445,10 @@ class ProfileAnalysisResponse(BaseModel):
     diet_recommendations: DietRecommendation | None = None
     overall_risk_score: float = Field(0.0, ge=0.0, le=1.0)
     assessed_at: datetime = Field(default_factory=datetime.utcnow)
+    disclaimer: str = Field(
+        default="For research/educational use only — not clinical advice. Results must NOT be used for medical decisions.",
+        description="Legal and scientific disclaimer",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -478,3 +494,7 @@ class NutritionResponse(BaseModel):
 
     recommendation: DietRecommendation
     generated_at: datetime = Field(default_factory=datetime.utcnow)
+    disclaimer: str = Field(
+        default="For research/educational use only — not clinical advice. Results must NOT be used for medical decisions.",
+        description="Legal and scientific disclaimer",
+    )
