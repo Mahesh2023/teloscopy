@@ -16,4 +16,9 @@ __all__ = [
     "facial",
     "agents",
     "webapp",
+    "ml",
+    "integrations",
+    "clinical",
+    "tracking",
+    "platform",
 ]
