@@ -57,10 +57,15 @@ from teloscopy.webapp.models import (
     FacialAnalysisResult,
     FacialMeasurementsResponse,
     HealthResponse,
+    ImageValidationResponse,
     JobStatus,
     JobStatusEnum,
     MealPlan,
+    NutritionRequest,
+    NutritionResponse,
     PredictedVariantResponse,
+    ProfileAnalysisRequest,
+    ProfileAnalysisResponse,
     RiskLevel,
     Sex,
     TelomereResult,
@@ -90,6 +95,15 @@ _UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 _ALLOWED_EXTENSIONS: set[str] = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
 _MAX_UPLOAD_BYTES: int = 50 * 1024 * 1024  # 50 MiB
+_MIN_IMAGE_DIMENSION: int = 32  # minimum width/height in pixels
+
+# Magic byte signatures for image format validation
+_IMAGE_MAGIC_BYTES: dict[str, list[bytes]] = {
+    "png": [b"\x89PNG\r\n\x1a\n"],
+    "jpeg": [b"\xff\xd8\xff"],
+    "tiff": [b"II\x2a\x00", b"MM\x00\x2a"],  # little-endian / big-endian
+    "bmp": [b"BM"],
+}
 
 # ---------------------------------------------------------------------------
 # In-memory job store (swap for Redis in production)
@@ -484,6 +498,15 @@ async def _run_full_analysis(
             2100,
             3,
         )
+
+        # Apply dietary restrictions to meal plans (fixes vegetarian/vegan bug)
+        if profile.dietary_restrictions:
+            diet_meals = await asyncio.to_thread(
+                _diet_advisor.adapt_to_restrictions,
+                diet_meals,
+                profile.dietary_restrictions,
+            )
+
         diet = _translate_diet_recommendation(diet_recs, diet_meals)
 
         job.progress_pct = 90.0
@@ -520,6 +543,108 @@ def _validate_extension(filename: str) -> bool:
     """Return *True* if the filename has an allowed image extension."""
     ext: str = Path(filename).suffix.lower()
     return ext in _ALLOWED_EXTENSIONS
+
+
+def _detect_image_format(data: bytes) -> str:
+    """Detect image format from magic bytes. Returns format name or 'unknown'."""
+    for fmt, signatures in _IMAGE_MAGIC_BYTES.items():
+        for sig in signatures:
+            if data[: len(sig)] == sig:
+                return fmt
+    return "unknown"
+
+
+def _validate_image_content(contents: bytes, filename: str) -> ImageValidationResponse:
+    """Validate image content: magic bytes, decodability, dimensions.
+
+    Returns an :class:`ImageValidationResponse` with ``valid=True`` if the
+    image passes all checks, or ``valid=False`` with a list of issues.
+    """
+    issues: list[str] = []
+    file_size = len(contents)
+
+    # 1. Magic bytes check
+    detected_format = _detect_image_format(contents)
+    ext = Path(filename).suffix.lower()
+    ext_to_format = {
+        ".png": "png",
+        ".jpg": "jpeg",
+        ".jpeg": "jpeg",
+        ".tif": "tiff",
+        ".tiff": "tiff",
+        ".bmp": "bmp",
+    }
+    expected_format = ext_to_format.get(ext, "unknown")
+    if detected_format == "unknown":
+        issues.append(
+            f"File content does not match any known image format. "
+            f"Expected {expected_format} based on extension '{ext}'."
+        )
+    elif expected_format != "unknown" and detected_format != expected_format:
+        issues.append(
+            f"Extension '{ext}' suggests {expected_format} but content is {detected_format}."
+        )
+
+    # 2. Try to decode with OpenCV
+    width, height, channels = 0, 0, 0
+    image_type = "unknown"
+    face_detected = False
+    try:
+        import cv2
+        import numpy as np
+
+        arr = np.frombuffer(contents, dtype=np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
+        if img is None:
+            issues.append("Image could not be decoded — file may be corrupted or truncated.")
+        else:
+            if img.ndim == 2:
+                height, width = img.shape
+                channels = 1
+            else:
+                height, width = img.shape[:2]
+                channels = img.shape[2] if img.ndim == 3 else 1
+
+            if width < _MIN_IMAGE_DIMENSION or height < _MIN_IMAGE_DIMENSION:
+                issues.append(
+                    f"Image is too small ({width}x{height}). "
+                    f"Minimum dimension is {_MIN_IMAGE_DIMENSION}px."
+                )
+
+            if width > 16384 or height > 16384:
+                issues.append(
+                    f"Image is extremely large ({width}x{height}). "
+                    f"Maximum supported dimension is 16384px."
+                )
+
+            # 3. Quick classification for user feedback
+            try:
+                # Save to temp file for classifier
+                import tempfile
+
+                with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+                    tmp.write(contents)
+                    tmp_path = tmp.name
+                classification = classify_image(tmp_path)
+                image_type = classification.image_type.value
+                face_detected = classification.face_detected
+                Path(tmp_path).unlink(missing_ok=True)
+            except Exception:
+                image_type = "unknown"
+    except ImportError:
+        issues.append("OpenCV not available for image validation.")
+
+    return ImageValidationResponse(
+        valid=len(issues) == 0,
+        image_type=image_type,
+        width=width,
+        height=height,
+        channels=channels,
+        file_size_bytes=file_size,
+        format_detected=detected_format,
+        face_detected=face_detected,
+        issues=issues,
+    )
 
 
 # ===================================================================== #
@@ -814,6 +939,15 @@ async def diet_plan(request: DietPlanRequest) -> DietPlanResponse:
             2100,
             3,
         )
+
+        # Apply dietary restrictions to meal plans
+        if request.dietary_restrictions:
+            diet_meals = await asyncio.to_thread(
+                _diet_advisor.adapt_to_restrictions,
+                diet_meals,
+                request.dietary_restrictions,
+            )
+
         rec = _translate_diet_recommendation(diet_recs, diet_meals)
     except Exception:
         logger.exception("diet-plan generation failed, returning defaults")
@@ -826,3 +960,144 @@ async def diet_plan(request: DietPlanRequest) -> DietPlanResponse:
             calorie_target=2100,
         )
     return DietPlanResponse(recommendation=rec)
+
+
+# -- Image validation --------------------------------------------------------
+
+
+@app.post("/api/validate-image", response_model=ImageValidationResponse)
+async def validate_image(file: UploadFile = File(...)) -> ImageValidationResponse:
+    """Validate an uploaded image before analysis.
+
+    Checks magic bytes, decodability, dimensions, and classifies as
+    face photo or microscopy image. Use this for client-side previews.
+    """
+    if not file.filename or not _validate_extension(file.filename):
+        return ImageValidationResponse(
+            valid=False,
+            issues=[f"Invalid file type. Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}"],
+        )
+    contents: bytes = await file.read()
+    if len(contents) > _MAX_UPLOAD_BYTES:
+        return ImageValidationResponse(
+            valid=False,
+            file_size_bytes=len(contents),
+            issues=["File exceeds the 50 MiB limit."],
+        )
+    return await asyncio.to_thread(_validate_image_content, contents, file.filename)
+
+
+# -- Profile-only analysis (no image) ----------------------------------------
+
+
+@app.post("/api/profile-analysis", response_model=ProfileAnalysisResponse)
+async def profile_analysis(request: ProfileAnalysisRequest) -> ProfileAnalysisResponse:
+    """Run disease-risk and nutrition analysis using only user-provided details.
+
+    No image upload is required. Users provide age, sex, region, dietary
+    restrictions, and optionally known genetic variants.
+    """
+    variant_dict = _build_variant_dict(request.known_variants)
+    risks: list[DiseaseRisk] = []
+    rec: DietRecommendation | None = None
+
+    # Disease risk
+    if request.include_disease_risk:
+        try:
+            risk_profile = await asyncio.to_thread(
+                _disease_predictor.predict_from_variants,
+                variant_dict,
+                request.age,
+                request.sex.value,
+            )
+            risks = _translate_disease_risks(risk_profile.top_risks(n=15))
+        except Exception:
+            logger.exception("profile-analysis: disease-risk failed")
+
+    # Nutrition
+    if request.include_nutrition:
+        try:
+            genetic_risk_names = [r.disease for r in risks[:10]]
+            diet_recs = await asyncio.to_thread(
+                _diet_advisor.generate_recommendations,
+                genetic_risk_names,
+                variant_dict,
+                request.region,
+                request.age,
+                request.sex.value,
+                request.dietary_restrictions or None,
+            )
+            diet_meals = await asyncio.to_thread(
+                _diet_advisor.create_meal_plan,
+                diet_recs,
+                request.region,
+                2100,
+                3,
+            )
+            if request.dietary_restrictions:
+                diet_meals = await asyncio.to_thread(
+                    _diet_advisor.adapt_to_restrictions,
+                    diet_meals,
+                    request.dietary_restrictions,
+                )
+            rec = _translate_diet_recommendation(diet_recs, diet_meals)
+        except Exception:
+            logger.exception("profile-analysis: nutrition failed")
+
+    overall = round(sum(r.probability for r in risks) / max(len(risks), 1), 3) if risks else 0.0
+    return ProfileAnalysisResponse(
+        disease_risks=risks,
+        diet_recommendations=rec,
+        overall_risk_score=min(overall, 1.0),
+    )
+
+
+# -- Standalone nutrition endpoint -------------------------------------------
+
+
+@app.post("/api/nutrition", response_model=NutritionResponse)
+async def nutrition_plan(request: NutritionRequest) -> NutritionResponse:
+    """Generate a personalised nutrition plan from user details.
+
+    Accepts age, sex, region, dietary restrictions, known variants,
+    health conditions, calorie target, and number of meal plan days.
+    No image required.
+    """
+    variant_dict = _build_variant_dict(request.known_variants)
+    try:
+        # Use health conditions as genetic risk proxies
+        genetic_risk_names = list(request.health_conditions)
+        diet_recs = await asyncio.to_thread(
+            _diet_advisor.generate_recommendations,
+            genetic_risk_names,
+            variant_dict,
+            request.region,
+            request.age,
+            request.sex.value,
+            request.dietary_restrictions or None,
+        )
+        diet_meals = await asyncio.to_thread(
+            _diet_advisor.create_meal_plan,
+            diet_recs,
+            request.region,
+            request.calorie_target,
+            request.meal_plan_days,
+        )
+        if request.dietary_restrictions:
+            diet_meals = await asyncio.to_thread(
+                _diet_advisor.adapt_to_restrictions,
+                diet_meals,
+                request.dietary_restrictions,
+            )
+        rec = _translate_diet_recommendation(diet_recs, diet_meals, request.calorie_target)
+    except Exception:
+        logger.exception("nutrition plan generation failed")
+        rec = DietRecommendation(
+            summary="A balanced diet rich in whole foods is recommended.",
+            key_nutrients=["Omega-3", "Folate", "Vitamin D"],
+            foods_to_increase=["Leafy greens", "Berries", "Legumes"],
+            foods_to_avoid=["Processed meats", "Refined sugars"],
+            meal_plans=[],
+            calorie_target=request.calorie_target,
+        )
+    return NutritionResponse(recommendation=rec)

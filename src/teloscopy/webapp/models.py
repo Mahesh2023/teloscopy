@@ -334,3 +334,79 @@ class HealthResponse(BaseModel):
     status: str = "ok"
     version: str = "0.1.0"
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Image validation
+# ---------------------------------------------------------------------------
+
+
+class ImageValidationResponse(BaseModel):
+    """Result of image content validation before analysis."""
+
+    valid: bool = True
+    image_type: str = "unknown"
+    width: int = 0
+    height: int = 0
+    channels: int = 0
+    file_size_bytes: int = 0
+    format_detected: str = "unknown"
+    face_detected: bool = False
+    issues: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Profile-only analysis (no image required)
+# ---------------------------------------------------------------------------
+
+
+class ProfileAnalysisRequest(BaseModel):
+    """Request body for analysis using only user-provided details."""
+
+    age: int = Field(..., ge=1, le=150)
+    sex: Sex = Field(...)
+    region: str = Field(..., min_length=1, max_length=128)
+    dietary_restrictions: list[str] = Field(default_factory=list)
+    known_variants: list[str] = Field(default_factory=list)
+    telomere_length_kb: float | None = Field(
+        None, description="Self-reported telomere length in kb (optional)"
+    )
+    include_nutrition: bool = Field(True, description="Include nutrition recommendations")
+    include_disease_risk: bool = Field(True, description="Include disease risk assessment")
+
+
+class ProfileAnalysisResponse(BaseModel):
+    """Response for profile-only analysis."""
+
+    disease_risks: list[DiseaseRisk] = Field(default_factory=list)
+    diet_recommendations: DietRecommendation | None = None
+    overall_risk_score: float = Field(0.0, ge=0.0, le=1.0)
+    assessed_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Standalone nutrition request
+# ---------------------------------------------------------------------------
+
+
+class NutritionRequest(BaseModel):
+    """Standalone nutrition/diet plan request with full user details."""
+
+    age: int = Field(..., ge=1, le=150)
+    sex: Sex = Field(...)
+    region: str = Field(..., min_length=1, max_length=128)
+    dietary_restrictions: list[str] = Field(default_factory=list)
+    known_variants: list[str] = Field(default_factory=list)
+    health_conditions: list[str] = Field(
+        default_factory=list,
+        description="Known health conditions (e.g. 'diabetes', 'hypertension')",
+    )
+    calorie_target: int = Field(2000, ge=800, le=5000)
+    meal_plan_days: int = Field(3, ge=1, le=7)
+
+
+class NutritionResponse(BaseModel):
+    """Response for standalone nutrition endpoint."""
+
+    recommendation: DietRecommendation
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
