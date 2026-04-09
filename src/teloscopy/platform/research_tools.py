@@ -354,8 +354,11 @@ class ResearchExporter:
         for rec in analyses:
             row_vals, ok = {}, True
             for v in variables:
-                try: row_vals[v] = float(rec[v])
-                except (KeyError, TypeError, ValueError): ok = False; break
+                try:
+                    row_vals[v] = float(rec[v])
+                except (KeyError, TypeError, ValueError):
+                    ok = False
+                    break
             if ok:
                 for v in variables:
                     complete[v].append(row_vals[v])
@@ -503,9 +506,12 @@ class CohortBuilder:
         def _stdz(rec: dict) -> list[float]:
             r: list[float] = []
             for var in match_vars:
-                try: v = float(rec.get(var, 0))  # type: ignore[arg-type]
-                except (TypeError, ValueError): v = 0.0
-                mu, sd = stats[var]; r.append((v - mu) / sd)
+                try:
+                    v = float(rec.get(var, 0))  # type: ignore[arg-type]
+                except (TypeError, ValueError):
+                    v = 0.0
+                mu, sd = stats[var]
+                r.append((v - mu) / sd)
             return r
         def _dist(a: list[float], b: list[float]) -> float:
             return math.sqrt(sum((ai - bi)**2 for ai, bi in zip(a, b)))

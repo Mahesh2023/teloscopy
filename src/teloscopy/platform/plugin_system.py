@@ -21,7 +21,7 @@ import tempfile
 import types
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -532,7 +532,7 @@ class PluginManager:
                 description=manifest.description,
                 plugin_type=PluginType(manifest.plugin_type),
                 dependencies=manifest.dependencies,
-                installed_at=datetime.fromtimestamp(os.path.getctime(candidate), tz=UTC),
+                installed_at=datetime.fromtimestamp(os.path.getctime(candidate), tz=timezone.utc),
                 path=candidate,
             )
             discovered.append(info)
@@ -586,7 +586,7 @@ class PluginManager:
             raise RuntimeError(f"No concrete PluginBase subclass in '{entry_file}'.")
 
         wrapper.module, wrapper.instance = module, plugin_cls()
-        wrapper.state, wrapper.loaded_at = PluginState.LOADED, datetime.now(UTC)
+        wrapper.state, wrapper.loaded_at = PluginState.LOADED, datetime.now(timezone.utc)
         logger.info("Plugin '%s' v%s loaded.", name, wrapper.manifest.version)
         return wrapper
 

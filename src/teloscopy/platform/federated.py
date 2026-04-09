@@ -54,7 +54,7 @@ import math
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -87,7 +87,7 @@ class NodeInfo:
     last_active: str | None = None  # ISO-8601
 
     def mark_active(self) -> None:
-        self.last_active = datetime.now(UTC).isoformat()
+        self.last_active = datetime.now(timezone.utc).isoformat()
 
 
 @dataclass
@@ -118,7 +118,7 @@ class LocalUpdate:
 
     def __post_init__(self) -> None:
         if self.timestamp is None:
-            self.timestamp = datetime.now(UTC).isoformat()
+            self.timestamp = datetime.now(timezone.utc).isoformat()
 
 
 @dataclass
@@ -133,7 +133,7 @@ class GlobalModel:
 
     def __post_init__(self) -> None:
         if self.timestamp is None:
-            self.timestamp = datetime.now(UTC).isoformat()
+            self.timestamp = datetime.now(timezone.utc).isoformat()
 
 
 class RoundStatusEnum(StrEnum):
@@ -181,7 +181,7 @@ class EvaluationResult:
 
     def __post_init__(self) -> None:
         if self.timestamp is None:
-            self.timestamp = datetime.now(UTC).isoformat()
+            self.timestamp = datetime.now(timezone.utc).isoformat()
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +213,7 @@ def _encode_message(
         "sender": sender,
         "receiver": receiver,
         "payload": payload,
-        "timestamp": datetime.now(UTC).isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "signature": None,
     }
     if encryption_key is not None:
@@ -651,7 +651,7 @@ class FederatedLearningCoordinator:
             status=RoundStatusEnum.IN_PROGRESS,
             nodes_completed=0,
             nodes_total=n_nodes,
-            start_time=datetime.now(UTC).isoformat(),
+            start_time=datetime.now(timezone.utc).isoformat(),
         )
         self._round_statuses[round_number] = status
         self._round_updates[round_number] = []
@@ -843,7 +843,7 @@ class FederatedLearningCoordinator:
         status = self._round_statuses.get(round_number)
         if status is not None:
             status.status = RoundStatusEnum.COMPLETED
-            status.end_time = datetime.now(UTC).isoformat()
+            status.end_time = datetime.now(timezone.utc).isoformat()
 
         logger.info(
             "FedAvg aggregation complete: round=%d nodes=%d total_samples=%d",
@@ -932,7 +932,7 @@ class FederatedLearningCoordinator:
 
         if status is not None:
             status.status = RoundStatusEnum.COMPLETED
-            status.end_time = datetime.now(UTC).isoformat()
+            status.end_time = datetime.now(timezone.utc).isoformat()
 
         logger.info(
             "Secure aggregation complete: round=%d nodes=%d total_samples=%d keys=%d",
