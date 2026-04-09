@@ -1,15 +1,14 @@
 """Tests for the genetic disease risk prediction module."""
+
 from __future__ import annotations
 
-import math
 import os
 import sys
 
-import numpy as np
 import pandas as pd
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from teloscopy.genomics.disease_risk import (
     BASELINE_INCIDENCE,
@@ -22,10 +21,10 @@ from teloscopy.genomics.disease_risk import (
     RiskProfile,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def sample_variant():
@@ -66,6 +65,7 @@ def sample_risk_profile(predictor):
 # ---------------------------------------------------------------------------
 # GeneticVariant dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestGeneticVariant:
     """Tests for GeneticVariant creation and allele_count()."""
@@ -113,6 +113,7 @@ class TestGeneticVariant:
 # DiseaseRisk dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestDiseaseRisk:
     """Tests for the DiseaseRisk dataclass."""
 
@@ -154,6 +155,7 @@ class TestDiseaseRisk:
 # ---------------------------------------------------------------------------
 # RiskProfile
 # ---------------------------------------------------------------------------
+
 
 class TestRiskProfile:
     """Tests for the RiskProfile container."""
@@ -217,9 +219,15 @@ class TestRiskProfile:
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 5
         expected_cols = {
-            "condition", "category", "lifetime_risk_pct",
-            "relative_risk", "confidence", "n_variants",
-            "preventability_score", "onset_min_age", "onset_max_age",
+            "condition",
+            "category",
+            "lifetime_risk_pct",
+            "relative_risk",
+            "confidence",
+            "n_variants",
+            "preventability_score",
+            "onset_min_age",
+            "onset_max_age",
         }
         assert expected_cols.issubset(set(df.columns))
 
@@ -249,6 +257,7 @@ class TestRiskProfile:
 # DiseasePredictor — initialisation
 # ---------------------------------------------------------------------------
 
+
 class TestDiseasePredictorInit:
     """Tests for DiseasePredictor construction and database loading."""
 
@@ -270,6 +279,7 @@ class TestDiseasePredictorInit:
 # ---------------------------------------------------------------------------
 # predict_from_variants
 # ---------------------------------------------------------------------------
+
 
 class TestPredictFromVariants:
     """Tests for DiseasePredictor.predict_from_variants()."""
@@ -293,18 +303,14 @@ class TestPredictFromVariants:
 
     def test_rs429358_increases_cad_risk(self, predictor):
         """Homozygous risk allele in APOE should produce elevated CAD relative risk."""
-        profile = predictor.predict_from_variants(
-            {"rs429358": "CC"}, age=50, sex="male"
-        )
+        profile = predictor.predict_from_variants({"rs429358": "CC"}, age=50, sex="male")
         cad_risks = [r for r in profile.risks if r.condition == "Coronary artery disease"]
         assert len(cad_risks) > 0
         assert cad_risks[0].relative_risk > 1.0
 
     def test_multiple_variants_combined(self, predictor):
         """Multiple risk alleles for the same condition should compound risk."""
-        single = predictor.predict_from_variants(
-            {"rs429358": "CT"}, age=50, sex="male"
-        )
+        single = predictor.predict_from_variants({"rs429358": "CT"}, age=50, sex="male")
         double = predictor.predict_from_variants(
             {"rs429358": "CT", "rs10455872": "GA"}, age=50, sex="male"
         )
@@ -333,17 +339,13 @@ class TestPredictFromVariants:
 
     def test_extreme_age_young(self, predictor):
         """A very young age should still produce valid (possibly low) risk values."""
-        profile = predictor.predict_from_variants(
-            {"rs429358": "CC"}, age=5, sex="male"
-        )
+        profile = predictor.predict_from_variants({"rs429358": "CC"}, age=5, sex="male")
         for risk in profile.risks:
             assert 0.0 <= risk.lifetime_risk_pct <= 100.0
 
     def test_extreme_age_old(self, predictor):
         """An elderly age may produce reduced remaining-lifetime risk for late-onset diseases."""
-        profile = predictor.predict_from_variants(
-            {"rs429358": "CC"}, age=95, sex="female"
-        )
+        profile = predictor.predict_from_variants({"rs429358": "CC"}, age=95, sex="female")
         for risk in profile.risks:
             assert 0.0 <= risk.lifetime_risk_pct <= 100.0
 
@@ -352,14 +354,13 @@ class TestPredictFromVariants:
 # predict_from_telomere_data
 # ---------------------------------------------------------------------------
 
+
 class TestPredictFromTelomereData:
     """Tests for DiseasePredictor.predict_from_telomere_data()."""
 
     def test_short_telomeres_produce_risks(self, predictor):
         """Very short telomeres should produce elevated risks."""
-        risks = predictor.predict_from_telomere_data(
-            mean_length_bp=4000.0, age=50, sex="male"
-        )
+        risks = predictor.predict_from_telomere_data(mean_length_bp=4000.0, age=50, sex="male")
         assert isinstance(risks, list)
         assert len(risks) > 0
         assert all(isinstance(r, DiseaseRisk) for r in risks)
@@ -367,33 +368,25 @@ class TestPredictFromTelomereData:
     def test_normal_telomeres_minimal_risk(self, predictor):
         """Age-appropriate telomere length should produce few or no extra risks."""
         # Expected at age 30: 11000 - 30*30 = 10100 bp
-        risks = predictor.predict_from_telomere_data(
-            mean_length_bp=10100.0, age=30, sex="female"
-        )
+        risks = predictor.predict_from_telomere_data(mean_length_bp=10100.0, age=30, sex="female")
         # No shortening → all RR ≤ 1 → filtered out
         assert len(risks) == 0
 
     def test_long_telomeres_no_risk(self, predictor):
         """Telomeres longer than expected should produce no extra risks."""
-        risks = predictor.predict_from_telomere_data(
-            mean_length_bp=15000.0, age=40, sex="male"
-        )
+        risks = predictor.predict_from_telomere_data(mean_length_bp=15000.0, age=40, sex="male")
         assert len(risks) == 0
 
     def test_short_telomere_conditions(self, predictor):
         """Conditions with known telomere modifiers should appear for short telomeres."""
-        risks = predictor.predict_from_telomere_data(
-            mean_length_bp=3000.0, age=55, sex="female"
-        )
+        risks = predictor.predict_from_telomere_data(mean_length_bp=3000.0, age=55, sex="female")
         conditions = {r.condition for r in risks}
         # At least cardiovascular and cancer conditions should appear
         assert "Coronary artery disease" in conditions
 
     def test_contributing_variants_marker(self, predictor):
         """Telomere-derived risks should have 'telomere_length' as contributing variant."""
-        risks = predictor.predict_from_telomere_data(
-            mean_length_bp=4000.0, age=50, sex="male"
-        )
+        risks = predictor.predict_from_telomere_data(mean_length_bp=4000.0, age=50, sex="male")
         for risk in risks:
             assert "telomere_length" in risk.contributing_variants
 
@@ -402,27 +395,32 @@ class TestPredictFromTelomereData:
 # predict_from_image_analysis
 # ---------------------------------------------------------------------------
 
+
 class TestPredictFromImageAnalysis:
     """Tests for DiseasePredictor.predict_from_image_analysis()."""
 
     def test_with_mean_intensity(self, predictor):
         """Providing mean_intensity should trigger telomere-based predictions."""
-        results = predictor.predict_from_image_analysis({
-            "mean_intensity": 2000.0,  # proxy → 3000 bp (short)
-            "age": 50,
-            "sex": "male",
-        })
+        results = predictor.predict_from_image_analysis(
+            {
+                "mean_intensity": 2000.0,  # proxy → 3000 bp (short)
+                "age": 50,
+                "sex": "male",
+            }
+        )
         assert isinstance(results, list)
         assert len(results) > 0
 
     def test_high_cv_cancer_risk(self, predictor):
         """High CV should trigger genomic-instability cancer risks."""
-        results = predictor.predict_from_image_analysis({
-            "mean_intensity": 5000.0,  # proxy → 7500 bp (normalish)
-            "cv": 0.8,
-            "age": 45,
-            "sex": "female",
-        })
+        results = predictor.predict_from_image_analysis(
+            {
+                "mean_intensity": 5000.0,  # proxy → 7500 bp (normalish)
+                "cv": 0.8,
+                "age": 45,
+                "sex": "female",
+            }
+        )
         conditions = {r.condition for r in results}
         # High CV should add cancer conditions
         assert "Breast cancer" in conditions or "Lung cancer" in conditions
@@ -434,12 +432,14 @@ class TestPredictFromImageAnalysis:
 
     def test_cv_instability_marker(self, predictor):
         """CV-triggered risks should have 'image_cv_instability' marker."""
-        results = predictor.predict_from_image_analysis({
-            "mean_intensity": 5000.0,
-            "cv": 0.9,
-            "age": 50,
-            "sex": "male",
-        })
+        results = predictor.predict_from_image_analysis(
+            {
+                "mean_intensity": 5000.0,
+                "cv": 0.9,
+                "age": 50,
+                "sex": "male",
+            }
+        )
         cv_risks = [r for r in results if "image_cv_instability" in r.contributing_variants]
         assert len(cv_risks) > 0
 
@@ -447,6 +447,7 @@ class TestPredictFromImageAnalysis:
 # ---------------------------------------------------------------------------
 # calculate_polygenic_risk
 # ---------------------------------------------------------------------------
+
 
 class TestCalculatePolygenicRisk:
     """Tests for DiseasePredictor.calculate_polygenic_risk()."""
@@ -502,6 +503,7 @@ class TestCalculatePolygenicRisk:
 # project_risk_over_time
 # ---------------------------------------------------------------------------
 
+
 class TestProjectRiskOverTime:
     """Tests for DiseasePredictor.project_risk_over_time()."""
 
@@ -531,9 +533,7 @@ class TestProjectRiskOverTime:
 
     def test_zero_years(self, predictor, sample_risk_profile):
         """Projecting 0 years should return a single entry per condition."""
-        projections = predictor.project_risk_over_time(
-            sample_risk_profile, current_age=55, years=0
-        )
+        projections = predictor.project_risk_over_time(sample_risk_profile, current_age=55, years=0)
         for condition, yearly in projections.items():
             assert len(yearly) == 1
             assert yearly[0]["age"] == 55
@@ -542,6 +542,7 @@ class TestProjectRiskOverTime:
 # ---------------------------------------------------------------------------
 # get_actionable_insights
 # ---------------------------------------------------------------------------
+
 
 class TestGetActionableInsights:
     """Tests for DiseasePredictor.get_actionable_insights()."""
@@ -588,6 +589,7 @@ class TestGetActionableInsights:
 # ---------------------------------------------------------------------------
 # Module-level constants
 # ---------------------------------------------------------------------------
+
 
 class TestModuleConstants:
     """Tests for module-level constants and baseline data."""

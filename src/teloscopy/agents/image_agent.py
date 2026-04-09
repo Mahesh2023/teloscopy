@@ -115,7 +115,11 @@ class ImageAnalysisAgent(BaseAgent):
     # Public analysis API (synchronous, called from handlers)
     # ------------------------------------------------------------------
 
-    def analyze_image(self, image_path: str, config: dict[str, Any] | None = None) -> dict[str, Any]:
+    def analyze_image(
+        self,
+        image_path: str,
+        config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Run the full analysis pipeline on a single image.
 
         Delegates to :func:`teloscopy.telomere.pipeline.analyze_image` while
@@ -140,10 +144,10 @@ class ImageAnalysisAgent(BaseAgent):
         result = _pipeline_analyze(image_path, config=merged_config)
 
         # Strip non-serialisable numpy arrays for messaging
-        serialisable = {
-            k: v for k, v in result.items() if k not in ("channels", "labels")
-        }
-        serialisable["n_chromosomes"] = int(result.get("labels", np.empty(0)).max()) if result.get("labels") is not None else 0
+        serialisable = {k: v for k, v in result.items() if k not in ("channels", "labels")}
+        serialisable["n_chromosomes"] = (
+            int(result.get("labels", np.empty(0)).max()) if result.get("labels") is not None else 0
+        )
         return serialisable
 
     def preprocess(self, image: np.ndarray) -> np.ndarray:
@@ -247,9 +251,7 @@ class ImageAnalysisAgent(BaseAgent):
         # Check minimum telomere count
         n_telomeres = stats.get("n_telomeres", 0)
         if n_telomeres < 10:
-            warnings_list.append(
-                f"Low telomere count ({n_telomeres}); results may be unreliable."
-            )
+            warnings_list.append(f"Low telomere count ({n_telomeres}); results may be unreliable.")
 
         # Check association rate
         assoc_rate = assoc.get("association_rate", 0.0)
@@ -261,9 +263,7 @@ class ImageAnalysisAgent(BaseAgent):
         # Check coefficient of variation
         cv = stats.get("cv", 0.0)
         if cv > 1.0:
-            warnings_list.append(
-                f"High intensity CV ({cv:.2f}); sample may be heterogeneous."
-            )
+            warnings_list.append(f"High intensity CV ({cv:.2f}); sample may be heterogeneous.")
 
         # Check SNR
         spots = results.get("spots", [])

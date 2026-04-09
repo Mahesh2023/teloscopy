@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # Message protocol
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AgentMessage:
     """Immutable message exchanged between agents.
@@ -56,14 +57,14 @@ class AgentMessage:
         valid_types = {"request", "response", "event", "error"}
         if self.message_type not in valid_types:
             raise ValueError(
-                f"Invalid message_type '{self.message_type}'. "
-                f"Must be one of {sorted(valid_types)}."
+                f"Invalid message_type '{self.message_type}'. Must be one of {sorted(valid_types)}."
             )
 
 
 # ---------------------------------------------------------------------------
 # Agent lifecycle states
 # ---------------------------------------------------------------------------
+
 
 class AgentState(Enum):
     """Possible lifecycle states for an agent."""
@@ -78,6 +79,7 @@ class AgentState(Enum):
 # ---------------------------------------------------------------------------
 # Abstract base agent
 # ---------------------------------------------------------------------------
+
 
 class BaseAgent(ABC):
     """Abstract base class for all agents in the teloscopy system.
@@ -137,7 +139,7 @@ class BaseAgent(ABC):
             while self._running:
                 try:
                     msg = await asyncio.wait_for(self.message_queue.get(), timeout=1.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
 
                 logger.debug(
@@ -270,6 +272,7 @@ class BaseAgent(ABC):
 # ---------------------------------------------------------------------------
 # Internal message router (used by the orchestrator)
 # ---------------------------------------------------------------------------
+
 
 class _MessageRouter:
     """Routes :class:`AgentMessage` objects to registered agents.

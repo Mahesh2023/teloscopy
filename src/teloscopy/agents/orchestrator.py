@@ -14,7 +14,7 @@ import time
 import uuid
 from typing import Any
 
-from .base import AgentMessage, AgentState, BaseAgent, _MessageRouter
+from .base import AgentMessage, BaseAgent, _MessageRouter
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ _STEP_TIMEOUT: float = 300.0  # seconds per workflow step
 # ---------------------------------------------------------------------------
 # Orchestrator agent
 # ---------------------------------------------------------------------------
+
 
 class OrchestratorAgent(BaseAgent):
     """Coordinates all specialist agents, manages workflows, handles user requests.
@@ -176,11 +177,9 @@ class OrchestratorAgent(BaseAgent):
 
         try:
             return await asyncio.wait_for(future, timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._pending_responses.pop(cid, None)
-            raise TimeoutError(
-                f"Agent '{recipient}' did not respond within {timeout}s."
-            )
+            raise TimeoutError(f"Agent '{recipient}' did not respond within {timeout}s.")
 
     async def _request_with_retry(
         self,
@@ -221,9 +220,7 @@ class OrchestratorAgent(BaseAgent):
             try:
                 response = await self._request_and_wait(recipient, content, timeout=timeout)
                 if response.message_type == "error":
-                    raise RuntimeError(
-                        f"Agent '{recipient}' returned error: {response.content}"
-                    )
+                    raise RuntimeError(f"Agent '{recipient}' returned error: {response.content}")
                 return response
             except Exception as exc:
                 last_error = exc
@@ -238,8 +235,7 @@ class OrchestratorAgent(BaseAgent):
                     await asyncio.sleep(retry_delay)
 
         raise RuntimeError(
-            f"All {max_retries} attempts to '{recipient}' failed. "
-            f"Last error: {last_error}"
+            f"All {max_retries} attempts to '{recipient}' failed. Last error: {last_error}"
         )
 
     # ------------------------------------------------------------------
@@ -515,9 +511,7 @@ class OrchestratorAgent(BaseAgent):
             iteration += 1
 
             # Gather new results
-            new_results = [
-                v for k, v in self._session_results.items() if k not in evaluated_ids
-            ]
+            new_results = [v for k, v in self._session_results.items() if k not in evaluated_ids]
             if not new_results:
                 continue
 

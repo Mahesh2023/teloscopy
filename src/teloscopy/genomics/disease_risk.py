@@ -32,7 +32,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 # ---------------------------------------------------------------------------
@@ -65,9 +64,7 @@ DISCLAIMER: str = (
     "from the use or misuse of these predictions."
 )
 
-DISCLAIMER_SHORT: str = (
-    "For research/educational use only — not clinical advice."
-)
+DISCLAIMER_SHORT: str = "For research/educational use only — not clinical advice."
 
 # ---------------------------------------------------------------------------
 # Dataclasses
@@ -204,9 +201,7 @@ class RiskProfile:
 
     def top_risks(self, n: int = 10) -> list[DiseaseRisk]:
         """Return the *n* highest lifetime-risk conditions, sorted descending."""
-        return sorted(
-            self.risks, key=lambda r: r.lifetime_risk_pct, reverse=True
-        )[:n]
+        return sorted(self.risks, key=lambda r: r.lifetime_risk_pct, reverse=True)[:n]
 
     def filter_by_category(self, category: str) -> list[DiseaseRisk]:
         """Return risks belonging to a given *category* (case-insensitive)."""
@@ -249,10 +244,7 @@ class RiskProfile:
         return len(self.risks)
 
     def __repr__(self) -> str:  # pragma: no cover
-        return (
-            f"RiskProfile({len(self.risks)} conditions, "
-            f"categories={self.categories})"
-        )
+        return f"RiskProfile({len(self.risks)} conditions, categories={self.categories})"
 
 
 # ---------------------------------------------------------------------------
@@ -320,204 +312,819 @@ BUILTIN_VARIANT_DB: list[GeneticVariant] = [
     # ===================================================================
     # CARDIOVASCULAR  (genes: APOE, PCSK9, LPA, LDLR, and others)
     # ===================================================================
-    GeneticVariant("rs429358", "APOE", "19", 44908684, "C", "T", 1.45,
-                   "Coronary artery disease", "cardiovascular", 0.15,
-                   "strong"),
-    GeneticVariant("rs7412", "APOE", "19", 44908822, "C", "T", 0.80,
-                   "Coronary artery disease", "cardiovascular", 0.08,
-                   "strong"),
-    GeneticVariant("rs11591147", "PCSK9", "1", 55505647, "T", "G", 0.50,
-                   "Hypercholesterolaemia", "cardiovascular", 0.01,
-                   "strong"),
-    GeneticVariant("rs11206510", "PCSK9", "1", 55496039, "T", "C", 1.08,
-                   "Coronary artery disease", "cardiovascular", 0.82,
-                   "strong"),
-    GeneticVariant("rs10455872", "LPA", "6", 160589086, "G", "A", 1.51,
-                   "Coronary artery disease", "cardiovascular", 0.07,
-                   "strong"),
-    GeneticVariant("rs3798220", "LPA", "6", 160540105, "C", "T", 1.47,
-                   "Coronary artery disease", "cardiovascular", 0.02,
-                   "strong"),
-    GeneticVariant("rs688", "LDLR", "19", 11113592, "T", "C", 1.10,
-                   "Hypercholesterolaemia", "cardiovascular", 0.43,
-                   "moderate"),
-    GeneticVariant("rs5925", "LDLR", "19", 11120511, "T", "C", 1.08,
-                   "Hypercholesterolaemia", "cardiovascular", 0.40,
-                   "moderate"),
+    GeneticVariant(
+        "rs429358",
+        "APOE",
+        "19",
+        44908684,
+        "C",
+        "T",
+        1.45,
+        "Coronary artery disease",
+        "cardiovascular",
+        0.15,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs7412",
+        "APOE",
+        "19",
+        44908822,
+        "C",
+        "T",
+        0.80,
+        "Coronary artery disease",
+        "cardiovascular",
+        0.08,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs11591147",
+        "PCSK9",
+        "1",
+        55505647,
+        "T",
+        "G",
+        0.50,
+        "Hypercholesterolaemia",
+        "cardiovascular",
+        0.01,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs11206510",
+        "PCSK9",
+        "1",
+        55496039,
+        "T",
+        "C",
+        1.08,
+        "Coronary artery disease",
+        "cardiovascular",
+        0.82,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs10455872",
+        "LPA",
+        "6",
+        160589086,
+        "G",
+        "A",
+        1.51,
+        "Coronary artery disease",
+        "cardiovascular",
+        0.07,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs3798220",
+        "LPA",
+        "6",
+        160540105,
+        "C",
+        "T",
+        1.47,
+        "Coronary artery disease",
+        "cardiovascular",
+        0.02,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs688",
+        "LDLR",
+        "19",
+        11113592,
+        "T",
+        "C",
+        1.10,
+        "Hypercholesterolaemia",
+        "cardiovascular",
+        0.43,
+        "moderate",
+    ),
+    GeneticVariant(
+        "rs5925",
+        "LDLR",
+        "19",
+        11120511,
+        "T",
+        "C",
+        1.08,
+        "Hypercholesterolaemia",
+        "cardiovascular",
+        0.40,
+        "moderate",
+    ),
     # --- Additional cardiovascular ---
-    GeneticVariant("rs1333049", "CDKN2B-AS1", "9", 22125504, "C", "G", 1.29,
-                   "Coronary artery disease", "cardiovascular", 0.47,
-                   "strong"),
-    GeneticVariant("rs10757274", "CDKN2B-AS1", "9", 22096055, "G", "A", 1.25,
-                   "Coronary artery disease", "cardiovascular", 0.49,
-                   "strong"),
-
+    GeneticVariant(
+        "rs1333049",
+        "CDKN2B-AS1",
+        "9",
+        22125504,
+        "C",
+        "G",
+        1.29,
+        "Coronary artery disease",
+        "cardiovascular",
+        0.47,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs10757274",
+        "CDKN2B-AS1",
+        "9",
+        22096055,
+        "G",
+        "A",
+        1.25,
+        "Coronary artery disease",
+        "cardiovascular",
+        0.49,
+        "strong",
+    ),
     # ===================================================================
     # CANCER  (genes: BRCA1, BRCA2, TP53, APC, MLH1, MSH2)
     # ===================================================================
-    GeneticVariant("rs80357906", "BRCA1", "17", 43093449, "A", "G", 11.0,
-                   "Breast cancer", "cancer", 0.001, "strong"),
-    GeneticVariant("rs80357906", "BRCA1", "17", 43093449, "A", "G", 8.0,
-                   "Ovarian cancer", "cancer", 0.001, "strong"),
-    GeneticVariant("rs766173", "BRCA2", "13", 32906729, "A", "C", 3.0,
-                   "Breast cancer", "cancer", 0.01, "strong"),
-    GeneticVariant("rs11571833", "BRCA2", "13", 32972626, "T", "A", 2.70,
-                   "Breast cancer", "cancer", 0.01, "strong"),
-    GeneticVariant("rs28897743", "TP53", "17", 7674220, "A", "G", 5.0,
-                   "Li-Fraumeni syndrome cancers", "cancer", 0.0005,
-                   "strong"),
-    GeneticVariant("rs121913332", "APC", "5", 112175211, "A", "G", 10.0,
-                   "Colorectal cancer", "cancer", 0.0001, "strong"),
-    GeneticVariant("rs63750447", "MLH1", "3", 37042337, "A", "G", 4.0,
-                   "Lynch syndrome cancers", "cancer", 0.001, "strong"),
-    GeneticVariant("rs267607908", "MSH2", "2", 47630553, "A", "G", 4.2,
-                   "Lynch syndrome cancers", "cancer", 0.001, "strong"),
+    GeneticVariant(
+        "rs80357906",
+        "BRCA1",
+        "17",
+        43093449,
+        "A",
+        "G",
+        11.0,
+        "Breast cancer",
+        "cancer",
+        0.001,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs80357906",
+        "BRCA1",
+        "17",
+        43093449,
+        "A",
+        "G",
+        8.0,
+        "Ovarian cancer",
+        "cancer",
+        0.001,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs766173",
+        "BRCA2",
+        "13",
+        32906729,
+        "A",
+        "C",
+        3.0,
+        "Breast cancer",
+        "cancer",
+        0.01,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs11571833",
+        "BRCA2",
+        "13",
+        32972626,
+        "T",
+        "A",
+        2.70,
+        "Breast cancer",
+        "cancer",
+        0.01,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs28897743",
+        "TP53",
+        "17",
+        7674220,
+        "A",
+        "G",
+        5.0,
+        "Li-Fraumeni syndrome cancers",
+        "cancer",
+        0.0005,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs121913332",
+        "APC",
+        "5",
+        112175211,
+        "A",
+        "G",
+        10.0,
+        "Colorectal cancer",
+        "cancer",
+        0.0001,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs63750447",
+        "MLH1",
+        "3",
+        37042337,
+        "A",
+        "G",
+        4.0,
+        "Lynch syndrome cancers",
+        "cancer",
+        0.001,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs267607908",
+        "MSH2",
+        "2",
+        47630553,
+        "A",
+        "G",
+        4.2,
+        "Lynch syndrome cancers",
+        "cancer",
+        0.001,
+        "strong",
+    ),
     # --- Additional cancer susceptibility ---
-    GeneticVariant("rs1042522", "TP53", "17", 7676154, "C", "G", 1.15,
-                   "Lung cancer", "cancer", 0.63, "moderate"),
-    GeneticVariant("rs6983267", "MYC", "8", 128413305, "G", "T", 1.27,
-                   "Colorectal cancer", "cancer", 0.50, "strong"),
-
+    GeneticVariant(
+        "rs1042522",
+        "TP53",
+        "17",
+        7676154,
+        "C",
+        "G",
+        1.15,
+        "Lung cancer",
+        "cancer",
+        0.63,
+        "moderate",
+    ),
+    GeneticVariant(
+        "rs6983267",
+        "MYC",
+        "8",
+        128413305,
+        "G",
+        "T",
+        1.27,
+        "Colorectal cancer",
+        "cancer",
+        0.50,
+        "strong",
+    ),
     # ===================================================================
     # DIABETES  (genes: TCF7L2, PPARG, KCNJ11, SLC30A8)
     # ===================================================================
-    GeneticVariant("rs7903146", "TCF7L2", "10", 112998590, "T", "C", 1.37,
-                   "Type 2 diabetes", "diabetes", 0.30, "strong"),
-    GeneticVariant("rs12255372", "TCF7L2", "10", 113049143, "T", "G", 1.33,
-                   "Type 2 diabetes", "diabetes", 0.29, "strong"),
-    GeneticVariant("rs1801282", "PPARG", "3", 12351626, "G", "C", 0.86,
-                   "Type 2 diabetes", "diabetes", 0.12, "strong"),
-    GeneticVariant("rs5219", "KCNJ11", "11", 17388025, "T", "C", 1.15,
-                   "Type 2 diabetes", "diabetes", 0.35, "strong"),
-    GeneticVariant("rs13266634", "SLC30A8", "8", 117172544, "C", "T", 1.12,
-                   "Type 2 diabetes", "diabetes", 0.70, "strong"),
-    GeneticVariant("rs10811661", "CDKN2A/B", "9", 22134094, "T", "C", 1.20,
-                   "Type 2 diabetes", "diabetes", 0.83, "moderate"),
-
+    GeneticVariant(
+        "rs7903146",
+        "TCF7L2",
+        "10",
+        112998590,
+        "T",
+        "C",
+        1.37,
+        "Type 2 diabetes",
+        "diabetes",
+        0.30,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs12255372",
+        "TCF7L2",
+        "10",
+        113049143,
+        "T",
+        "G",
+        1.33,
+        "Type 2 diabetes",
+        "diabetes",
+        0.29,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs1801282",
+        "PPARG",
+        "3",
+        12351626,
+        "G",
+        "C",
+        0.86,
+        "Type 2 diabetes",
+        "diabetes",
+        0.12,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs5219",
+        "KCNJ11",
+        "11",
+        17388025,
+        "T",
+        "C",
+        1.15,
+        "Type 2 diabetes",
+        "diabetes",
+        0.35,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs13266634",
+        "SLC30A8",
+        "8",
+        117172544,
+        "C",
+        "T",
+        1.12,
+        "Type 2 diabetes",
+        "diabetes",
+        0.70,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs10811661",
+        "CDKN2A/B",
+        "9",
+        22134094,
+        "T",
+        "C",
+        1.20,
+        "Type 2 diabetes",
+        "diabetes",
+        0.83,
+        "moderate",
+    ),
     # ===================================================================
     # ALZHEIMER'S  (genes: APOE, CLU, PICALM, BIN1)
     # ===================================================================
-    GeneticVariant("rs429358", "APOE", "19", 44908684, "C", "T", 3.68,
-                   "Alzheimer's disease", "alzheimers", 0.15, "strong"),
-    GeneticVariant("rs7412", "APOE", "19", 44908822, "C", "T", 0.62,
-                   "Alzheimer's disease", "alzheimers", 0.08, "strong"),
-    GeneticVariant("rs11136000", "CLU", "8", 27464519, "T", "C", 0.86,
-                   "Alzheimer's disease", "alzheimers", 0.38, "strong"),
-    GeneticVariant("rs3851179", "PICALM", "11", 85867875, "T", "C", 0.87,
-                   "Alzheimer's disease", "alzheimers", 0.36, "strong"),
-    GeneticVariant("rs744373", "BIN1", "2", 127137039, "G", "A", 1.17,
-                   "Alzheimer's disease", "alzheimers", 0.29, "strong"),
-    GeneticVariant("rs6656401", "CR1", "1", 207518704, "A", "G", 1.18,
-                   "Alzheimer's disease", "alzheimers", 0.20, "moderate"),
-
+    GeneticVariant(
+        "rs429358",
+        "APOE",
+        "19",
+        44908684,
+        "C",
+        "T",
+        3.68,
+        "Alzheimer's disease",
+        "alzheimers",
+        0.15,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs7412",
+        "APOE",
+        "19",
+        44908822,
+        "C",
+        "T",
+        0.62,
+        "Alzheimer's disease",
+        "alzheimers",
+        0.08,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs11136000",
+        "CLU",
+        "8",
+        27464519,
+        "T",
+        "C",
+        0.86,
+        "Alzheimer's disease",
+        "alzheimers",
+        0.38,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs3851179",
+        "PICALM",
+        "11",
+        85867875,
+        "T",
+        "C",
+        0.87,
+        "Alzheimer's disease",
+        "alzheimers",
+        0.36,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs744373",
+        "BIN1",
+        "2",
+        127137039,
+        "G",
+        "A",
+        1.17,
+        "Alzheimer's disease",
+        "alzheimers",
+        0.29,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs6656401",
+        "CR1",
+        "1",
+        207518704,
+        "A",
+        "G",
+        1.18,
+        "Alzheimer's disease",
+        "alzheimers",
+        0.20,
+        "moderate",
+    ),
     # ===================================================================
     # AUTOIMMUNE  (genes: HLA-DRB1, CTLA4, PTPN22)
     # ===================================================================
-    GeneticVariant("rs6897932", "HLA-DRB1", "6", 32578775, "C", "T", 2.50,
-                   "Rheumatoid arthritis", "autoimmune", 0.10, "strong"),
-    GeneticVariant("rs3087243", "CTLA4", "2", 203867991, "G", "A", 1.20,
-                   "Type 1 diabetes", "autoimmune", 0.42, "strong"),
-    GeneticVariant("rs2476601", "PTPN22", "1", 113834946, "A", "G", 1.75,
-                   "Rheumatoid arthritis", "autoimmune", 0.10, "strong"),
-    GeneticVariant("rs2476601", "PTPN22", "1", 113834946, "A", "G", 1.90,
-                   "Type 1 diabetes", "autoimmune", 0.10, "strong"),
-    GeneticVariant("rs2476601", "PTPN22", "1", 113834946, "A", "G", 1.40,
-                   "Systemic lupus erythematosus", "autoimmune", 0.10,
-                   "moderate"),
-
+    GeneticVariant(
+        "rs6897932",
+        "HLA-DRB1",
+        "6",
+        32578775,
+        "C",
+        "T",
+        2.50,
+        "Rheumatoid arthritis",
+        "autoimmune",
+        0.10,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs3087243",
+        "CTLA4",
+        "2",
+        203867991,
+        "G",
+        "A",
+        1.20,
+        "Type 1 diabetes",
+        "autoimmune",
+        0.42,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs2476601",
+        "PTPN22",
+        "1",
+        113834946,
+        "A",
+        "G",
+        1.75,
+        "Rheumatoid arthritis",
+        "autoimmune",
+        0.10,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs2476601",
+        "PTPN22",
+        "1",
+        113834946,
+        "A",
+        "G",
+        1.90,
+        "Type 1 diabetes",
+        "autoimmune",
+        0.10,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs2476601",
+        "PTPN22",
+        "1",
+        113834946,
+        "A",
+        "G",
+        1.40,
+        "Systemic lupus erythematosus",
+        "autoimmune",
+        0.10,
+        "moderate",
+    ),
     # ===================================================================
     # METABOLIC DISORDERS  (genes: MTHFR, FTO, MC4R)
     # ===================================================================
-    GeneticVariant("rs1801133", "MTHFR", "1", 11796321, "T", "C", 1.20,
-                   "Hyperhomocysteinaemia", "metabolic", 0.35, "strong"),
-    GeneticVariant("rs1801131", "MTHFR", "1", 11794419, "C", "A", 1.10,
-                   "Neural tube defects (offspring)", "metabolic", 0.30,
-                   "moderate"),
-    GeneticVariant("rs9939609", "FTO", "16", 53786615, "A", "T", 1.30,
-                   "Obesity", "metabolic", 0.42, "strong"),
-    GeneticVariant("rs1558902", "FTO", "16", 53803574, "A", "T", 1.32,
-                   "Obesity", "metabolic", 0.42, "strong"),
-    GeneticVariant("rs17782313", "MC4R", "18", 60183864, "C", "T", 1.18,
-                   "Obesity", "metabolic", 0.24, "strong"),
-
+    GeneticVariant(
+        "rs1801133",
+        "MTHFR",
+        "1",
+        11796321,
+        "T",
+        "C",
+        1.20,
+        "Hyperhomocysteinaemia",
+        "metabolic",
+        0.35,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs1801131",
+        "MTHFR",
+        "1",
+        11794419,
+        "C",
+        "A",
+        1.10,
+        "Neural tube defects (offspring)",
+        "metabolic",
+        0.30,
+        "moderate",
+    ),
+    GeneticVariant(
+        "rs9939609", "FTO", "16", 53786615, "A", "T", 1.30, "Obesity", "metabolic", 0.42, "strong"
+    ),
+    GeneticVariant(
+        "rs1558902", "FTO", "16", 53803574, "A", "T", 1.32, "Obesity", "metabolic", 0.42, "strong"
+    ),
+    GeneticVariant(
+        "rs17782313", "MC4R", "18", 60183864, "C", "T", 1.18, "Obesity", "metabolic", 0.24, "strong"
+    ),
     # ===================================================================
     # EYE DISEASES  (genes: CFH, ARMS2 — macular degeneration)
     # ===================================================================
-    GeneticVariant("rs1061170", "CFH", "1", 196659237, "C", "T", 2.45,
-                   "Age-related macular degeneration", "eye", 0.34,
-                   "strong"),
-    GeneticVariant("rs10490924", "ARMS2", "10", 122454932, "T", "G", 2.69,
-                   "Age-related macular degeneration", "eye", 0.22,
-                   "strong"),
-    GeneticVariant("rs2230199", "C3", "19", 6677897, "G", "C", 1.42,
-                   "Age-related macular degeneration", "eye", 0.20,
-                   "moderate"),
-
+    GeneticVariant(
+        "rs1061170",
+        "CFH",
+        "1",
+        196659237,
+        "C",
+        "T",
+        2.45,
+        "Age-related macular degeneration",
+        "eye",
+        0.34,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs10490924",
+        "ARMS2",
+        "10",
+        122454932,
+        "T",
+        "G",
+        2.69,
+        "Age-related macular degeneration",
+        "eye",
+        0.22,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs2230199",
+        "C3",
+        "19",
+        6677897,
+        "G",
+        "C",
+        1.42,
+        "Age-related macular degeneration",
+        "eye",
+        0.20,
+        "moderate",
+    ),
     # ===================================================================
     # NEUROLOGICAL  (genes: LRRK2, PARK2, HTT)
     # ===================================================================
-    GeneticVariant("rs34637584", "LRRK2", "12", 40340400, "A", "G", 9.50,
-                   "Parkinson's disease", "neurological", 0.001, "strong"),
-    GeneticVariant("rs33939927", "LRRK2", "12", 40346052, "A", "G", 3.00,
-                   "Parkinson's disease", "neurological", 0.005, "strong"),
-    GeneticVariant("rs1801582", "PARK2", "6", 161768590, "A", "G", 1.30,
-                   "Parkinson's disease", "neurological", 0.15, "moderate"),
-    GeneticVariant("rs3758549", "HTT", "4", 3076408, "A", "G", 1.10,
-                   "Huntington's disease", "neurological", 0.05,
-                   "suggestive"),
-
+    GeneticVariant(
+        "rs34637584",
+        "LRRK2",
+        "12",
+        40340400,
+        "A",
+        "G",
+        9.50,
+        "Parkinson's disease",
+        "neurological",
+        0.001,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs33939927",
+        "LRRK2",
+        "12",
+        40346052,
+        "A",
+        "G",
+        3.00,
+        "Parkinson's disease",
+        "neurological",
+        0.005,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs1801582",
+        "PARK2",
+        "6",
+        161768590,
+        "A",
+        "G",
+        1.30,
+        "Parkinson's disease",
+        "neurological",
+        0.15,
+        "moderate",
+    ),
+    GeneticVariant(
+        "rs3758549",
+        "HTT",
+        "4",
+        3076408,
+        "A",
+        "G",
+        1.10,
+        "Huntington's disease",
+        "neurological",
+        0.05,
+        "suggestive",
+    ),
     # ===================================================================
     # BONE HEALTH  (genes: ESR1, VDR, COL1A1)
     # ===================================================================
-    GeneticVariant("rs2234693", "ESR1", "6", 151842246, "T", "C", 1.20,
-                   "Osteoporosis", "bone", 0.45, "moderate"),
-    GeneticVariant("rs1544410", "VDR", "12", 47846052, "A", "G", 1.15,
-                   "Osteoporosis", "bone", 0.40, "moderate"),
-    GeneticVariant("rs1800012", "COL1A1", "17", 50200388, "T", "G", 1.30,
-                   "Osteoporosis", "bone", 0.18, "moderate"),
-
+    GeneticVariant(
+        "rs2234693",
+        "ESR1",
+        "6",
+        151842246,
+        "T",
+        "C",
+        1.20,
+        "Osteoporosis",
+        "bone",
+        0.45,
+        "moderate",
+    ),
+    GeneticVariant(
+        "rs1544410", "VDR", "12", 47846052, "A", "G", 1.15, "Osteoporosis", "bone", 0.40, "moderate"
+    ),
+    GeneticVariant(
+        "rs1800012",
+        "COL1A1",
+        "17",
+        50200388,
+        "T",
+        "G",
+        1.30,
+        "Osteoporosis",
+        "bone",
+        0.18,
+        "moderate",
+    ),
     # ===================================================================
     # BLOOD DISORDERS  (genes: HBB, HFE)
     # ===================================================================
-    GeneticVariant("rs334", "HBB", "11", 5227002, "T", "A", 15.0,
-                   "Sickle cell disease", "blood", 0.06, "strong"),
-    GeneticVariant("rs33930165", "HBB", "11", 5226773, "A", "G", 8.0,
-                   "Beta-thalassaemia", "blood", 0.02, "strong"),
-    GeneticVariant("rs1800562", "HFE", "6", 26092913, "A", "G", 5.00,
-                   "Hereditary haemochromatosis", "blood", 0.06, "strong"),
-    GeneticVariant("rs1799945", "HFE", "6", 26091179, "G", "C", 1.60,
-                   "Hereditary haemochromatosis", "blood", 0.14, "strong"),
-
+    GeneticVariant(
+        "rs334",
+        "HBB",
+        "11",
+        5227002,
+        "T",
+        "A",
+        15.0,
+        "Sickle cell disease",
+        "blood",
+        0.06,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs33930165",
+        "HBB",
+        "11",
+        5226773,
+        "A",
+        "G",
+        8.0,
+        "Beta-thalassaemia",
+        "blood",
+        0.02,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs1800562",
+        "HFE",
+        "6",
+        26092913,
+        "A",
+        "G",
+        5.00,
+        "Hereditary haemochromatosis",
+        "blood",
+        0.06,
+        "strong",
+    ),
+    GeneticVariant(
+        "rs1799945",
+        "HFE",
+        "6",
+        26091179,
+        "G",
+        "C",
+        1.60,
+        "Hereditary haemochromatosis",
+        "blood",
+        0.14,
+        "strong",
+    ),
     # ===================================================================
     # Additional variants to reach ≥ 50 entries
     # ===================================================================
     # Prostate cancer
-    GeneticVariant("rs1447295", "MSMB", "8", 128194098, "A", "C", 1.62,
-                   "Prostate cancer", "cancer", 0.11, "strong"),
+    GeneticVariant(
+        "rs1447295",
+        "MSMB",
+        "8",
+        128194098,
+        "A",
+        "C",
+        1.62,
+        "Prostate cancer",
+        "cancer",
+        0.11,
+        "strong",
+    ),
     # Melanoma
-    GeneticVariant("rs910873", "CDKN2A", "9", 21975862, "C", "T", 1.75,
-                   "Melanoma", "cancer", 0.01, "moderate"),
+    GeneticVariant(
+        "rs910873", "CDKN2A", "9", 21975862, "C", "T", 1.75, "Melanoma", "cancer", 0.01, "moderate"
+    ),
     # Endometrial cancer
-    GeneticVariant("rs4430796", "HNF1B", "17", 37738049, "G", "A", 1.20,
-                   "Endometrial cancer", "cancer", 0.47, "moderate"),
+    GeneticVariant(
+        "rs4430796",
+        "HNF1B",
+        "17",
+        37738049,
+        "G",
+        "A",
+        1.20,
+        "Endometrial cancer",
+        "cancer",
+        0.47,
+        "moderate",
+    ),
     # Additional diabetes
-    GeneticVariant("rs7756992", "CDKAL1", "6", 20661019, "G", "A", 1.12,
-                   "Type 2 diabetes", "diabetes", 0.28, "strong"),
+    GeneticVariant(
+        "rs7756992",
+        "CDKAL1",
+        "6",
+        20661019,
+        "G",
+        "A",
+        1.12,
+        "Type 2 diabetes",
+        "diabetes",
+        0.28,
+        "strong",
+    ),
     # Atrial fibrillation
-    GeneticVariant("rs2200733", "PITX2", "4", 111710169, "T", "C", 1.72,
-                   "Atrial fibrillation", "cardiovascular", 0.11, "strong"),
+    GeneticVariant(
+        "rs2200733",
+        "PITX2",
+        "4",
+        111710169,
+        "T",
+        "C",
+        1.72,
+        "Atrial fibrillation",
+        "cardiovascular",
+        0.11,
+        "strong",
+    ),
     # Aortic stenosis
-    GeneticVariant("rs10455872", "LPA", "6", 160589086, "G", "A", 1.68,
-                   "Aortic stenosis", "cardiovascular", 0.07, "strong"),
+    GeneticVariant(
+        "rs10455872",
+        "LPA",
+        "6",
+        160589086,
+        "G",
+        "A",
+        1.68,
+        "Aortic stenosis",
+        "cardiovascular",
+        0.07,
+        "strong",
+    ),
     # Hypertension
-    GeneticVariant("rs699", "AGT", "1", 230710048, "G", "A", 1.15,
-                   "Hypertension", "cardiovascular", 0.40, "moderate"),
+    GeneticVariant(
+        "rs699",
+        "AGT",
+        "1",
+        230710048,
+        "G",
+        "A",
+        1.15,
+        "Hypertension",
+        "cardiovascular",
+        0.40,
+        "moderate",
+    ),
 ]
 
 # Quick count assertion (fails at import time if DB is under-populated)
 assert len(BUILTIN_VARIANT_DB) >= 50, (
-    f"Built-in variant DB has only {len(BUILTIN_VARIANT_DB)} entries; "
-    "expected ≥ 50."
+    f"Built-in variant DB has only {len(BUILTIN_VARIANT_DB)} entries; expected ≥ 50."
 )
 
 # ---------------------------------------------------------------------------
@@ -611,90 +1218,127 @@ _TELOMERE_RISK_MODIFIERS: dict[str, float] = {
 # Screening / prevention recommendations keyed by category.
 _SCREENING_RECS: dict[str, list[dict[str, str]]] = {
     "cardiovascular": [
-        {"action": "Regular lipid panel screening",
-         "frequency": "Every 1–2 years after age 40",
-         "detail": "Monitor LDL-C, HDL-C, triglycerides, and Lp(a)."},
-        {"action": "Blood pressure monitoring",
-         "frequency": "At every clinical visit",
-         "detail": "Target < 130/80 mmHg for high-risk individuals."},
-        {"action": "Lifestyle modification",
-         "frequency": "Ongoing",
-         "detail": "Mediterranean diet, ≥ 150 min/week moderate exercise, "
-                   "smoking cessation."},
+        {
+            "action": "Regular lipid panel screening",
+            "frequency": "Every 1–2 years after age 40",
+            "detail": "Monitor LDL-C, HDL-C, triglycerides, and Lp(a).",
+        },
+        {
+            "action": "Blood pressure monitoring",
+            "frequency": "At every clinical visit",
+            "detail": "Target < 130/80 mmHg for high-risk individuals.",
+        },
+        {
+            "action": "Lifestyle modification",
+            "frequency": "Ongoing",
+            "detail": "Mediterranean diet, ≥ 150 min/week moderate exercise, smoking cessation.",
+        },
     ],
     "cancer": [
-        {"action": "Genetic counselling referral",
-         "frequency": "Once (with updates as guidelines change)",
-         "detail": "Discuss BRCA, Lynch, and TP53 implications."},
-        {"action": "Cancer-specific screening programme",
-         "frequency": "Per national guidelines",
-         "detail": "Mammography, colonoscopy, PSA, or skin checks as "
-                   "indicated by variant profile."},
+        {
+            "action": "Genetic counselling referral",
+            "frequency": "Once (with updates as guidelines change)",
+            "detail": "Discuss BRCA, Lynch, and TP53 implications.",
+        },
+        {
+            "action": "Cancer-specific screening programme",
+            "frequency": "Per national guidelines",
+            "detail": "Mammography, colonoscopy, PSA, or skin checks as "
+            "indicated by variant profile.",
+        },
     ],
     "diabetes": [
-        {"action": "Fasting glucose / HbA1c screening",
-         "frequency": "Annually from age 35 or earlier if high-risk",
-         "detail": "Pre-diabetes detection allows lifestyle intervention."},
-        {"action": "Weight management programme",
-         "frequency": "Ongoing",
-         "detail": "Maintain BMI 18.5–24.9; consider dietitian referral."},
+        {
+            "action": "Fasting glucose / HbA1c screening",
+            "frequency": "Annually from age 35 or earlier if high-risk",
+            "detail": "Pre-diabetes detection allows lifestyle intervention.",
+        },
+        {
+            "action": "Weight management programme",
+            "frequency": "Ongoing",
+            "detail": "Maintain BMI 18.5–24.9; consider dietitian referral.",
+        },
     ],
     "alzheimers": [
-        {"action": "Cognitive screening",
-         "frequency": "Every 1–2 years after age 55",
-         "detail": "MoCA or MMSE; discuss emerging amyloid biomarkers."},
-        {"action": "Modifiable risk reduction",
-         "frequency": "Ongoing",
-         "detail": "Cardiovascular risk management, social engagement, "
-                   "physical activity, sleep hygiene."},
+        {
+            "action": "Cognitive screening",
+            "frequency": "Every 1–2 years after age 55",
+            "detail": "MoCA or MMSE; discuss emerging amyloid biomarkers.",
+        },
+        {
+            "action": "Modifiable risk reduction",
+            "frequency": "Ongoing",
+            "detail": "Cardiovascular risk management, social engagement, "
+            "physical activity, sleep hygiene.",
+        },
     ],
     "autoimmune": [
-        {"action": "Autoantibody panel",
-         "frequency": "If symptomatic",
-         "detail": "ANA, RF, anti-CCP, HLA typing as directed by clinician."},
-        {"action": "Monitor inflammatory markers",
-         "frequency": "As directed",
-         "detail": "CRP, ESR for early detection of flares."},
+        {
+            "action": "Autoantibody panel",
+            "frequency": "If symptomatic",
+            "detail": "ANA, RF, anti-CCP, HLA typing as directed by clinician.",
+        },
+        {
+            "action": "Monitor inflammatory markers",
+            "frequency": "As directed",
+            "detail": "CRP, ESR for early detection of flares.",
+        },
     ],
     "metabolic": [
-        {"action": "Homocysteine level testing",
-         "frequency": "Baseline + follow-up if elevated",
-         "detail": "B-vitamin supplementation can reduce levels."},
-        {"action": "Nutritional counselling",
-         "frequency": "Ongoing",
-         "detail": "Folate-rich diet; prenatal folic acid supplementation "
-                   "for MTHFR carriers."},
+        {
+            "action": "Homocysteine level testing",
+            "frequency": "Baseline + follow-up if elevated",
+            "detail": "B-vitamin supplementation can reduce levels.",
+        },
+        {
+            "action": "Nutritional counselling",
+            "frequency": "Ongoing",
+            "detail": "Folate-rich diet; prenatal folic acid supplementation for MTHFR carriers.",
+        },
     ],
     "eye": [
-        {"action": "Dilated eye examination",
-         "frequency": "Every 1–2 years after age 50",
-         "detail": "Early detection of drusen and RPE changes."},
-        {"action": "AREDS2 supplementation discussion",
-         "frequency": "Once (if intermediate AMD detected)",
-         "detail": "Lutein + zeaxanthin, zinc, vitamins C/E."},
+        {
+            "action": "Dilated eye examination",
+            "frequency": "Every 1–2 years after age 50",
+            "detail": "Early detection of drusen and RPE changes.",
+        },
+        {
+            "action": "AREDS2 supplementation discussion",
+            "frequency": "Once (if intermediate AMD detected)",
+            "detail": "Lutein + zeaxanthin, zinc, vitamins C/E.",
+        },
     ],
     "neurological": [
-        {"action": "Neurological evaluation",
-         "frequency": "If symptomatic or family history positive",
-         "detail": "DaTscan, genetic counselling for LRRK2 carriers."},
+        {
+            "action": "Neurological evaluation",
+            "frequency": "If symptomatic or family history positive",
+            "detail": "DaTscan, genetic counselling for LRRK2 carriers.",
+        },
     ],
     "bone": [
-        {"action": "DEXA bone density scan",
-         "frequency": "Every 2 years after age 50 (women) / 65 (men)",
-         "detail": "Assess fracture risk; consider FRAX calculation."},
-        {"action": "Calcium + Vitamin D optimisation",
-         "frequency": "Ongoing",
-         "detail": "1 000–1 200 mg Ca/day; 800–1 000 IU Vitamin D/day."},
+        {
+            "action": "DEXA bone density scan",
+            "frequency": "Every 2 years after age 50 (women) / 65 (men)",
+            "detail": "Assess fracture risk; consider FRAX calculation.",
+        },
+        {
+            "action": "Calcium + Vitamin D optimisation",
+            "frequency": "Ongoing",
+            "detail": "1 000–1 200 mg Ca/day; 800–1 000 IU Vitamin D/day.",
+        },
     ],
     "blood": [
-        {"action": "Complete blood count + iron studies",
-         "frequency": "Annually if carrier status confirmed",
-         "detail": "Monitor ferritin and transferrin saturation for HFE; "
-                   "Hb electrophoresis for HBB."},
-        {"action": "Genetic counselling for family planning",
-         "frequency": "Once",
-         "detail": "Carrier screening for partner; discuss reproductive "
-                   "options."},
+        {
+            "action": "Complete blood count + iron studies",
+            "frequency": "Annually if carrier status confirmed",
+            "detail": "Monitor ferritin and transferrin saturation for HFE; "
+            "Hb electrophoresis for HBB.",
+        },
+        {
+            "action": "Genetic counselling for family planning",
+            "frequency": "Once",
+            "detail": "Carrier screening for partner; discuss reproductive options.",
+        },
     ],
 }
 
@@ -702,6 +1346,7 @@ _SCREENING_RECS: dict[str, list[dict[str, str]]] = {
 # ---------------------------------------------------------------------------
 # DiseasePredictor — main engine
 # ---------------------------------------------------------------------------
+
 
 class DiseasePredictor:
     """Polygenic disease risk prediction engine.
@@ -821,30 +1466,28 @@ class DiseasePredictor:
             for var in self._rsid_index.get(rsid, []):
                 n = var.allele_count(genotype)
                 if n > 0:
-                    condition_hits.setdefault(var.condition, []).append(
-                        (var, n)
-                    )
+                    condition_hits.setdefault(var.condition, []).append((var, n))
 
         risks: list[DiseaseRisk] = []
         for condition, hits in condition_hits.items():
             category = hits[0][0].category
             rr = self._combine_odds_ratios(hits)
             baseline = self._get_baseline_incidence(condition, sex)
-            lifetime_risk = self._compute_lifetime_risk(
-                baseline, rr, age, condition
-            )
+            lifetime_risk = self._compute_lifetime_risk(baseline, rr, age, condition)
             confidence = self._compute_confidence(hits)
 
-            risks.append(DiseaseRisk(
-                condition=condition,
-                category=category,
-                lifetime_risk_pct=round(lifetime_risk, 4),
-                relative_risk=round(rr, 4),
-                confidence=round(confidence, 4),
-                contributing_variants=[h[0].rsid for h in hits],
-                age_of_onset_range=_ONSET_RANGES.get(condition, (0, 100)),
-                preventability_score=_PREVENTABILITY.get(condition, 0.5),
-            ))
+            risks.append(
+                DiseaseRisk(
+                    condition=condition,
+                    category=category,
+                    lifetime_risk_pct=round(lifetime_risk, 4),
+                    relative_risk=round(rr, 4),
+                    confidence=round(confidence, 4),
+                    contributing_variants=[h[0].rsid for h in hits],
+                    age_of_onset_range=_ONSET_RANGES.get(condition, (0, 100)),
+                    preventability_score=_PREVENTABILITY.get(condition, 0.5),
+                )
+            )
 
         metadata = {
             "age": age,
@@ -893,7 +1536,7 @@ class DiseasePredictor:
 
         risks: list[DiseaseRisk] = []
         for condition, per_kb_or in _TELOMERE_RISK_MODIFIERS.items():
-            rr = per_kb_or ** shortening_kb
+            rr = per_kb_or**shortening_kb
             if rr <= 1.0:
                 continue
 
@@ -904,16 +1547,18 @@ class DiseasePredictor:
             # Confidence is lower for telomere-only prediction.
             confidence = min(0.45, 0.15 * shortening_kb)
 
-            risks.append(DiseaseRisk(
-                condition=condition,
-                category=category,
-                lifetime_risk_pct=round(lifetime, 4),
-                relative_risk=round(rr, 4),
-                confidence=round(confidence, 4),
-                contributing_variants=["telomere_length"],
-                age_of_onset_range=_ONSET_RANGES.get(condition, (0, 100)),
-                preventability_score=_PREVENTABILITY.get(condition, 0.5),
-            ))
+            risks.append(
+                DiseaseRisk(
+                    condition=condition,
+                    category=category,
+                    lifetime_risk_pct=round(lifetime, 4),
+                    relative_risk=round(rr, 4),
+                    confidence=round(confidence, 4),
+                    contributing_variants=["telomere_length"],
+                    age_of_onset_range=_ONSET_RANGES.get(condition, (0, 100)),
+                    preventability_score=_PREVENTABILITY.get(condition, 0.5),
+                )
+            )
         return risks
 
     def predict_from_image_analysis(
@@ -953,30 +1598,27 @@ class DiseasePredictor:
         # an approximate linear model: bp ≈ intensity * 1.5).
         if mean_intensity is not None and mean_intensity > 0:
             proxy_bp = float(mean_intensity) * 1.5
-            risks.extend(
-                self.predict_from_telomere_data(proxy_bp, age, sex)
-            )
+            risks.extend(self.predict_from_telomere_data(proxy_bp, age, sex))
 
         # High CV → genomic instability signal → elevated cancer risk.
         if cv > 0.5:
             instability_rr = 1.0 + (cv - 0.5) * 0.4  # mild linear model
-            for condition in ("Breast cancer", "Colorectal cancer",
-                              "Lung cancer"):
+            for condition in ("Breast cancer", "Colorectal cancer", "Lung cancer"):
                 category = self._category_for_condition(condition)
                 baseline = self._get_baseline_incidence(condition, sex)
-                lifetime = self._compute_lifetime_risk(
-                    baseline, instability_rr, age, condition
+                lifetime = self._compute_lifetime_risk(baseline, instability_rr, age, condition)
+                risks.append(
+                    DiseaseRisk(
+                        condition=condition,
+                        category=category,
+                        lifetime_risk_pct=round(lifetime, 4),
+                        relative_risk=round(instability_rr, 4),
+                        confidence=round(min(0.30, (cv - 0.5) * 0.3), 4),
+                        contributing_variants=["image_cv_instability"],
+                        age_of_onset_range=_ONSET_RANGES.get(condition, (0, 100)),
+                        preventability_score=_PREVENTABILITY.get(condition, 0.5),
+                    )
                 )
-                risks.append(DiseaseRisk(
-                    condition=condition,
-                    category=category,
-                    lifetime_risk_pct=round(lifetime, 4),
-                    relative_risk=round(instability_rr, 4),
-                    confidence=round(min(0.30, (cv - 0.5) * 0.3), 4),
-                    contributing_variants=["image_cv_instability"],
-                    age_of_onset_range=_ONSET_RANGES.get(condition, (0, 100)),
-                    preventability_score=_PREVENTABILITY.get(condition, 0.5),
-                ))
 
         return risks
 
@@ -1077,9 +1719,7 @@ class DiseasePredictor:
                     # onset window.
                     window_mid = (onset_min + onset_max) / 2.0
                     window_half = max((onset_max - onset_min) / 2.0, 1.0)
-                    age_weight = math.exp(
-                        -0.5 * ((age - window_mid) / window_half) ** 2
-                    )
+                    age_weight = math.exp(-0.5 * ((age - window_mid) / window_half) ** 2)
                     annual_hazard *= age_weight
                     # Convert hazard to probability and accumulate.
                     survival = 1.0 - cumulative / 100.0
@@ -1087,10 +1727,12 @@ class DiseasePredictor:
                     cumulative += increment
 
                 cumulative = min(cumulative, 100.0)
-                yearly.append({
-                    "age": age,
-                    "cumulative_risk_pct": round(cumulative, 4),
-                })
+                yearly.append(
+                    {
+                        "age": age,
+                        "cumulative_risk_pct": round(cumulative, 4),
+                    }
+                )
 
             projections[condition] = yearly
 
@@ -1146,14 +1788,16 @@ class DiseasePredictor:
             # Condition-specific supplementary recommendations.
             condition_recs = self._condition_specific_recs(risk)
 
-            insights.append({
-                "condition": risk.condition,
-                "category": risk.category,
-                "risk_level": level,
-                "relative_risk": risk.relative_risk,
-                "recommendations": cat_recs + condition_recs,
-                "disclaimer": DISCLAIMER_SHORT,
-            })
+            insights.append(
+                {
+                    "condition": risk.condition,
+                    "category": risk.category,
+                    "risk_level": level,
+                    "relative_risk": risk.relative_risk,
+                    "recommendations": cat_recs + condition_recs,
+                    "disclaimer": DISCLAIMER_SHORT,
+                }
+            )
 
         return insights
 
@@ -1194,9 +1838,7 @@ class DiseasePredictor:
         """
         key_sex = (condition, sex)
         key_all = (condition, "all")
-        return BASELINE_INCIDENCE.get(
-            key_sex, BASELINE_INCIDENCE.get(key_all, 50.0)
-        )
+        return BASELINE_INCIDENCE.get(key_sex, BASELINE_INCIDENCE.get(key_all, 50.0))
 
     @staticmethod
     def _compute_lifetime_risk(
@@ -1266,9 +1908,7 @@ class DiseasePredictor:
         if not hits:
             return 0.0
 
-        evidence_sum = sum(
-            _EVIDENCE_WEIGHTS.get(v.evidence_level, 0.3) for v, _ in hits
-        )
+        evidence_sum = sum(_EVIDENCE_WEIGHTS.get(v.evidence_level, 0.3) for v, _ in hits)
         # Logistic-style saturation: more evidence → higher confidence.
         raw = 1.0 - math.exp(-0.5 * evidence_sum)
         return min(raw, 0.95)
@@ -1298,46 +1938,57 @@ class DiseasePredictor:
         cond = risk.condition
 
         if cond == "Breast cancer" and risk.relative_risk >= 2.0:
-            recs.append({
-                "action": "Discuss enhanced breast-cancer screening",
-                "frequency": "Annual MRI + mammogram from age 30",
-                "detail": "Consider risk-reducing strategies (e.g. "
-                          "chemoprevention, prophylactic surgery) with "
-                          "oncologist.",
-            })
+            recs.append(
+                {
+                    "action": "Discuss enhanced breast-cancer screening",
+                    "frequency": "Annual MRI + mammogram from age 30",
+                    "detail": "Consider risk-reducing strategies (e.g. "
+                    "chemoprevention, prophylactic surgery) with "
+                    "oncologist.",
+                }
+            )
         elif cond == "Coronary artery disease" and risk.relative_risk >= 1.5:
-            recs.append({
-                "action": "Coronary artery calcium (CAC) score",
-                "frequency": "Once at age 40–50; repeat per cardiologist",
-                "detail": "Non-invasive CT scan to quantify coronary "
-                          "calcification and refine risk.",
-            })
+            recs.append(
+                {
+                    "action": "Coronary artery calcium (CAC) score",
+                    "frequency": "Once at age 40–50; repeat per cardiologist",
+                    "detail": "Non-invasive CT scan to quantify coronary "
+                    "calcification and refine risk.",
+                }
+            )
         elif cond == "Type 2 diabetes" and risk.relative_risk >= 1.3:
-            recs.append({
-                "action": "Oral glucose tolerance test (OGTT)",
-                "frequency": "Annually",
-                "detail": "More sensitive than fasting glucose for "
-                          "detecting impaired glucose tolerance.",
-            })
+            recs.append(
+                {
+                    "action": "Oral glucose tolerance test (OGTT)",
+                    "frequency": "Annually",
+                    "detail": "More sensitive than fasting glucose for "
+                    "detecting impaired glucose tolerance.",
+                }
+            )
         elif cond == "Alzheimer's disease" and risk.relative_risk >= 2.0:
-            recs.append({
-                "action": "Discuss APOE-informed prevention trial enrolment",
-                "frequency": "Once",
-                "detail": "Several clinical trials target APOE-ε4 carriers; "
-                          "genetic counsellor can advise on eligibility.",
-            })
+            recs.append(
+                {
+                    "action": "Discuss APOE-informed prevention trial enrolment",
+                    "frequency": "Once",
+                    "detail": "Several clinical trials target APOE-ε4 carriers; "
+                    "genetic counsellor can advise on eligibility.",
+                }
+            )
         elif cond == "Sickle cell disease" and risk.relative_risk >= 2.0:
-            recs.append({
-                "action": "Haemoglobin electrophoresis",
-                "frequency": "Once (confirmatory)",
-                "detail": "Confirm carrier vs. disease status; partner "
-                          "screening recommended.",
-            })
+            recs.append(
+                {
+                    "action": "Haemoglobin electrophoresis",
+                    "frequency": "Once (confirmatory)",
+                    "detail": "Confirm carrier vs. disease status; partner screening recommended.",
+                }
+            )
         elif cond == "Hereditary haemochromatosis" and risk.relative_risk >= 2.0:
-            recs.append({
-                "action": "Serum ferritin + transferrin saturation",
-                "frequency": "Every 6–12 months",
-                "detail": "Therapeutic phlebotomy if iron overload confirmed.",
-            })
+            recs.append(
+                {
+                    "action": "Serum ferritin + transferrin saturation",
+                    "frequency": "Every 6–12 months",
+                    "detail": "Therapeutic phlebotomy if iron overload confirmed.",
+                }
+            )
 
         return recs

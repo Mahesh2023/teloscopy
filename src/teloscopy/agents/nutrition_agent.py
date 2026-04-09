@@ -24,52 +24,132 @@ _TELOMERE_PROTECTIVE_FOODS: dict[str, list[dict[str, Any]]] = {
     "global": [
         {"name": "Blueberries", "nutrients": ["anthocyanins", "vitamin_c"], "category": "fruit"},
         {"name": "Spinach", "nutrients": ["folate", "iron", "vitamin_k"], "category": "vegetable"},
-        {"name": "Salmon", "nutrients": ["omega_3", "vitamin_d", "selenium"], "category": "protein"},
-        {"name": "Walnuts", "nutrients": ["omega_3", "vitamin_e", "polyphenols"], "category": "nuts"},
+        {
+            "name": "Salmon",
+            "nutrients": ["omega_3", "vitamin_d", "selenium"],
+            "category": "protein",
+        },
+        {
+            "name": "Walnuts",
+            "nutrients": ["omega_3", "vitamin_e", "polyphenols"],
+            "category": "nuts",
+        },
         {"name": "Green tea", "nutrients": ["EGCG", "catechins"], "category": "beverage"},
         {"name": "Turmeric", "nutrients": ["curcumin"], "category": "spice"},
         {"name": "Lentils", "nutrients": ["folate", "iron", "fiber"], "category": "legume"},
-        {"name": "Dark chocolate (70%+)", "nutrients": ["flavonoids", "magnesium"], "category": "treat"},
+        {
+            "name": "Dark chocolate (70%+)",
+            "nutrients": ["flavonoids", "magnesium"],
+            "category": "treat",
+        },
     ],
     "mediterranean": [
-        {"name": "Extra virgin olive oil", "nutrients": ["oleic_acid", "polyphenols"], "category": "fat"},
-        {"name": "Sardines", "nutrients": ["omega_3", "calcium", "vitamin_d"], "category": "protein"},
+        {
+            "name": "Extra virgin olive oil",
+            "nutrients": ["oleic_acid", "polyphenols"],
+            "category": "fat",
+        },
+        {
+            "name": "Sardines",
+            "nutrients": ["omega_3", "calcium", "vitamin_d"],
+            "category": "protein",
+        },
         {"name": "Tomatoes", "nutrients": ["lycopene", "vitamin_c"], "category": "vegetable"},
         {"name": "Red grapes", "nutrients": ["resveratrol", "anthocyanins"], "category": "fruit"},
         {"name": "Chickpeas", "nutrients": ["folate", "fiber", "zinc"], "category": "legume"},
         {"name": "Figs", "nutrients": ["calcium", "potassium", "fiber"], "category": "fruit"},
     ],
     "east_asian": [
-        {"name": "Edamame", "nutrients": ["isoflavones", "folate", "protein"], "category": "legume"},
-        {"name": "Matcha", "nutrients": ["EGCG", "L-theanine", "catechins"], "category": "beverage"},
-        {"name": "Seaweed (nori)", "nutrients": ["iodine", "selenium", "omega_3"], "category": "vegetable"},
+        {
+            "name": "Edamame",
+            "nutrients": ["isoflavones", "folate", "protein"],
+            "category": "legume",
+        },
+        {
+            "name": "Matcha",
+            "nutrients": ["EGCG", "L-theanine", "catechins"],
+            "category": "beverage",
+        },
+        {
+            "name": "Seaweed (nori)",
+            "nutrients": ["iodine", "selenium", "omega_3"],
+            "category": "vegetable",
+        },
         {"name": "Miso", "nutrients": ["probiotics", "isoflavones"], "category": "fermented"},
-        {"name": "Sweet potato", "nutrients": ["beta_carotene", "vitamin_c", "fiber"], "category": "vegetable"},
-        {"name": "Shiitake mushrooms", "nutrients": ["vitamin_d", "selenium", "beta_glucans"], "category": "vegetable"},
+        {
+            "name": "Sweet potato",
+            "nutrients": ["beta_carotene", "vitamin_c", "fiber"],
+            "category": "vegetable",
+        },
+        {
+            "name": "Shiitake mushrooms",
+            "nutrients": ["vitamin_d", "selenium", "beta_glucans"],
+            "category": "vegetable",
+        },
     ],
     "south_asian": [
         {"name": "Turmeric (haldi)", "nutrients": ["curcumin"], "category": "spice"},
-        {"name": "Moringa leaves", "nutrients": ["vitamin_c", "iron", "calcium"], "category": "vegetable"},
-        {"name": "Amla (Indian gooseberry)", "nutrients": ["vitamin_c", "polyphenols"], "category": "fruit"},
+        {
+            "name": "Moringa leaves",
+            "nutrients": ["vitamin_c", "iron", "calcium"],
+            "category": "vegetable",
+        },
+        {
+            "name": "Amla (Indian gooseberry)",
+            "nutrients": ["vitamin_c", "polyphenols"],
+            "category": "fruit",
+        },
         {"name": "Mung dal", "nutrients": ["folate", "protein", "fiber"], "category": "legume"},
-        {"name": "Fenugreek seeds", "nutrients": ["fiber", "iron", "galactomannan"], "category": "spice"},
-        {"name": "Curd (yoghurt)", "nutrients": ["probiotics", "calcium", "B12"], "category": "dairy"},
+        {
+            "name": "Fenugreek seeds",
+            "nutrients": ["fiber", "iron", "galactomannan"],
+            "category": "spice",
+        },
+        {
+            "name": "Curd (yoghurt)",
+            "nutrients": ["probiotics", "calcium", "B12"],
+            "category": "dairy",
+        },
     ],
     "americas": [
-        {"name": "Avocado", "nutrients": ["monounsaturated_fat", "folate", "potassium"], "category": "fruit"},
-        {"name": "Black beans", "nutrients": ["anthocyanins", "folate", "fiber"], "category": "legume"},
+        {
+            "name": "Avocado",
+            "nutrients": ["monounsaturated_fat", "folate", "potassium"],
+            "category": "fruit",
+        },
+        {
+            "name": "Black beans",
+            "nutrients": ["anthocyanins", "folate", "fiber"],
+            "category": "legume",
+        },
         {"name": "Quinoa", "nutrients": ["protein", "magnesium", "folate"], "category": "grain"},
         {"name": "Chia seeds", "nutrients": ["omega_3", "fiber", "calcium"], "category": "seed"},
         {"name": "Acai berries", "nutrients": ["anthocyanins", "omega_3"], "category": "fruit"},
-        {"name": "Wild salmon", "nutrients": ["omega_3", "astaxanthin", "vitamin_d"], "category": "protein"},
+        {
+            "name": "Wild salmon",
+            "nutrients": ["omega_3", "astaxanthin", "vitamin_d"],
+            "category": "protein",
+        },
     ],
     "african": [
-        {"name": "Baobab fruit", "nutrients": ["vitamin_c", "fiber", "calcium"], "category": "fruit"},
+        {
+            "name": "Baobab fruit",
+            "nutrients": ["vitamin_c", "fiber", "calcium"],
+            "category": "fruit",
+        },
         {"name": "Moringa", "nutrients": ["vitamin_c", "iron", "calcium"], "category": "vegetable"},
         {"name": "Teff", "nutrients": ["iron", "calcium", "fiber"], "category": "grain"},
-        {"name": "Cowpeas (black-eyed peas)", "nutrients": ["folate", "iron", "fiber"], "category": "legume"},
+        {
+            "name": "Cowpeas (black-eyed peas)",
+            "nutrients": ["folate", "iron", "fiber"],
+            "category": "legume",
+        },
         {"name": "Okra", "nutrients": ["folate", "vitamin_c", "fiber"], "category": "vegetable"},
-        {"name": "Hibiscus tea", "nutrients": ["anthocyanins", "vitamin_c"], "category": "beverage"},
+        {
+            "name": "Hibiscus tea",
+            "nutrients": ["anthocyanins", "vitamin_c"],
+            "category": "beverage",
+        },
     ],
 }
 
@@ -272,8 +352,7 @@ class NutritionAgent(BaseAgent):
 
         # Filter recommended foods
         adapted["recommended_foods"] = [
-            f for f in plan.get("recommended_foods", [])
-            if self._food_allowed(f, restrictions)
+            f for f in plan.get("recommended_foods", []) if self._food_allowed(f, restrictions)
         ]
 
         adapted["dietary_restrictions_applied"] = restrictions
@@ -356,11 +435,13 @@ class NutritionAgent(BaseAgent):
         for food in foods:
             food_nutrients = set(food.get("nutrients", []))
             overlap = food_nutrients & priority_set
-            scored.append({
-                **food,
-                "relevance_score": len(overlap),
-                "matching_nutrients": sorted(overlap),
-            })
+            scored.append(
+                {
+                    **food,
+                    "relevance_score": len(overlap),
+                    "matching_nutrients": sorted(overlap),
+                }
+            )
 
         scored.sort(key=lambda f: f["relevance_score"], reverse=True)
         return scored
@@ -412,11 +493,15 @@ class NutritionAgent(BaseAgent):
         restrictions: list[str],
     ) -> dict[str, Any]:
         """Remove foods that violate dietary restrictions."""
-        _RESTRICTION_FILTERS: dict[str, set[str]] = {
+        restriction_filters: dict[str, set[str]] = {
             "vegetarian": {"Salmon", "Sardines", "Wild salmon"},
             "vegan": {
-                "Salmon", "Sardines", "Wild salmon", "Curd (yoghurt)",
-                "Dark chocolate (70%+)", "Miso",
+                "Salmon",
+                "Sardines",
+                "Wild salmon",
+                "Curd (yoghurt)",
+                "Dark chocolate (70%+)",
+                "Miso",
             },
             "gluten_free": {"Teff"},  # teff is actually gluten-free; placeholder
             "dairy_free": {"Curd (yoghurt)"},
@@ -426,7 +511,7 @@ class NutritionAgent(BaseAgent):
 
         excluded: set[str] = set()
         for restriction in restrictions:
-            excluded |= _RESTRICTION_FILTERS.get(restriction, set())
+            excluded |= restriction_filters.get(restriction, set())
 
         if not excluded:
             return meal_plan
@@ -443,14 +528,14 @@ class NutritionAgent(BaseAgent):
     @staticmethod
     def _food_allowed(food: dict[str, Any], restrictions: list[str]) -> bool:
         """Check whether a food item is compatible with restrictions."""
-        _CATEGORY_RESTRICTIONS: dict[str, set[str]] = {
+        category_restrictions: dict[str, set[str]] = {
             "vegan": {"protein", "dairy"},
             "vegetarian": {"protein"},
             "dairy_free": {"dairy"},
         }
         category = food.get("category", "")
         for restriction in restrictions:
-            disallowed = _CATEGORY_RESTRICTIONS.get(restriction, set())
+            disallowed = category_restrictions.get(restriction, set())
             if category in disallowed:
                 return False
         return True
@@ -468,7 +553,9 @@ class NutritionAgent(BaseAgent):
         high_risks = [r for r in risks if r.get("risk_score", 0) >= 0.5]
         if high_risks:
             diseases = ", ".join(r["disease"].replace("_", " ") for r in high_risks)
-            notes.append(f"Elevated risk detected for: {diseases}. Dietary focus adjusted accordingly.")
+            notes.append(
+                f"Elevated risk detected for: {diseases}. Dietary focus adjusted accordingly."
+            )
 
         age = profile.get("age", 0)
         if age > 60:

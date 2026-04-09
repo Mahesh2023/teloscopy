@@ -227,58 +227,78 @@ class ContinuousImprovementAgent(BaseAgent):
 
         # Low spot count → lower threshold
         if metrics.get("mean_spot_count", 0) < 15:
-            suggestions.append({
-                "parameter": "spot_threshold",
-                "current_default": 0.02,
-                "suggested": 0.01,
-                "rationale": "Low spot count — reducing detection threshold to capture more spots.",
-            })
+            suggestions.append(
+                {
+                    "parameter": "spot_threshold",
+                    "current_default": 0.02,
+                    "suggested": 0.01,
+                    "rationale": "Low spot count — reducing detection threshold to capture more spots.",
+                }
+            )
 
         # Low association rate → widen tip distance
         if metrics.get("mean_association_rate", 0) < 0.5:
-            suggestions.append({
-                "parameter": "max_tip_distance",
-                "current_default": 15.0,
-                "suggested": 25.0,
-                "rationale": "Low association rate — increasing max tip distance for spot–chromosome matching.",
-            })
-            suggestions.append({
-                "parameter": "min_chromosome_area",
-                "current_default": 80,
-                "suggested": 50,
-                "rationale": "Low association rate — lowering minimum chromosome area may capture missed segments.",
-            })
+            suggestions.append(
+                {
+                    "parameter": "max_tip_distance",
+                    "current_default": 15.0,
+                    "suggested": 25.0,
+                    "rationale": (
+                        "Low association rate — increasing max tip"
+                        " distance for spot–chromosome matching."
+                    ),
+                }
+            )
+            suggestions.append(
+                {
+                    "parameter": "min_chromosome_area",
+                    "current_default": 80,
+                    "suggested": 50,
+                    "rationale": (
+                        "Low association rate — lowering minimum"
+                        " chromosome area may capture missed segments."
+                    ),
+                }
+            )
 
         # High CV → tighten sigma range
         if metrics.get("mean_cv", 0) > 0.8:
-            suggestions.append({
-                "parameter": "spot_sigma_max",
-                "current_default": 4.0,
-                "suggested": 3.0,
-                "rationale": "High intensity CV — narrowing sigma range to exclude outlier spots.",
-            })
+            suggestions.append(
+                {
+                    "parameter": "spot_sigma_max",
+                    "current_default": 4.0,
+                    "suggested": 3.0,
+                    "rationale": "High intensity CV — narrowing sigma range to exclude outlier spots.",
+                }
+            )
 
         # Low SNR → increase denoising
         if metrics.get("mean_snr", 0) < 5.0:
-            suggestions.append({
-                "parameter": "denoise_sigma",
-                "current_default": 1.0,
-                "suggested": 1.5,
-                "rationale": "Low SNR — increasing denoising to improve signal clarity.",
-            })
-            suggestions.append({
-                "parameter": "spot_min_snr",
-                "current_default": 3.0,
-                "suggested": 2.0,
-                "rationale": "Low SNR — relaxing minimum SNR requirement to retain more spots.",
-            })
+            suggestions.append(
+                {
+                    "parameter": "denoise_sigma",
+                    "current_default": 1.0,
+                    "suggested": 1.5,
+                    "rationale": "Low SNR — increasing denoising to improve signal clarity.",
+                }
+            )
+            suggestions.append(
+                {
+                    "parameter": "spot_min_snr",
+                    "current_default": 3.0,
+                    "suggested": 2.0,
+                    "rationale": "Low SNR — relaxing minimum SNR requirement to retain more spots.",
+                }
+            )
 
         if not suggestions:
-            suggestions.append({
-                "parameter": None,
-                "suggested": None,
-                "rationale": "All metrics within acceptable range — no changes recommended.",
-            })
+            suggestions.append(
+                {
+                    "parameter": None,
+                    "suggested": None,
+                    "rationale": "All metrics within acceptable range — no changes recommended.",
+                }
+            )
 
         return {
             "suggestions": suggestions,
@@ -401,25 +421,16 @@ class ContinuousImprovementAgent(BaseAgent):
         """
         current_config = current_config or {}
 
-        _SEARCH_SPACES: dict[str, list[dict[str, Any]]] = {
-            "association_rate": [
-                {"max_tip_distance": v} for v in [10.0, 15.0, 20.0, 25.0, 30.0]
-            ] + [
-                {"min_chromosome_area": v} for v in [40, 60, 80, 100, 120]
-            ],
-            "n_telomeres": [
-                {"spot_threshold": v} for v in [0.005, 0.01, 0.015, 0.02, 0.03]
-            ] + [
-                {"spot_min_snr": v} for v in [1.5, 2.0, 2.5, 3.0, 4.0]
-            ],
-            "mean_snr": [
-                {"denoise_sigma": v} for v in [0.5, 0.8, 1.0, 1.2, 1.5, 2.0]
-            ] + [
-                {"spot_sigma_min": v} for v in [1.0, 1.5, 2.0, 2.5]
-            ],
+        search_spaces: dict[str, list[dict[str, Any]]] = {
+            "association_rate": [{"max_tip_distance": v} for v in [10.0, 15.0, 20.0, 25.0, 30.0]]
+            + [{"min_chromosome_area": v} for v in [40, 60, 80, 100, 120]],
+            "n_telomeres": [{"spot_threshold": v} for v in [0.005, 0.01, 0.015, 0.02, 0.03]]
+            + [{"spot_min_snr": v} for v in [1.5, 2.0, 2.5, 3.0, 4.0]],
+            "mean_snr": [{"denoise_sigma": v} for v in [0.5, 0.8, 1.0, 1.2, 1.5, 2.0]]
+            + [{"spot_sigma_min": v} for v in [1.0, 1.5, 2.0, 2.5]],
         }
 
-        search_space = _SEARCH_SPACES.get(metric, [])
+        search_space = search_spaces.get(metric, [])
         if not search_space:
             return {
                 "best_config": {},
@@ -440,12 +451,14 @@ class ContinuousImprovementAgent(BaseAgent):
                 best_config = dict(candidate)
 
         # Record the parameter change
-        self._parameter_history.append({
-            "timestamp": time.time(),
-            "metric": metric,
-            "target": target,
-            "config_change": best_config,
-        })
+        self._parameter_history.append(
+            {
+                "timestamp": time.time(),
+                "metric": metric,
+                "target": target,
+                "config_change": best_config,
+            }
+        )
 
         return {
             "best_config": best_config,
@@ -493,21 +506,25 @@ class ContinuousImprovementAgent(BaseAgent):
                 stats = result.get("statistics", {})
                 assoc = result.get("association_summary", {})
 
-                comparisons.append({
-                    "method": method,
-                    "n_telomeres": stats.get("n_telomeres", 0),
-                    "association_rate": assoc.get("association_rate", 0.0),
-                    "mean_intensity": stats.get("mean_intensity", 0.0),
-                    "cv": stats.get("cv", 0.0),
-                    "total_spots": assoc.get("total_spots", 0),
-                    "status": "success",
-                })
+                comparisons.append(
+                    {
+                        "method": method,
+                        "n_telomeres": stats.get("n_telomeres", 0),
+                        "association_rate": assoc.get("association_rate", 0.0),
+                        "mean_intensity": stats.get("mean_intensity", 0.0),
+                        "cv": stats.get("cv", 0.0),
+                        "total_spots": assoc.get("total_spots", 0),
+                        "status": "success",
+                    }
+                )
             except Exception as exc:
-                comparisons.append({
-                    "method": method,
-                    "status": "failed",
-                    "error": str(exc),
-                })
+                comparisons.append(
+                    {
+                        "method": method,
+                        "status": "failed",
+                        "error": str(exc),
+                    }
+                )
 
         # Pick the best method by a composite score
         successful = [c for c in comparisons if c.get("status") == "success"]
@@ -550,12 +567,12 @@ class ContinuousImprovementAgent(BaseAgent):
     def _heuristic_score(metric: str, candidate: dict[str, Any], target: float) -> float:
         """Heuristic scoring for parameter candidates (0–1, higher is better)."""
         # Simple closeness-to-ideal heuristic
-        _IDEAL_VALUES: dict[str, dict[str, float]] = {
+        ideal_values: dict[str, dict[str, float]] = {
             "association_rate": {"max_tip_distance": 20.0, "min_chromosome_area": 60},
             "n_telomeres": {"spot_threshold": 0.015, "spot_min_snr": 2.5},
             "mean_snr": {"denoise_sigma": 1.2, "spot_sigma_min": 1.5},
         }
-        ideals = _IDEAL_VALUES.get(metric, {})
+        ideals = ideal_values.get(metric, {})
         if not ideals:
             return 0.5
 

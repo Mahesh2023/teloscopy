@@ -1,4 +1,5 @@
 """Tests for the Teloscopy FastAPI web application."""
+
 from __future__ import annotations
 
 import io
@@ -7,22 +8,19 @@ import sys
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # FastAPI and related dependencies are optional; skip the entire module
 # gracefully if they are not installed.
 try:
     from fastapi.testclient import TestClient
+
     from teloscopy.webapp.app import app
     from teloscopy.webapp.models import (
         AgentStatusEnum,
-        DietPlanRequest,
-        DiseaseRiskRequest,
-        HealthResponse,
         JobStatusEnum,
-        RiskLevel,
-        Sex,
     )
+
     _HAS_FASTAPI = True
 except ImportError:
     _HAS_FASTAPI = False
@@ -36,6 +34,7 @@ pytestmark = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def client():
@@ -52,6 +51,7 @@ def _dummy_image_bytes(filename: str = "test.tif") -> tuple[str, io.BytesIO, str
 # ---------------------------------------------------------------------------
 # Health endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestHealthEndpoint:
     """Tests for GET /api/health."""
@@ -72,6 +72,7 @@ class TestHealthEndpoint:
 # ---------------------------------------------------------------------------
 # Upload endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestUploadEndpoint:
     """Tests for POST /api/upload."""
@@ -116,6 +117,7 @@ class TestUploadEndpoint:
 # Status endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestStatusEndpoint:
     """Tests for GET /api/status/{job_id}."""
 
@@ -142,6 +144,7 @@ class TestStatusEndpoint:
 # ---------------------------------------------------------------------------
 # Analyze endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestAnalyzeEndpoint:
     """Tests for POST /api/analyze."""
@@ -182,6 +185,7 @@ class TestAnalyzeEndpoint:
 # Disease risk endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestDiseaseRiskEndpoint:
     """Tests for POST /api/disease-risk."""
 
@@ -217,6 +221,7 @@ class TestDiseaseRiskEndpoint:
 # ---------------------------------------------------------------------------
 # Diet plan endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestDietPlanEndpoint:
     """Tests for POST /api/diet-plan."""
@@ -265,6 +270,7 @@ class TestDietPlanEndpoint:
 # Agents status endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestAgentsStatusEndpoint:
     """Tests for GET /api/agents/status."""
 
@@ -295,6 +301,7 @@ class TestAgentsStatusEndpoint:
 # ---------------------------------------------------------------------------
 # Results endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestResultsEndpoint:
     """Tests for GET /api/results/{job_id}."""

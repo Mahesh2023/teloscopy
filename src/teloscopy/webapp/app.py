@@ -8,6 +8,7 @@ Run with::
 
     uvicorn teloscopy.webapp.app:app --reload
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -18,10 +19,9 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import (
-    BackgroundTasks,
     FastAPI,
     File,
     Form,
@@ -31,7 +31,7 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -84,7 +84,7 @@ _MAX_UPLOAD_BYTES: int = 50 * 1024 * 1024  # 50 MiB
 # In-memory job store (swap for Redis in production)
 # ---------------------------------------------------------------------------
 
-_jobs: Dict[str, JobStatus] = {}
+_jobs: dict[str, JobStatus] = {}
 
 _APP_START_TIME: float = time.time()
 
@@ -132,9 +132,7 @@ def _simulate_telomere_analysis() -> TelomereResult:
         t_s_ratio=round(random.uniform(0.5, 2.5), 2),
         biological_age_estimate=random.randint(20, 85),
         overlay_image_url=None,
-        raw_measurements=[
-            round(random.uniform(3.0, 14.0), 2) for _ in range(20)
-        ],
+        raw_measurements=[round(random.uniform(3.0, 14.0), 2) for _ in range(20)],
     )
 
 
@@ -354,9 +352,7 @@ async def index_page(request: Request) -> HTMLResponse:
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_page(request: Request) -> HTMLResponse:
     """Serve the dedicated upload page (same template, scroll-to-upload)."""
-    return templates.TemplateResponse(
-        "index.html", {"request": request, "scroll_to": "upload"}
-    )
+    return templates.TemplateResponse("index.html", {"request": request, "scroll_to": "upload"})
 
 
 @app.get("/results/{job_id}", response_class=HTMLResponse)
@@ -419,9 +415,7 @@ async def agents_status() -> AgentSystemStatus:
         ),
     ]
     # If there are running jobs, mark relevant agents as busy
-    active: int = sum(
-        1 for j in _jobs.values() if j.status == JobStatusEnum.RUNNING
-    )
+    active: int = sum(1 for j in _jobs.values() if j.status == JobStatusEnum.RUNNING)
     if active > 0 and agents:
         agents[0].status = AgentStatusEnum.BUSY
         agents[0].current_task = "Processing microscopy image"
@@ -443,10 +437,7 @@ async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
     if not file.filename or not _validate_extension(file.filename):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Invalid file type. Allowed: "
-                f"{', '.join(sorted(_ALLOWED_EXTENSIONS))}"
-            ),
+            detail=(f"Invalid file type. Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}"),
         )
 
     job_id: str = str(uuid.uuid4())
@@ -535,12 +526,8 @@ async def full_analysis(
     dest.write_bytes(contents)
 
     # Parse comma-separated lists
-    restrictions: list[str] = [
-        r.strip() for r in dietary_restrictions.split(",") if r.strip()
-    ]
-    variants: list[str] = [
-        v.strip() for v in known_variants.split(",") if v.strip()
-    ]
+    restrictions: list[str] = [r.strip() for r in dietary_restrictions.split(",") if r.strip()]
+    variants: list[str] = [v.strip() for v in known_variants.split(",") if v.strip()]
 
     profile = UserProfile(
         age=age,
@@ -571,9 +558,7 @@ async def disease_risk(request: DiseaseRiskRequest) -> DiseaseRiskResponse:
         telomere_length=request.telomere_length,
         age=request.age,
     )
-    overall: float = round(
-        sum(r.probability for r in risks) / max(len(risks), 1), 3
-    )
+    overall: float = round(sum(r.probability for r in risks) / max(len(risks), 1), 3)
     return DiseaseRiskResponse(risks=risks, overall_risk_score=min(overall, 1.0))
 
 

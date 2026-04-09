@@ -12,8 +12,6 @@ import logging
 import math
 from typing import Any
 
-import numpy as np
-
 from .base import AgentMessage, AgentState, BaseAgent
 
 logger = logging.getLogger(__name__)
@@ -191,14 +189,16 @@ class GenomicsAgent(BaseAgent):
             final_score = min(1.0, (base_score + snp_modifier) * age_factor)
             weight = thresholds["weight"]
 
-            risks.append({
-                "disease": disease,
-                "risk_score": round(final_score, 3),
-                "base_score": round(base_score, 3),
-                "snp_modifier": round(snp_modifier, 3),
-                "age_factor": round(age_factor, 3),
-                "category": self._categorise_risk(final_score),
-            })
+            risks.append(
+                {
+                    "disease": disease,
+                    "risk_score": round(final_score, 3),
+                    "base_score": round(base_score, 3),
+                    "snp_modifier": round(snp_modifier, 3),
+                    "age_factor": round(age_factor, 3),
+                    "category": self._categorise_risk(final_score),
+                }
+            )
 
             weighted_sum += final_score * weight
             total_weight += weight
@@ -245,12 +245,14 @@ class GenomicsAgent(BaseAgent):
             projected_risk = self.assess_risk(
                 telomere_data={"mean_length_bp": projected_length},
             )
-            timeline.append({
-                "year": year,
-                "projected_telomere_length": round(projected_length, 1),
-                "overall_risk_score": projected_risk["overall_risk_score"],
-                "risk_category": projected_risk["risk_category"],
-            })
+            timeline.append(
+                {
+                    "year": year,
+                    "projected_telomere_length": round(projected_length, 1),
+                    "overall_risk_score": projected_risk["overall_risk_score"],
+                    "risk_category": projected_risk["risk_category"],
+                }
+            )
 
         return {
             "timeline": timeline,
@@ -279,7 +281,7 @@ class GenomicsAgent(BaseAgent):
             Recommendations with ``disease``, ``priority``, and
             ``actions`` (list of strings).
         """
-        _RECOMMENDATIONS: dict[str, list[str]] = {
+        recommendations_map: dict[str, list[str]] = {
             "cardiovascular": [
                 "Regular aerobic exercise (150+ min/week moderate intensity).",
                 "Mediterranean-style diet rich in omega-3 fatty acids.",
@@ -324,12 +326,14 @@ class GenomicsAgent(BaseAgent):
             else:
                 priority = "low"
 
-            recommendations.append({
-                "disease": disease,
-                "risk_score": score,
-                "priority": priority,
-                "actions": _RECOMMENDATIONS.get(disease, ["Consult a healthcare provider."]),
-            })
+            recommendations.append(
+                {
+                    "disease": disease,
+                    "risk_score": score,
+                    "priority": priority,
+                    "actions": recommendations_map.get(disease, ["Consult a healthcare provider."]),
+                }
+            )
 
         return recommendations
 
@@ -368,14 +372,11 @@ class GenomicsAgent(BaseAgent):
         # Summarise variant data
         known_genes = set(_SNP_RISK_MODIFIERS.keys())
         relevant_variants = {
-            gene: allele
-            for gene, allele in snp_data.items()
-            if gene in known_genes
+            gene: allele for gene, allele in snp_data.items() if gene in known_genes
         }
 
         risk_allele_count = sum(
-            1 for allele in relevant_variants.values()
-            if allele in ("risk", "e4", "heterozygous")
+            1 for allele in relevant_variants.values() if allele in ("risk", "e4", "heterozygous")
         )
 
         variant_summary = {

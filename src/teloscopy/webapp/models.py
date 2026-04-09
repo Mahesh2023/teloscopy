@@ -3,21 +3,21 @@
 Defines request/response schemas for every endpoint including user
 profiles, analysis pipelines, disease-risk scoring, and diet planning.
 """
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from enum import Enum
-from typing import Any, Optional
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Enumerations
 # ---------------------------------------------------------------------------
 
-class Sex(str, Enum):
+
+class Sex(StrEnum):
     """Biological sex options."""
 
     MALE = "male"
@@ -25,7 +25,7 @@ class Sex(str, Enum):
     OTHER = "other"
 
 
-class JobStatusEnum(str, Enum):
+class JobStatusEnum(StrEnum):
     """Possible states for an analysis job."""
 
     PENDING = "pending"
@@ -34,7 +34,7 @@ class JobStatusEnum(str, Enum):
     FAILED = "failed"
 
 
-class RiskLevel(str, Enum):
+class RiskLevel(StrEnum):
     """Categorical disease-risk level."""
 
     LOW = "low"
@@ -43,7 +43,7 @@ class RiskLevel(str, Enum):
     VERY_HIGH = "very_high"
 
 
-class AgentStatusEnum(str, Enum):
+class AgentStatusEnum(StrEnum):
     """Status of an individual agent in the multi-agent system."""
 
     IDLE = "idle"
@@ -55,6 +55,7 @@ class AgentStatusEnum(str, Enum):
 # ---------------------------------------------------------------------------
 # User Profile
 # ---------------------------------------------------------------------------
+
 
 class UserProfile(BaseModel):
     """Demographic and health information supplied by the user."""
@@ -81,6 +82,7 @@ class UserProfile(BaseModel):
 # Analysis (full pipeline)
 # ---------------------------------------------------------------------------
 
+
 class AnalysisRequest(BaseModel):
     """Request body for the full analysis endpoint.
 
@@ -99,9 +101,7 @@ class TelomereResult(BaseModel):
     std_dev: float = Field(..., description="Standard deviation of length")
     t_s_ratio: float = Field(..., description="Telomere-to-single-copy gene ratio")
     biological_age_estimate: int = Field(..., description="Estimated biological age")
-    overlay_image_url: Optional[str] = Field(
-        None, description="URL of the annotated overlay image"
-    )
+    overlay_image_url: str | None = Field(None, description="URL of the annotated overlay image")
     raw_measurements: list[float] = Field(
         default_factory=list,
         description="Individual telomere length measurements",
@@ -136,7 +136,7 @@ class DietRecommendation(BaseModel):
     foods_to_increase: list[str] = Field(default_factory=list)
     foods_to_avoid: list[str] = Field(default_factory=list)
     meal_plans: list[MealPlan] = Field(default_factory=list)
-    calorie_target: Optional[int] = None
+    calorie_target: int | None = None
 
 
 class AnalysisResponse(BaseModel):
@@ -146,14 +146,15 @@ class AnalysisResponse(BaseModel):
     telomere_results: TelomereResult
     disease_risks: list[DiseaseRisk] = Field(default_factory=list)
     diet_recommendations: DietRecommendation
-    report_url: Optional[str] = None
-    csv_url: Optional[str] = None
+    report_url: str | None = None
+    csv_url: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 # ---------------------------------------------------------------------------
 # Disease Risk (standalone)
 # ---------------------------------------------------------------------------
+
 
 class DiseaseRiskRequest(BaseModel):
     """Standalone disease-risk request (no image required)."""
@@ -162,9 +163,7 @@ class DiseaseRiskRequest(BaseModel):
         default_factory=list,
         description="Genetic variants (rsIDs or gene names)",
     )
-    telomere_length: Optional[float] = Field(
-        None, description="Mean telomere length in kb"
-    )
+    telomere_length: float | None = Field(None, description="Mean telomere length in kb")
     age: int = Field(..., ge=1, le=150)
     sex: Sex = Field(...)
     region: str = Field(..., min_length=1, max_length=128)
@@ -174,15 +173,14 @@ class DiseaseRiskResponse(BaseModel):
     """Response from the standalone disease-risk endpoint."""
 
     risks: list[DiseaseRisk] = Field(default_factory=list)
-    overall_risk_score: float = Field(
-        ..., ge=0.0, le=1.0, description="Composite risk score"
-    )
+    overall_risk_score: float = Field(..., ge=0.0, le=1.0, description="Composite risk score")
     assessed_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 # ---------------------------------------------------------------------------
 # Diet Plan (standalone)
 # ---------------------------------------------------------------------------
+
 
 class DietPlanRequest(BaseModel):
     """Standalone diet plan request."""
@@ -192,9 +190,7 @@ class DietPlanRequest(BaseModel):
     region: str = Field(..., min_length=1, max_length=128)
     dietary_restrictions: list[str] = Field(default_factory=list)
     known_variants: list[str] = Field(default_factory=list)
-    telomere_length: Optional[float] = Field(
-        None, description="Mean telomere length in kb"
-    )
+    telomere_length: float | None = Field(None, description="Mean telomere length in kb")
     disease_risks: list[DiseaseRisk] = Field(default_factory=list)
 
 
@@ -209,6 +205,7 @@ class DietPlanResponse(BaseModel):
 # Job Status
 # ---------------------------------------------------------------------------
 
+
 class JobStatus(BaseModel):
     """Status of an asynchronous analysis job."""
 
@@ -216,7 +213,7 @@ class JobStatus(BaseModel):
     status: JobStatusEnum = Field(default=JobStatusEnum.PENDING)
     progress_pct: float = Field(default=0.0, ge=0.0, le=100.0)
     message: str = Field(default="Job created")
-    result: Optional[AnalysisResponse] = None
+    result: AnalysisResponse | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -225,14 +222,15 @@ class JobStatus(BaseModel):
 # Agent Status
 # ---------------------------------------------------------------------------
 
+
 class AgentInfo(BaseModel):
     """Status information for a single agent."""
 
     name: str
     status: AgentStatusEnum = AgentStatusEnum.IDLE
-    last_active: Optional[datetime] = None
+    last_active: datetime | None = None
     tasks_completed: int = 0
-    current_task: Optional[str] = None
+    current_task: str | None = None
 
 
 class AgentSystemStatus(BaseModel):
@@ -248,6 +246,7 @@ class AgentSystemStatus(BaseModel):
 # Upload response
 # ---------------------------------------------------------------------------
 
+
 class UploadResponse(BaseModel):
     """Response returned after a successful image upload."""
 
@@ -259,6 +258,7 @@ class UploadResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
+
 
 class HealthResponse(BaseModel):
     """Liveness / readiness probe response."""
