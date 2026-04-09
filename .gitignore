@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Data outputs
+output/
+*.tif
+*.tiff
+*.bam
+*.bai
+*.fastq
+*.fastq.gz
+*.vcf
+*.vcf.gz
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
