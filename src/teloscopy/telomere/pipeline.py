@@ -426,31 +426,51 @@ def _apply_calibration(
 ) -> list[dict]:
     """Convert corrected intensities to base-pair lengths using calibration.
 
-    Uses a linear model: ``length_bp = slope * corrected_intensity + intercept``.
-    The calibration can come from a dedicated *Calibration* object or from
-    ``calibration_slope`` / ``calibration_intercept`` keys in *cfg*.
+    Supports multiple calibration interfaces, tried in order:
+
+    1. **Calibration class API** (``quantification.py``) – the object exposes a
+       ``predict(intensity)`` method backed by polynomial coefficients.
+    2. **Simple slope/intercept attributes** – legacy objects or plain
+       containers with ``slope`` and ``intercept`` attributes.
+    3. **Config-level slope/intercept** – ``calibration_slope`` and
+       ``calibration_intercept`` keys in *cfg*.
+
+    If none of the above are available the spots are returned unchanged
+    (uncalibrated).  Computed ``length_bp`` values are clamped to the
+    biologically plausible range [0, 25 000] bp.
     """
-    slope: float | None = None
-    intercept: float | None = None
-
-    if calibration is not None:
-        # Duck-typed Calibration object
-        slope = getattr(calibration, "slope", None)
-        intercept = getattr(calibration, "intercept", None)
-
-    if slope is None:
-        slope = cfg.get("calibration_slope")
-    if intercept is None:
-        intercept = cfg.get("calibration_intercept")
-
-    if slope is None or intercept is None:
-        return spots  # no calibration available
-
-    slope = float(slope)
-    intercept = float(intercept)
+    # Upper biological bound for telomere length in base pairs.
+    _MAX_LENGTH_BP = 25000.0
 
     for spot in spots:
-        spot["length_bp"] = slope * spot["corrected_intensity"] + intercept
+        intensity = spot.get("corrected_intensity", 0.0)
+
+        # 1. Prefer the Calibration class API (quantification.py)
+        if calibration is not None and hasattr(calibration, "predict"):
+            spot["length_bp"] = calibration.predict(intensity)
+        # 2. Fall back to simple slope/intercept on the calibration object
+        elif (
+            calibration is not None
+            and hasattr(calibration, "slope")
+            and calibration.slope is not None
+        ):
+            spot["length_bp"] = (
+                calibration.slope * intensity + (calibration.intercept or 0.0)
+            )
+        # 3. Fall back to config-level slope/intercept
+        elif (
+            cfg.get("calibration_slope") is not None
+            and cfg.get("calibration_intercept") is not None
+        ):
+            slope = float(cfg["calibration_slope"])
+            intercept = float(cfg["calibration_intercept"])
+            spot["length_bp"] = slope * intensity + intercept
+        else:
+            # No calibration available – store raw intensity as length
+            spot["length_bp"] = intensity
+
+        # Clamp to biologically plausible range
+        spot["length_bp"] = max(0.0, min(_MAX_LENGTH_BP, spot["length_bp"]))
 
     return spots
 
@@ -486,7 +506,9 @@ def analyze_image(
     config : dict | None
         Pipeline parameters (see :func:`get_default_config`).
     calibration
-        Optional calibration object with ``slope`` and ``intercept`` attrs.
+        Optional calibration object — either a ``Calibration`` instance from
+        ``quantification.py`` (with a ``predict`` method), or a simple object
+        with ``slope`` / ``intercept`` attributes.
 
     Returns
     -------

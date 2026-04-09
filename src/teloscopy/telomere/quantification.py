@@ -307,11 +307,11 @@ class Calibration:
 
         Returns:
             Estimated telomere length in base pairs.  The result is clipped
-            to a minimum of 0.
+            to the biologically plausible range [0, 25 000] bp.
         """
         self._check_fitted()
         value = float(np.polyval(self.coefficients, intensity))
-        return max(0.0, value)
+        return max(0.0, min(25_000.0, value))
 
     def predict_batch(self, intensities: Sequence[float]) -> list[float]:
         """Convert a sequence of intensity values to base-pair lengths.
@@ -320,12 +320,12 @@ class Calibration:
             intensities: Iterable of fluorescence intensity values.
 
         Returns:
-            List of estimated telomere lengths (clipped to ≥ 0).
+            List of estimated telomere lengths (clipped to [0, 25 000] bp).
         """
         self._check_fitted()
         arr = np.asarray(intensities, dtype=np.float64)
         values = np.polyval(self.coefficients, arr)
-        return list(np.clip(values, 0.0, None).astype(np.float64))
+        return list(np.clip(values, 0.0, 25_000.0).astype(np.float64))
 
     # -- alternative constructors ------------------------------------------
 

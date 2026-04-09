@@ -582,15 +582,24 @@ def _build_variant_dict(known_variants: list[str]) -> dict[str, str]:
 
 
 def _simulate_telomere_analysis() -> TelomereResult:
-    """Return plausible mock telomere analysis results."""
-    mean_len: float = round(random.uniform(4.0, 12.0), 2)
+    """Return plausible mock telomere analysis results.
+
+    Uses the consensus telomere-age model (TL ≈ 11.0 − 0.040 × age)
+    with random biological variability so that telomere length and
+    biological age are correlated.
+    """
+    # Random biological age in a realistic range
+    bio_age: int = random.randint(20, 85)
+    # Consensus model + biological noise (SD ≈ 1.2 kb)
+    mean_len: float = round(max(2.0, 11.0 - 0.040 * bio_age + random.gauss(0, 1.2)), 2)
+    std_dev: float = round(abs(mean_len * 0.12), 2)
     return TelomereResult(
         mean_length=mean_len,
-        std_dev=round(random.uniform(0.3, 2.0), 2),
-        t_s_ratio=round(random.uniform(0.5, 2.5), 2),
-        biological_age_estimate=random.randint(20, 85),
+        std_dev=std_dev,
+        t_s_ratio=round(mean_len / 5.0, 2),
+        biological_age_estimate=bio_age,
         overlay_image_url=None,
-        raw_measurements=[round(random.uniform(3.0, 14.0), 2) for _ in range(20)],
+        raw_measurements=[round(max(1.0, mean_len + random.gauss(0, std_dev or 0.5)), 2) for _ in range(20)],
     )
 
 
