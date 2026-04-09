@@ -2,6 +2,9 @@
 
 **Multi-Agent Genomic Intelligence Platform** — Telomere analysis, disease risk prediction, and personalized nutrition from qFISH microscopy images.
 
+[![CI](https://github.com/Mahesh2023/teloscopy/actions/workflows/ci.yml/badge.svg)](https://github.com/Mahesh2023/teloscopy/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Mahesh2023/teloscopy)
 
 ```
@@ -30,7 +33,7 @@
 |------|-------|--------|
 | 1. **Image Analysis** | Upload a qFISH microscopy image | Per-chromosome telomere lengths |
 | 2. **Disease Prediction** | Telomere data + optional genetic variants | Disease risk profile over next 30 years |
-| 3. **Diet Recommendations** | Risk profile + your geographic region | 7-day meal plan with local foods |
+| 3. **Diet Recommendations** | Risk profile + your geographic region | Up to 30-day meal plan with local foods |
 | 4. **Report** | Everything above | Downloadable HTML/JSON/CSV report |
 
 ## Why Teloscopy?
@@ -43,9 +46,20 @@
 | Batch processing | Click through each image | `teloscopy batch ./images/` |
 | Continuous improvement | None | Self-optimizing multi-agent system |
 
-## One-Click Installation
+## Key Features
 
-### Option A: Quick Setup Script (recommended)
+- **Interactive Data Visualization** — Chart.js charts for telomere lengths (bar), disease risks (horizontal bar with color coding), and macronutrient breakdowns (doughnut)
+- **30-Day Meal Plans** — Expanded from 3-day to 30-day plans with 551 unique foods and smart variety algorithm ensuring no consecutive repeated dishes
+- **Facial Analysis** — Optional face image analysis for age estimation and health indicators
+- **Profile-Only Analysis** — Disease risk and nutrition recommendations without requiring a microscopy image
+- **Standalone Nutrition Planner** — Independent meal planning with calorie targets, dietary restrictions, and regional food preferences
+- **Security Hardened** — Rate limiting, Content Security Policy, security headers, CORS configuration
+- **API Documentation** — Full OpenAPI/Swagger UI at `/docs` and ReDoc at `/redoc` with request/response examples
+- **Agent Dashboard** — Real-time system metrics, agent status monitoring, analysis history, and activity logs
+- **Accessible UI** — ARIA labels, keyboard navigation, skip-to-content link, responsive mobile layout
+- **CI/CD Pipeline** — GitHub Actions with lint, test (Python 3.11/3.12/3.13), and Docker build verification
+
+## One-Click Installation
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/Mahesh2023/teloscopy/main/setup.sh | bash
@@ -204,11 +218,12 @@ src/teloscopy/
 | Image Processing | scikit-image, OpenCV, tifffile |
 | Deep Learning | Cellpose (optional) |
 | Web Server | FastAPI + Uvicorn |
-| Frontend | Vanilla HTML/CSS/JS (dark theme) |
+| Frontend | Vanilla HTML/CSS/JS (dark theme) + Chart.js |
 | Scientific Computing | NumPy, SciPy, pandas |
 | CLI | Click + Rich |
 | Container | Docker + Docker Compose |
-| CI/CD | GitHub Actions |
+| CI/CD | GitHub Actions (lint, test, Docker build) |
+| Security | Rate limiting, CSP headers, CORS |
 
 ## Disease Risk Prediction
 
@@ -257,6 +272,8 @@ Supports dietary restrictions: vegetarian, vegan, gluten-free, halal, kosher, nu
 
 ## REST API
 
+Interactive API documentation is available at `/docs` (Swagger UI) and `/redoc` (ReDoc) when the server is running.
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/upload` | Upload microscopy image |
@@ -265,7 +282,11 @@ Supports dietary restrictions: vegetarian, vegan, gluten-free, halal, kosher, nu
 | `GET` | `/api/results/{id}` | Get full results |
 | `POST` | `/api/disease-risk` | Disease risk assessment |
 | `POST` | `/api/diet-plan` | Diet recommendations |
-| `GET` | `/api/health` | Health check |
+| `POST` | `/api/validate-image` | Validate image before upload |
+| `POST` | `/api/profile-analysis` | Profile-only analysis (no image) |
+| `POST` | `/api/nutrition` | Standalone nutrition planner |
+| `GET` | `/health` | Health check |
+| `GET` | `/readiness` | Readiness check |
 | `GET` | `/api/agents/status` | Agent system status |
 
 ## Deployment
@@ -320,15 +341,16 @@ Quantitative FISH (qFISH) measures telomere length by:
 
 | Metric | Value |
 |--------|-------|
-| Total Python files | 31+ |
-| Total lines of code | 15,000+ |
-| Disease variants in DB | 63 |
-| Geographic food regions | 12+ |
-| Gene-nutrient mappings | 25+ |
-| Food items in database | 100+ |
+| Total Python files | 56 |
+| Total lines of code | 48,000+ |
+| Disease variants in DB | 519 |
+| Geographic food regions | 30 |
+| Gene-nutrient mappings | 120+ |
+| Food items in database | 551 |
 | Agent types | 7 |
-| API endpoints | 12 |
-| Test cases | 50+ |
+| API endpoints | 18 |
+| Test cases | 160+ |
+| Max meal plan length | 30 days |
 
 ## License
 

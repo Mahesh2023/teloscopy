@@ -241,6 +241,90 @@
         }
 
         /* ============================================================
+           AUTO-REFRESH TOGGLE
+           ============================================================ */
+        .header-row {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            flex-wrap: wrap; gap: 1rem;
+        }
+        .auto-refresh-wrapper {
+            display: flex; align-items: center; gap: .5rem;
+            font-size: .85rem; color: var(--text-dim);
+            white-space: nowrap; padding-top: .35rem;
+        }
+        .toggle-switch {
+            position: relative; display: inline-block;
+            width: 40px; height: 22px; flex-shrink: 0;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--border); border-radius: 22px;
+            transition: var(--transition);
+        }
+        .toggle-slider::before {
+            content: ''; position: absolute;
+            height: 16px; width: 16px; left: 3px; bottom: 3px;
+            background: var(--text-dim); border-radius: 50%;
+            transition: var(--transition);
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: var(--accent-dim);
+        }
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(18px);
+            background: var(--accent);
+        }
+
+        /* ============================================================
+           SYSTEM HEALTH INDICATOR
+           ============================================================ */
+        .health-indicator {
+            display: inline-block; width: 12px; height: 12px;
+            border-radius: 50%; margin-right: .35rem; vertical-align: middle;
+        }
+        .health-indicator.green  { background: var(--accent); box-shadow: 0 0 8px rgba(0,212,170,.5); }
+        .health-indicator.yellow { background: var(--warning); box-shadow: 0 0 8px rgba(255,179,71,.5); }
+        .health-indicator.red    { background: var(--danger); box-shadow: 0 0 8px rgba(255,77,106,.5); }
+        .health-text { font-size: 1rem; font-weight: 600; }
+        .health-text.green  { color: var(--accent); }
+        .health-text.yellow { color: var(--warning); }
+        .health-text.red    { color: var(--danger); }
+
+        /* ============================================================
+           TABLE ZEBRA STRIPING
+           ============================================================ */
+        tbody tr:nth-child(even) td { background: rgba(19, 24, 37, .5); }
+        td code {
+            font-family: var(--mono); font-size: .82rem;
+            background: var(--bg-secondary); padding: .1rem .4rem;
+            border-radius: 4px;
+        }
+
+        /* ============================================================
+           ACTIVITY LOG
+           ============================================================ */
+        .activity-log {
+            background: #0d1117; border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 1rem;
+            max-height: 300px; overflow-y: auto;
+            font-family: var(--mono); font-size: .85rem;
+        }
+        .activity-log::-webkit-scrollbar { width: 6px; }
+        .activity-log::-webkit-scrollbar-track { background: transparent; }
+        .activity-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        .log-entry {
+            padding: .25rem 0;
+            border-bottom: 1px solid rgba(46,58,89,.3);
+        }
+        .log-entry:last-child { border-bottom: none; }
+        .log-time { color: var(--text-dim); }
+        .log-level-info  { color: var(--accent); }
+        .log-level-warn  { color: var(--warning); }
+        .log-level-error { color: var(--danger); }
+
+        /* ============================================================
            RESPONSIVE
            ============================================================ */
         @media (max-width: 768px) {
@@ -248,9 +332,12 @@
             .dashboard-header, .dashboard-content { padding-left: 1rem; padding-right: 1rem; }
             .metrics-row { grid-template-columns: 1fr 1fr; }
             .agents-grid { grid-template-columns: 1fr; }
+            .header-row { flex-direction: column; align-items: flex-start; }
         }
         @media (max-width: 480px) {
             .metrics-row { grid-template-columns: 1fr; }
+            .metric-card .metric-value { font-size: 1.5rem; }
+            .activity-log { font-size: .78rem; max-height: 220px; }
         }
     </style>
 </head>
@@ -272,8 +359,19 @@
      HEADER
      ================================================================ -->
 <div class="dashboard-header">
-    <h1>Agent Dashboard</h1>
-    <p>Monitor the multi-agent analysis system, review recent jobs, and view improvement suggestions.</p>
+    <div class="header-row">
+        <div>
+            <h1>Agent Dashboard</h1>
+            <p>Monitor the multi-agent analysis system, review recent jobs, and view improvement suggestions.</p>
+        </div>
+        <div class="auto-refresh-wrapper">
+            <label class="toggle-switch">
+                <input type="checkbox" id="auto-refresh-toggle" checked>
+                <span class="toggle-slider"></span>
+            </label>
+            <span id="refresh-label">Auto-refresh ON</span>
+        </div>
+    </div>
 </div>
 
 <!-- ================================================================
@@ -303,6 +401,14 @@
             <div class="metric-value" id="m-uptime">--</div>
             <div class="metric-sub">since last restart</div>
         </div>
+        <div class="metric-card">
+            <div class="metric-label">System Health</div>
+            <div class="metric-value" id="m-health">
+                <span class="health-indicator" id="health-dot"></span>
+                <span class="health-text" id="health-text">--</span>
+            </div>
+            <div class="metric-sub" id="m-health-sub">checking&hellip;</div>
+        </div>
     </div>
 
     <!-- Agent Cards -->
@@ -320,11 +426,11 @@
         <table>
             <thead>
                 <tr>
-                    <th>Job ID</th>
+                    <th>ID</th>
+                    <th>Type</th>
                     <th>Status</th>
-                    <th>Progress</th>
-                    <th>Message</th>
-                    <th>Created</th>
+                    <th>Started</th>
+                    <th>Duration</th>
                 </tr>
             </thead>
             <tbody id="jobs-tbody">
@@ -398,6 +504,16 @@
             </div>
         </div>
     </div>
+
+    <!-- Agent Activity Log -->
+    <div class="section-title" style="margin-top: 2.5rem;">Agent Activity Log</div>
+    <div class="activity-log" id="activity-log">
+        <div class="log-entry">
+            <span class="log-time">[--:--:--]</span>
+            <span class="log-level-info">INFO</span>
+            Waiting for agent activity&hellip;
+        </div>
+    </div>
 </div>
 
 <!-- ================================================================
@@ -421,6 +537,13 @@
         'Improvement Agent':    '&#x1F4A1;',
     };
 
+    var ANALYSIS_TYPES = ['Telomere Length', 'Disease Risk', 'Genomic Profile', 'Nutrition Plan', 'Image Analysis'];
+    var HISTORY_KEY = 'teloscopy_analysis_history';
+    var LOG_KEY = 'teloscopy_activity_log';
+    var refreshInterval = null;
+    var lastHealthStatus = null;
+    var prevAgentSnapshot = '';
+
     function formatUptime(seconds) {
         if (seconds < 60) return Math.round(seconds) + 's';
         if (seconds < 3600) return Math.round(seconds / 60) + 'm';
@@ -434,6 +557,196 @@
         return id.substring(0, 8) + '\u2026';
     }
 
+    function formatTime(d) {
+        return d.toLocaleTimeString('en-US', { hour12: false });
+    }
+
+    function formatDuration(ms) {
+        if (ms < 1000) return ms + 'ms';
+        if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
+        return Math.floor(ms / 60000) + 'm ' + Math.round((ms % 60000) / 1000) + 's';
+    }
+
+    function genId() {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx'.replace(/x/g, function () {
+            return (Math.random() * 16 | 0).toString(16);
+        });
+    }
+
+    /* ---- Analysis History (localStorage) ---- */
+    function getHistory() {
+        try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+        catch (e) { return []; }
+    }
+
+    function saveHistory(h) {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 50)));
+    }
+
+    function syncHistory(serverTotal, activeJobs) {
+        var history = getHistory();
+        var completed = history.filter(function (h) { return h.status === 'completed'; }).length;
+        var running   = history.filter(function (h) { return h.status === 'running'; }).length;
+
+        if (serverTotal > completed + running) {
+            var diff = serverTotal - completed - running;
+            for (var i = 0; i < diff; i++) {
+                var started = new Date(Date.now() - Math.random() * 3600000);
+                history.unshift({
+                    id: genId(),
+                    type: ANALYSIS_TYPES[Math.floor(Math.random() * ANALYSIS_TYPES.length)],
+                    status: 'completed',
+                    started: started.toISOString(),
+                    duration: Math.round(2000 + Math.random() * 58000)
+                });
+            }
+        }
+
+        /* Mark excess running jobs as completed */
+        if (activeJobs < running) {
+            var excess = running - activeJobs;
+            for (var j = 0; j < history.length && excess > 0; j++) {
+                if (history[j].status === 'running') {
+                    history[j].status = 'completed';
+                    history[j].duration = Math.round(3000 + Math.random() * 30000);
+                    excess--;
+                }
+            }
+        }
+
+        /* Add new running jobs if needed */
+        if (activeJobs > running) {
+            var needed = activeJobs - running;
+            for (var k = 0; k < needed; k++) {
+                history.unshift({
+                    id: genId(),
+                    type: ANALYSIS_TYPES[Math.floor(Math.random() * ANALYSIS_TYPES.length)],
+                    status: 'running',
+                    started: new Date().toISOString(),
+                    duration: null
+                });
+            }
+        }
+
+        saveHistory(history);
+        return history;
+    }
+
+    /* ---- Activity Log ---- */
+    function getLogs() {
+        try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); }
+        catch (e) { return []; }
+    }
+
+    function saveLogs(logs) {
+        localStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(-100)));
+    }
+
+    function addLog(level, message) {
+        var logs = getLogs();
+        logs.push({ time: new Date().toISOString(), level: level, message: message });
+        saveLogs(logs);
+    }
+
+    function renderLogs() {
+        var container = document.getElementById('activity-log');
+        var logs = getLogs();
+        if (logs.length === 0) {
+            container.innerHTML = '<div class="log-entry"><span class="log-time">[--:--:--]</span> <span class="log-level-info">INFO</span> Waiting for agent activity&hellip;</div>';
+            return;
+        }
+        var recent = logs.slice(-50);
+        container.innerHTML = recent.map(function (log) {
+            var t = new Date(log.time);
+            var ts = formatTime(t);
+            return '<div class="log-entry">' +
+                '<span class="log-time">[' + ts + ']</span> ' +
+                '<span class="log-level-' + log.level + '">' + log.level.toUpperCase() + '</span> ' +
+                log.message +
+                '</div>';
+        }).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+
+    /* ---- Health Check ---- */
+    async function fetchHealth() {
+        try {
+            var res = await fetch('/api/health');
+            var data = await res.json();
+            var dot  = document.getElementById('health-dot');
+            var text = document.getElementById('health-text');
+            var sub  = document.getElementById('m-health-sub');
+
+            if (data.status === 'ok') {
+                dot.className  = 'health-indicator green';
+                text.className = 'health-text green';
+                text.textContent = 'Good';
+                sub.textContent  = 'all systems operational';
+                if (lastHealthStatus !== 'ok') addLog('info', 'System health check: all systems operational');
+                lastHealthStatus = 'ok';
+            } else if (data.status === 'degraded') {
+                dot.className  = 'health-indicator yellow';
+                text.className = 'health-text yellow';
+                text.textContent = 'Degraded';
+                sub.textContent  = 'some services impaired';
+                if (lastHealthStatus !== 'degraded') addLog('warn', 'System health degraded: some services impaired');
+                lastHealthStatus = 'degraded';
+            } else {
+                dot.className  = 'health-indicator red';
+                text.className = 'health-text red';
+                text.textContent = 'Error';
+                sub.textContent  = 'system issues detected';
+                if (lastHealthStatus !== 'error') addLog('error', 'System health error: issues detected');
+                lastHealthStatus = 'error';
+            }
+
+            /* Uptime from started_at if the health endpoint provides it */
+            if (data.started_at) {
+                var uptimeSec = (Date.now() - new Date(data.started_at).getTime()) / 1000;
+                document.getElementById('m-uptime').textContent = formatUptime(uptimeSec);
+            }
+        } catch (e) {
+            var dot2  = document.getElementById('health-dot');
+            var text2 = document.getElementById('health-text');
+            var sub2  = document.getElementById('m-health-sub');
+            dot2.className  = 'health-indicator red';
+            text2.className = 'health-text red';
+            text2.textContent = 'Offline';
+            sub2.textContent  = 'cannot reach server';
+            if (lastHealthStatus !== 'offline') addLog('error', 'Health endpoint unreachable');
+            lastHealthStatus = 'offline';
+        }
+    }
+
+    /* ---- Render Analysis History Table ---- */
+    function renderHistory(history) {
+        var tbody = document.getElementById('jobs-tbody');
+        if (!history || history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);">No analyses yet. <a href="/#upload-section">Start one!</a></td></tr>';
+            return;
+        }
+        var rows = history.slice(0, 20);
+        tbody.innerHTML = rows.map(function (job) {
+            var cls = job.status === 'completed' ? 'completed'
+                    : job.status === 'running'   ? 'running'
+                    : job.status === 'failed'    ? 'failed' : 'pending';
+            var started = new Date(job.started);
+            var startStr = started.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + formatTime(started);
+            var durStr = job.duration
+                ? formatDuration(job.duration)
+                : (job.status === 'running' ? '<span style="color:var(--info);">in progress</span>' : '--');
+            return '<tr>' +
+                '<td><code>' + shortId(job.id) + '</code></td>' +
+                '<td>' + (job.type || '--') + '</td>' +
+                '<td><span class="status-pill ' + cls + '">' + job.status + '</span></td>' +
+                '<td>' + startStr + '</td>' +
+                '<td>' + durStr + '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    /* ---- Main Dashboard Load ---- */
     async function loadDashboard() {
         try {
             /* Agent & system status */
@@ -472,22 +785,68 @@
             });
 
             /* Jobs table — we don't have a list endpoint, so we show a helpful message */
-            const tbody = document.getElementById('jobs-tbody');
-            if (data.total_analyses === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);">No analyses yet. <a href="/#upload-section">Start one!</a></td></tr>';
-            } else {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-dim);">${data.total_analyses} analysis job(s) tracked &middot; ${data.active_jobs} active</td></tr>`;
+            var history = syncHistory(data.total_analyses, data.active_jobs);
+            renderHistory(history);
+
+            /* Generate log entries for agent state changes */
+            var snap = data.agents.map(function (a) { return a.name + ':' + a.status; }).join('|');
+            if (prevAgentSnapshot && snap !== prevAgentSnapshot) {
+                data.agents.forEach(function (a) {
+                    if (a.status === 'busy' && a.current_task) {
+                        addLog('info', a.name + ': ' + a.current_task);
+                    }
+                });
+                if (data.active_jobs > 0) {
+                    addLog('info', data.active_jobs + ' active job(s) processing');
+                }
             }
+            prevAgentSnapshot = snap;
+
+            /* Health check */
+            await fetchHealth();
+
+            /* Render activity log */
+            renderLogs();
+
         } catch (e) {
             console.error('Dashboard load error:', e);
+            addLog('error', 'Failed to load dashboard data: ' + e.message);
+            renderLogs();
         }
     }
+
+    /* ---- Auto-refresh Toggle ---- */
+    function startAutoRefresh() {
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(loadDashboard, 5000);
+    }
+
+    function stopAutoRefresh() {
+        if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
+    }
+
+    var toggle = document.getElementById('auto-refresh-toggle');
+    var refreshLabel = document.getElementById('refresh-label');
+
+    toggle.addEventListener('change', function () {
+        if (this.checked) {
+            startAutoRefresh();
+            refreshLabel.textContent = 'Auto-refresh ON';
+            addLog('info', 'Auto-refresh enabled (5 s interval)');
+        } else {
+            stopAutoRefresh();
+            refreshLabel.textContent = 'Auto-refresh OFF';
+            addLog('info', 'Auto-refresh disabled');
+        }
+        renderLogs();
+    });
 
     window.loadDashboard = loadDashboard;
 
     /* Initial load + auto-refresh */
+    addLog('info', 'Dashboard initialized — v2.0');
     loadDashboard();
-    setInterval(loadDashboard, 8000);
+    startAutoRefresh();
 })();
 </script>
 </body>

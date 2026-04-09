@@ -22,7 +22,7 @@
             --warning:       #ffb347;
             --info:          #4da6ff;
             --text:          #e0e6ed;
-            --text-dim:      #8f9bb3;
+            --text-dim:      #a0aec0;
             --border:        #2e3a59;
             --radius:        12px;
             --radius-sm:     8px;
@@ -43,6 +43,23 @@
         a { color: var(--accent); text-decoration: none; }
         a:hover { text-decoration: underline; }
         img { max-width: 100%; height: auto; }
+
+        /* Skip link for keyboard navigation */
+        .skip-link {
+            position: absolute; top: -40px; left: 0;
+            background: var(--accent); color: var(--bg-primary);
+            padding: .5rem 1.5rem; z-index: 1000;
+            font-weight: 600; font-size: .9rem;
+            border-radius: 0 0 var(--radius-sm) 0;
+            transition: top var(--transition);
+        }
+        .skip-link:focus { top: 0; text-decoration: none; }
+
+        /* Focus-visible styles for keyboard navigation */
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .form-group input:focus-visible, .form-group select:focus-visible {
+            outline: 2px solid var(--accent); outline-offset: 2px;
+        }
 
         /* ============================================================
            NAVBAR
@@ -346,15 +363,57 @@
            RESPONSIVE
            ============================================================ */
         @media (max-width: 768px) {
-            .navbar { padding: .75rem 1rem; }
-            .navbar-links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-primary); border-bottom: 1px solid var(--border); padding: 1rem; gap: 1rem; }
+            .navbar { padding: .75rem; }
+            .navbar-links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-primary); border-bottom: 1px solid var(--border); padding: 1rem; gap: .5rem; flex-wrap: wrap; }
             .navbar-links.open { display: flex; }
             .hamburger { display: block; }
             .hero { padding: 3rem 1rem 2rem; }
-            .section { padding: 2rem 1rem; }
+            .section { padding: 1.5rem 1rem !important; }
+            .section-title { font-size: 1.5rem !important; }
             .stat-grid { grid-template-columns: 1fr; }
             .food-columns { grid-template-columns: 1fr; }
-            .profile-form { grid-template-columns: 1fr; }
+            .profile-form { grid-template-columns: 1fr !important; }
+            .results-grid { grid-template-columns: 1fr !important; }
+            .agent-status-grid { grid-template-columns: 1fr !important; }
+            .result-card { padding: 1.25rem; }
+            .btn-row { flex-direction: column; align-items: stretch; }
+            .download-row { flex-direction: column; align-items: stretch; }
+            .upload-card { padding: 2rem 1rem; }
+        }
+
+        @media (max-width: 480px) {
+            .navbar-brand { font-size: 1.1rem; }
+            .btn { width: 100%; }
+            .hero h1 { font-size: 1.8rem; }
+            .hero p { font-size: .95rem; }
+            .section { padding: 1rem .75rem !important; }
+            .stat-value { font-size: 1.2rem; }
+            .badge { font-size: .72rem; padding: .25rem .6rem; }
+        }
+
+        /* ============================================================
+           CHARTS (Chart.js)
+           ============================================================ */
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin: 1rem 0;
+            display: none;
+        }
+        .chart-container.visible { display: block; }
+        .chart-container canvas { max-height: 400px; }
+        .chart-container h4 {
+            font-size: 1rem; font-weight: 600; margin-bottom: 1rem;
+            display: flex; align-items: center; gap: .5rem;
+            color: var(--text);
+        }
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
         }
 
         /* ============================================================
@@ -392,16 +451,19 @@
             to   { opacity: 1; transform: translateY(0); }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- ================================================================
      NAVBAR
      ================================================================ -->
-<nav class="navbar">
+<nav class="navbar" role="navigation" aria-label="Main navigation">
     <div class="navbar-brand">Telo<span>scopy</span></div>
-    <button class="hamburger" onclick="document.querySelector('.navbar-links').classList.toggle('open')" aria-label="Menu">&#9776;</button>
-    <ul class="navbar-links">
+    <button class="hamburger" onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); document.querySelector('.navbar-links').classList.toggle('open')" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navbar-links">&#9776;</button>
+    <ul class="navbar-links" id="navbar-links">
         <li><a href="#hero" class="active">Home</a></li>
         <li><a href="#upload-section">Analyze</a></li>
         <li><a href="#nutrition-section">Nutrition</a></li>
@@ -410,6 +472,8 @@
         <li><a href="/dashboard">Dashboard</a></li>
     </ul>
 </nav>
+
+<main id="main-content" role="main">
 
 <!-- ================================================================
      HERO
@@ -423,10 +487,10 @@
         or skip the image and get nutrition &amp; risk insights from your profile alone.
     </p>
     <div class="hero-badges">
-        <span class="badge"><span class="dot dot--green"></span> Image Analysis</span>
-        <span class="badge"><span class="dot dot--blue"></span> Genomics</span>
-        <span class="badge"><span class="dot dot--yellow"></span> Nutrition AI</span>
-        <span class="badge"><span class="dot dot--green"></span> Face Analysis</span>
+        <span class="badge"><span class="dot dot--green" aria-hidden="true"></span> Image Analysis</span>
+        <span class="badge"><span class="dot dot--blue" aria-hidden="true"></span> Genomics</span>
+        <span class="badge"><span class="dot dot--yellow" aria-hidden="true"></span> Nutrition AI</span>
+        <span class="badge"><span class="dot dot--green" aria-hidden="true"></span> Face Analysis</span>
     </div>
 </section>
 
@@ -441,24 +505,24 @@
 
     <!-- Drop zone -->
     <div class="upload-card" id="drop-zone">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
         </svg>
         <h3>Drop your image here</h3>
         <p>Microscopy images (FISH/qFISH) <strong>or face photos</strong> &mdash; PNG, JPEG, TIFF, BMP up to 50 MB</p>
-        <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp">
+        <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp" aria-label="Upload microscopy image or face photo">
     </div>
     <div class="file-info" id="file-info">
         <span id="file-name"></span>
         <span id="file-size" style="color:var(--text-dim);"></span>
         <span id="image-type-badge" class="badge" style="display:none;margin-left:.5rem;"></span>
-        <button class="btn btn-outline" style="padding:.3rem .8rem;font-size:.8rem;margin-left:auto;" onclick="clearFile()">Remove</button>
+        <button class="btn btn-outline" style="padding:.3rem .8rem;font-size:.8rem;margin-left:auto;" onclick="clearFile()" aria-label="Remove selected file">Remove</button>
     </div>
     <!-- Image validation feedback -->
     <div id="image-validation" style="display:none;margin-top:.75rem;padding:.75rem 1rem;border-radius:var(--radius-sm);font-size:.88rem;"></div>
 
     <!-- Profile form -->
-    <form id="profile-form" class="profile-form" onsubmit="return false;">
+    <form id="profile-form" class="profile-form" onsubmit="return false;" aria-label="User profile for analysis">
         <div class="form-group">
             <label for="age">Age</label>
             <input type="number" id="age" name="age" min="1" max="150" placeholder="e.g. 35" required>
@@ -495,19 +559,19 @@
         </div>
         <div class="form-group">
             <label for="variants">Known Genetic Variants</label>
-            <input type="text" id="variants" name="known_variants" placeholder="e.g. APOE-e4, BRCA1, rs429358">
+            <input type="text" id="variants" name="known_variants" placeholder="e.g. APOE-e4, BRCA1, rs429358" autocomplete="off">
         </div>
         <div class="form-group">
             <label for="health-conditions">Health Conditions</label>
-            <input type="text" id="health-conditions" name="health_conditions" placeholder="e.g. diabetes, hypertension">
+            <input type="text" id="health-conditions" name="health_conditions" placeholder="e.g. diabetes, hypertension" autocomplete="off">
         </div>
         <div class="form-group">
             <label for="calorie-target">Calorie Target</label>
             <input type="number" id="calorie-target" name="calorie_target" min="800" max="5000" placeholder="e.g. 2000" value="2000">
         </div>
         <div class="form-group" style="grid-column: 1 / -1;">
-            <label>Dietary Restrictions</label>
-            <div class="checkbox-group">
+            <label id="diet-restrictions-label">Dietary Restrictions</label>
+            <div class="checkbox-group" role="group" aria-labelledby="diet-restrictions-label">
                 <label><input type="checkbox" name="diet" value="vegetarian"> Vegetarian</label>
                 <label><input type="checkbox" name="diet" value="vegan"> Vegan</label>
                 <label><input type="checkbox" name="diet" value="gluten-free"> Gluten-free</label>
@@ -522,23 +586,23 @@
 
     <div class="btn-row">
         <button class="btn btn-primary" id="analyze-btn" onclick="startAnalysis()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
             Analyze with Image
         </button>
         <button class="btn btn-outline" id="profile-btn" onclick="startProfileAnalysis()" style="border-color:var(--accent);color:var(--accent);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
             Analyze Profile Only
         </button>
     </div>
 
     <!-- Progress -->
-    <div class="progress-wrapper" id="progress-wrapper">
+    <div class="progress-wrapper" id="progress-wrapper" aria-live="polite" role="status">
         <div class="progress-header">
             <span id="progress-label">Analyzing&hellip;</span>
             <span id="progress-pct">0%</span>
         </div>
         <div class="progress-bar-bg">
-            <div class="progress-bar-fill" id="progress-fill"></div>
+            <div class="progress-bar-fill" id="progress-fill" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Analysis progress"></div>
         </div>
         <p class="progress-message" id="progress-message">Preparing analysis pipeline&hellip;</p>
     </div>
@@ -552,7 +616,7 @@
     <p class="section-subtitle">
         Get a personalised nutrition plan based on your profile, dietary preferences, and health goals &mdash; no image needed.
     </p>
-    <form id="nutrition-form" class="profile-form" onsubmit="return false;">
+    <form id="nutrition-form" class="profile-form" onsubmit="return false;" aria-label="Nutrition plan preferences">
         <div class="form-group">
             <label for="nut-age">Age</label>
             <input type="number" id="nut-age" min="1" max="150" placeholder="e.g. 35" required>
@@ -604,15 +668,15 @@
         </div>
         <div class="form-group">
             <label for="nut-conditions">Health Conditions</label>
-            <input type="text" id="nut-conditions" placeholder="e.g. diabetes, hypertension, obesity">
+            <input type="text" id="nut-conditions" placeholder="e.g. diabetes, hypertension, obesity" autocomplete="off">
         </div>
         <div class="form-group">
             <label for="nut-variants">Known Genetic Variants</label>
-            <input type="text" id="nut-variants" placeholder="e.g. MTHFR, APOE-e4, rs429358">
+            <input type="text" id="nut-variants" placeholder="e.g. MTHFR, APOE-e4, rs429358" autocomplete="off">
         </div>
         <div class="form-group" style="grid-column: 1 / -1;">
-            <label>Dietary Restrictions</label>
-            <div class="checkbox-group">
+            <label id="nut-diet-restrictions-label">Dietary Restrictions</label>
+            <div class="checkbox-group" role="group" aria-labelledby="nut-diet-restrictions-label">
                 <label><input type="checkbox" name="nut-diet" value="vegetarian"> Vegetarian</label>
                 <label><input type="checkbox" name="nut-diet" value="vegan"> Vegan</label>
                 <label><input type="checkbox" name="nut-diet" value="gluten-free"> Gluten-free</label>
@@ -626,12 +690,12 @@
     </form>
     <div class="btn-row">
         <button class="btn btn-primary" id="nutrition-btn" onclick="startNutritionPlan()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75-1.5.75a3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0L3 16.5m15-3.379a48.474 48.474 0 0 0-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 0 1 6 13.12"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75-1.5.75a3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0L3 16.5m15-3.379a48.474 48.474 0 0 0-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 0 1 6 13.12"/></svg>
             Generate Nutrition Plan
         </button>
     </div>
     <!-- Nutrition results -->
-    <div id="nutrition-results" style="display:none;margin-top:2rem;">
+    <div id="nutrition-results" style="display:none;margin-top:2rem;" aria-live="polite">
         <div class="result-card" style="border-color:var(--accent);">
             <h3><span class="icon">&#x1F957;</span> Your Personalised Nutrition Plan</h3>
             <div id="nutrition-content"></div>
@@ -642,7 +706,7 @@
 <!-- ================================================================
      RESULTS
      ================================================================ -->
-<section class="section" id="results-section">
+<section class="section" id="results-section" aria-live="polite">
     <h2 class="section-title">Analysis Results</h2>
     <p class="section-subtitle" id="results-subtitle">Your personalised telomere analysis and health recommendations.</p>
 
@@ -673,14 +737,30 @@
         </div>
     </div>
 
+    <!-- Interactive Charts -->
+    <div class="charts-row">
+        <div class="chart-container" id="telomereChartContainer">
+            <h4>&#x1F4CA; Telomere Length by Chromosome</h4>
+            <canvas id="telomereChart"></canvas>
+        </div>
+        <div class="chart-container" id="riskChartContainer">
+            <h4>&#x1F3AF; Disease Risk Overview</h4>
+            <canvas id="riskChart"></canvas>
+        </div>
+        <div class="chart-container" id="nutritionChartContainer">
+            <h4>&#x1F34E; Macronutrient Breakdown</h4>
+            <canvas id="nutritionChart"></canvas>
+        </div>
+    </div>
+
     <!-- Downloads -->
     <div class="download-row" id="download-row" style="display:none;">
         <button class="btn btn-outline" onclick="downloadCSV()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
             Download CSV
         </button>
         <button class="btn btn-outline" onclick="downloadJSON()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
             Download JSON
         </button>
     </div>
@@ -700,6 +780,8 @@
     </div>
 </section>
 
+</main>
+
 <!-- ================================================================
      FOOTER
      ================================================================ -->
@@ -708,7 +790,7 @@
 </footer>
 
 <!-- Toast container -->
-<div class="toast-container" id="toast-container"></div>
+<div class="toast-container" id="toast-container" aria-live="polite" role="status"></div>
 
 <!-- ================================================================
      JAVASCRIPT
@@ -817,6 +899,7 @@
         type = type || 'info';
         const el = document.createElement('div');
         el.className = 'toast ' + type;
+        el.setAttribute('role', 'alert');
         el.textContent = msg;
         document.getElementById('toast-container').appendChild(el);
         setTimeout(() => el.remove(), 4000);
@@ -845,6 +928,7 @@
         profileBtn.disabled = true;
         progressWrapper.classList.add('visible');
         progressFill.style.width = '0%';
+        progressFill.setAttribute('aria-valuenow', '0');
         progressPct.textContent = '0%';
         progressMessage.textContent = 'Uploading image\u2026';
         resultsSection.classList.remove('visible');
@@ -881,6 +965,7 @@
         profileBtn.disabled = true;
         progressWrapper.classList.add('visible');
         progressFill.style.width = '30%';
+        progressFill.setAttribute('aria-valuenow', '30');
         progressPct.textContent = '30%';
         progressMessage.textContent = 'Analyzing your profile\u2026';
         resultsSection.classList.remove('visible');
@@ -901,6 +986,7 @@
             });
 
             progressFill.style.width = '80%';
+            progressFill.setAttribute('aria-valuenow', '80');
             progressPct.textContent = '80%';
 
             if (!res.ok) {
@@ -910,6 +996,7 @@
             const data = await res.json();
 
             progressFill.style.width = '100%';
+            progressFill.setAttribute('aria-valuenow', '100');
             progressPct.textContent = '100%';
             progressMessage.textContent = 'Done!';
 
@@ -948,6 +1035,13 @@
             renderDiet(data.diet_recommendations);
         }
 
+        /* Render interactive charts (profile-only: no telomere chart) */
+        hideAllCharts();
+        renderRiskChart(buildRiskChartData(data.disease_risks));
+        if (data.diet_recommendations) {
+            renderNutritionChart(data.diet_recommendations);
+        }
+
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
@@ -963,6 +1057,7 @@
             const res  = await fetch('/api/status/' + currentJobId);
             const data = await res.json();
             progressFill.style.width = data.progress_pct + '%';
+            progressFill.setAttribute('aria-valuenow', Math.round(data.progress_pct));
             progressPct.textContent  = Math.round(data.progress_pct) + '%';
             progressMessage.textContent = data.message;
 
@@ -1015,7 +1110,7 @@
             html += '<h4 style="margin-bottom:.5rem;color:var(--text-dim);">Sample Meal Plans</h4><div class="meal-plans">';
             diet.meal_plans.forEach((mp, i) => {
                 html += '<div class="meal-day" id="meal-' + i + '">' +
-                    '<div class="meal-day-header" onclick="toggleMeal(' + i + ')">' + mp.day + ' <span>&#9660;</span></div>' +
+                    '<div class="meal-day-header" onclick="toggleMeal(' + i + ')" role="button" tabindex="0" aria-expanded="false" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();toggleMeal(' + i + ')}">' + mp.day + ' <span aria-hidden="true">&#9660;</span></div>' +
                     '<div class="meal-day-body">' +
                     '<p><span class="meal-label">Breakfast:</span> ' + mp.breakfast + '</p>' +
                     '<p><span class="meal-label">Lunch:</span> ' + mp.lunch + '</p>' +
@@ -1101,11 +1196,22 @@
         renderDiet(r.diet_recommendations);
 
         document.getElementById('download-row').style.display = 'flex';
+
+        /* Render interactive charts */
+        hideAllCharts();
+        const telomereChartData = buildTelomereChartData(r.telomere_results);
+        renderTelomereChart(telomereChartData);
+        renderRiskChart(buildRiskChartData(r.disease_risks));
+        renderNutritionChart(r.diet_recommendations);
+
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     window.toggleMeal = function (i) {
-        document.getElementById('meal-' + i).classList.toggle('open');
+        const el = document.getElementById('meal-' + i);
+        el.classList.toggle('open');
+        const header = el.querySelector('.meal-day-header');
+        if (header) header.setAttribute('aria-expanded', el.classList.contains('open'));
     };
 
     /* ---- Standalone Nutrition ---- */
@@ -1167,7 +1273,7 @@
                 diet.meal_plans.forEach((mp, i) => {
                     const mid = 'nutmeal-' + i;
                     html += '<div class="meal-day" id="' + mid + '">' +
-                        '<div class="meal-day-header" onclick="document.getElementById(\'' + mid + '\').classList.toggle(\'open\')">' + mp.day + ' <span>&#9660;</span></div>' +
+                        '<div class="meal-day-header" onclick="var el=document.getElementById(\'' + mid + '\');el.classList.toggle(\'open\');this.setAttribute(\'aria-expanded\',el.classList.contains(\'open\'))" role="button" tabindex="0" aria-expanded="false" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click()}">' + mp.day + ' <span aria-hidden="true">&#9660;</span></div>' +
                         '<div class="meal-day-body">' +
                         '<p><span class="meal-label">Breakfast:</span> ' + mp.breakfast + '</p>' +
                         '<p><span class="meal-label">Lunch:</span> ' + mp.lunch + '</p>' +
@@ -1182,6 +1288,10 @@
             }
             nc.innerHTML = html;
             nr.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            /* Render nutrition doughnut chart in the standalone section */
+            renderNutritionChart(diet);
+
             toast('Nutrition plan generated!', 'success');
         } catch (err) {
             toast(err.message, 'error');
@@ -1219,6 +1329,298 @@
         downloadBlob(csv, 'teloscopy_results.csv', 'text/csv');
     };
 
+    /* ---- Chart.js Global Defaults ---- */
+    Chart.defaults.color = '#e0e6ed';
+    Chart.defaults.borderColor = '#2e3a59';
+
+    /* Chart instance refs for destroy-before-recreate */
+    let telomereChartInstance = null;
+    let riskChartInstance     = null;
+    let nutritionChartInstance = null;
+
+    /* ---- Render Telomere Length Chart ---- */
+    function renderTelomereChart(data) {
+        const container = document.getElementById('telomereChartContainer');
+        const canvas    = document.getElementById('telomereChart');
+        if (!data || !data.chromosome_labels || !data.lengths) {
+            container.classList.remove('visible');
+            return;
+        }
+
+        /* Destroy previous instance */
+        if (telomereChartInstance) { telomereChartInstance.destroy(); telomereChartInstance = null; }
+
+        container.classList.add('visible');
+        const ctx = canvas.getContext('2d');
+
+        /* Build gradient for each bar */
+        const barColors = data.lengths.map((_, i) => {
+            const ratio = i / Math.max(data.lengths.length - 1, 1);
+            const r = Math.round(0   + ratio * 0);
+            const g = Math.round(212 - ratio * 60);
+            const b = Math.round(170 + ratio * 85);
+            return 'rgba(' + r + ',' + g + ',' + b + ',0.85)';
+        });
+        const borderColors = barColors.map(c => c.replace('0.85', '1'));
+
+        telomereChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.chromosome_labels,
+                datasets: [{
+                    label: 'Telomere Length (kb)',
+                    data: data.lengths,
+                    backgroundColor: barColors,
+                    borderColor: borderColors,
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1a2035',
+                        titleColor: '#e0e6ed',
+                        bodyColor: '#e0e6ed',
+                        borderColor: '#2e3a59',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(ctx) { return ctx.parsed.y.toFixed(2) + ' kb'; }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(46,58,89,0.4)' },
+                        ticks: { color: '#8f9bb3', font: { size: 11 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(46,58,89,0.4)' },
+                        ticks: { color: '#8f9bb3' },
+                        title: { display: true, text: 'Length (kb)', color: '#8f9bb3' }
+                    }
+                }
+            }
+        });
+    }
+
+    /* ---- Render Disease Risk Chart ---- */
+    function renderRiskChart(risks) {
+        const container = document.getElementById('riskChartContainer');
+        const canvas    = document.getElementById('riskChart');
+        if (!risks || !risks.length) {
+            container.classList.remove('visible');
+            return;
+        }
+
+        if (riskChartInstance) { riskChartInstance.destroy(); riskChartInstance = null; }
+
+        container.classList.add('visible');
+        const ctx = canvas.getContext('2d');
+
+        const labels = risks.map(r => r.condition || r.disease);
+        const values = risks.map(r => {
+            if (typeof r.risk_pct === 'number') return r.risk_pct;
+            if (typeof r.probability === 'number') return r.probability * 100;
+            return 0;
+        });
+
+        /* Color code: green <20%, yellow 20-50%, red >50% */
+        const barColors = values.map(v => {
+            if (v > 50) return 'rgba(255,77,106,0.8)';   /* --danger */
+            if (v > 20) return 'rgba(255,179,71,0.8)';   /* --warning */
+            return 'rgba(0,212,170,0.8)';                 /* --accent */
+        });
+        const barBorders = values.map(v => {
+            if (v > 50) return '#ff4d6a';
+            if (v > 20) return '#ffb347';
+            return '#00d4aa';
+        });
+
+        riskChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Risk %',
+                    data: values,
+                    backgroundColor: barColors,
+                    borderColor: barBorders,
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1a2035',
+                        titleColor: '#e0e6ed',
+                        bodyColor: '#e0e6ed',
+                        borderColor: '#2e3a59',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(ctx) { return ctx.parsed.x.toFixed(1) + '%'; }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        min: 0,
+                        max: 100,
+                        grid: { color: 'rgba(46,58,89,0.4)' },
+                        ticks: { color: '#8f9bb3', callback: function(v) { return v + '%'; } },
+                        title: { display: true, text: 'Risk Probability', color: '#8f9bb3' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: '#e0e6ed', font: { size: 12 } }
+                    }
+                }
+            }
+        });
+    }
+
+    /* ---- Render Nutrition Breakdown Chart ---- */
+    function renderNutritionChart(mealPlan) {
+        const container = document.getElementById('nutritionChartContainer');
+        const canvas    = document.getElementById('nutritionChart');
+        if (!mealPlan) {
+            container.classList.remove('visible');
+            return;
+        }
+
+        if (nutritionChartInstance) { nutritionChartInstance.destroy(); nutritionChartInstance = null; }
+
+        container.classList.add('visible');
+        const ctx = canvas.getContext('2d');
+
+        /* Approximate macros from calorie target or meal plan data */
+        let calories = mealPlan.calorie_target || 2000;
+        let protein, carbs, fat, fiber;
+
+        if (mealPlan.macros) {
+            protein = mealPlan.macros.protein || 0;
+            carbs   = mealPlan.macros.carbs || 0;
+            fat     = mealPlan.macros.fat || 0;
+            fiber   = mealPlan.macros.fiber || 0;
+        } else {
+            /* Estimate standard macro split: 30% protein, 40% carbs, 25% fat, 5% fiber-equivalent */
+            protein = Math.round(calories * 0.30 / 4);
+            carbs   = Math.round(calories * 0.40 / 4);
+            fat     = Math.round(calories * 0.25 / 9);
+            fiber   = Math.round(calories * 0.05 / 2);
+        }
+
+        nutritionChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Protein (' + protein + 'g)', 'Carbs (' + carbs + 'g)', 'Fat (' + fat + 'g)', 'Fiber (' + fiber + 'g)'],
+                datasets: [{
+                    data: [protein, carbs, fat, fiber],
+                    backgroundColor: [
+                        'rgba(0,212,170,0.85)',    /* --accent */
+                        'rgba(77,166,255,0.85)',   /* --info */
+                        'rgba(255,179,71,0.85)',   /* --warning */
+                        'rgba(255,77,106,0.85)'    /* --danger */
+                    ],
+                    borderColor: [
+                        '#00d4aa',
+                        '#4da6ff',
+                        '#ffb347',
+                        '#ff4d6a'
+                    ],
+                    borderWidth: 2,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '55%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#e0e6ed',
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyleWidth: 12,
+                            font: { size: 12 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1a2035',
+                        titleColor: '#e0e6ed',
+                        bodyColor: '#e0e6ed',
+                        borderColor: '#2e3a59',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(ctx) {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                                return ' ' + ctx.label + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /* ---- Helper: hide all chart containers ---- */
+    function hideAllCharts() {
+        document.getElementById('telomereChartContainer').classList.remove('visible');
+        document.getElementById('riskChartContainer').classList.remove('visible');
+        document.getElementById('nutritionChartContainer').classList.remove('visible');
+    }
+
+    /* ---- Helper: build telomere chart data from results ---- */
+    function buildTelomereChartData(telomereResults) {
+        if (!telomereResults) return null;
+        /* If per-chromosome data exists, use it */
+        if (telomereResults.per_chromosome && telomereResults.per_chromosome.length) {
+            return {
+                chromosome_labels: telomereResults.per_chromosome.map(c => c.chromosome || c.label),
+                lengths: telomereResults.per_chromosome.map(c => c.length || c.value)
+            };
+        }
+        /* Otherwise, generate synthetic per-chromosome display from summary stats */
+        if (telomereResults.mean_length) {
+            const mean = parseFloat(telomereResults.mean_length);
+            const std  = parseFloat(telomereResults.std_dev) || mean * 0.15;
+            const chroms = [];
+            const lengths = [];
+            for (let i = 1; i <= 23; i++) {
+                chroms.push(i === 23 ? 'X' : 'Chr ' + i);
+                /* Deterministic pseudo-variation per chromosome */
+                const seed = Math.sin(i * 127.1) * 43758.5453;
+                const variation = (seed - Math.floor(seed)) * 2 - 1; /* -1 to 1 */
+                lengths.push(Math.max(0.5, mean + variation * std));
+            }
+            return { chromosome_labels: chroms, lengths: lengths };
+        }
+        return null;
+    }
+
+    /* ---- Helper: build risk chart data from disease_risks ---- */
+    function buildRiskChartData(diseaseRisks) {
+        if (!diseaseRisks || !diseaseRisks.length) return null;
+        return diseaseRisks.map(d => ({
+            condition: d.disease || d.condition,
+            risk_pct: typeof d.probability === 'number' ? d.probability * 100 : (d.risk_pct || 0)
+        }));
+    }
+
     /* ---- Agent status (for teaser) ---- */
     async function loadAgents() {
         try {
@@ -1231,7 +1633,7 @@
                     '<div class="agent-card">' +
                     '<span class="agent-name">' + a.name + '</span>' +
                     '<span class="agent-status-badge ' + a.status + '">' +
-                    '<span class="dot dot--' + (a.status === 'idle' ? 'green' : a.status === 'busy' ? 'blue' : 'yellow') + '"></span> ' +
+                    '<span class="dot dot--' + (a.status === 'idle' ? 'green' : a.status === 'busy' ? 'blue' : 'yellow') + '" aria-hidden="true"></span> ' +
                     a.status + '</span>' +
                     '<span class="agent-tasks">' + a.tasks_completed + ' tasks completed</span>' +
                     (a.current_task ? '<span class="agent-tasks" style="color:var(--info);">Current: ' + a.current_task + '</span>' : '') +
