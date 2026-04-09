@@ -8948,6 +8948,9 @@ _RESTRICTION_EXCLUDED_GROUPS: dict[str, set[str]] = {
     "vegan": {"meat", "poultry", "fish", "seafood", "dairy", "eggs"},
     "pescatarian": {"meat", "poultry"},
     "gluten_free": set(),  # handled by name-based filtering
+    "dairy_free": {"dairy"},
+    "lactose_free": {"dairy"},
+    "nut_free": {"nut"},
 }
 
 # Food groups where ALL items are inherently safe for the restriction,
@@ -9111,6 +9114,32 @@ _GLUTEN_KEYWORDS: set[str] = {
     "tortilla",
     "barley",
     "seitan",
+    # Prepared items that contain wheat/gluten
+    "muffin",
+    "pancake",
+    "waffle",
+    "croissant",
+    "bagel",
+    "pizza",
+    "udon",
+    "spaghetti",
+    "lasagna",
+    "ravioli",
+    "gnocchi",
+    "pierogi",
+    "dumpling",
+    "gyoza",
+    "wonton",
+    "brioche",
+    "scone",
+    "biscuit",
+    "cracker",
+    "pretzel",
+    "cake",
+    "cookie",
+    "pastry",
+    "pie crust",
+    "flour",
 }
 
 _HALAL_EXCLUDED: set[str] = {"pork", "ham", "bacon", "wine", "beer", "lard"}
@@ -9123,6 +9152,122 @@ _KOSHER_EXCLUDED: set[str] = {
     "crab",
     "lobster",
     "lard",
+}
+
+# Keywords for dairy-free / lactose-free filtering of prepared items.
+# Applied to food groups NOT in {"dairy"} (which is already excluded).
+_DAIRY_KEYWORDS: set[str] = {
+    "cheese",
+    "yogurt",
+    "yoghurt",
+    "cream",
+    "butter",
+    "ghee",
+    "paneer",
+    "ricotta",
+    "mozzarella",
+    "cheddar",
+    "parmesan",
+    "feta",
+    "gouda",
+    "brie",
+    "camembert",
+    "whey",
+    "casein",
+    "custard",
+    "ice cream",
+    "lassi",
+    "kheer",
+    "raita",
+    "tzatziki",
+    "buttermilk",
+    "milk chocolate",
+    "condensed milk",
+    "cottage cheese",
+    "cream cheese",
+    "sour cream",
+}
+# Foods whose name contains dairy keywords but are NOT dairy.
+_DAIRY_SAFE_NAMES: set[str] = {
+    "coconut milk",
+    "almond milk",
+    "soy milk",
+    "oat milk",
+    "rice milk",
+    "cashew milk",
+    "coconut cream",
+    "coconut yogurt",
+    "soy yogurt",
+    "oat yogurt",
+    "coconut butter",
+    "peanut butter",
+    "almond butter",
+    "cocoa butter",
+    "shea butter",
+    "butternut",
+    "buttercup",
+    "butterscotch",
+    "butterbean",
+    "custard apple",
+    "cream of tartar",
+}
+
+# Keywords for nut-free filtering of prepared items.
+_NUT_KEYWORDS: set[str] = {
+    "almond",
+    "walnut",
+    "cashew",
+    "pistachio",
+    "pecan",
+    "hazelnut",
+    "macadamia",
+    "brazil nut",
+    "pine nut",
+    "chestnut",
+    "peanut",
+    "groundnut",
+}
+# Foods whose name contains nut keywords but are NOT nuts.
+_NUT_SAFE_NAMES: set[str] = {
+    "nutmeg",
+    "coconut",
+    "butternut",
+    "water chestnut",
+    "doughnut",
+    "donut",
+}
+
+# Pescatarian meat keywords (same as _NONVEG_KEYWORDS but without seafood).
+_PESCATARIAN_MEAT_KEYWORDS: set[str] = {
+    "chicken", "beef", "pork", "lamb", "mutton", "goat", "duck",
+    "turkey", "bacon", "ham", "sausage", "steak", "salami",
+    "pepperoni", "prosciutto", "chorizo", "jerky",
+    "bison", "venison", "kangaroo", "ostrich", "emu", "quail",
+    "rabbit", "reindeer", "crocodile", "llama", "wild boar",
+    "guinea pig", "cuy", "frog", "escargot", "snail",
+    "cricket", "mealworm", "grasshopper",
+    # Prepared meat dishes
+    "kebab", "shawarma", "gyoza", "bolognese", "shepherd",
+    "con carne", "coq au vin", "goulash", "moussaka", "larb",
+    "rendang", "nasi goreng",
+}
+# Groups safe from pescatarian keyword checks.
+_PESCATARIAN_SAFE_GROUPS: set[str] = {
+    "grain", "fruit", "vegetable", "legume", "nut", "seed",
+    "oil", "spice", "beverage", "dairy", "eggs", "fish", "seafood",
+}
+
+# Additional vegan keywords to catch dairy in prepared/snack items.
+_VEGAN_DAIRY_KEYWORDS: set[str] = {
+    "milk chocolate",
+    "lassi",
+    "buttermilk",
+    "condensed milk",
+    "cottage cheese",
+    "cream cheese",
+    "sour cream",
+    "milk powder",
+    "ice cream",
 }
 
 # ---------------------------------------------------------------------------
@@ -10029,6 +10174,11 @@ class DietAdvisor:
                     for kw in _NONVEGAN_KEYWORDS:
                         if kw in name_lower:
                             return False
+                # Also check for dairy in snack/prepared items.
+                for kw in _VEGAN_DAIRY_KEYWORDS:
+                    if kw in name_lower:
+                        if not any(s in name_lower for s in _DAIRY_SAFE_NAMES):
+                            return False
 
             # Gluten-free: keyword check.
             if restriction == "gluten_free":
@@ -10047,6 +10197,27 @@ class DietAdvisor:
                 for kw in _KOSHER_EXCLUDED:
                     if kw in name_lower:
                         return False
+
+            # Dairy-free / lactose-free: keyword check for prepared items.
+            if restriction in ("dairy_free", "lactose_free"):
+                for kw in _DAIRY_KEYWORDS:
+                    if kw in name_lower:
+                        if not any(s in name_lower for s in _DAIRY_SAFE_NAMES):
+                            return False
+
+            # Nut-free: keyword check for prepared items.
+            if restriction == "nut_free":
+                for kw in _NUT_KEYWORDS:
+                    if kw in name_lower:
+                        if not any(s in name_lower for s in _NUT_SAFE_NAMES):
+                            return False
+
+            # Pescatarian: keyword check for meat in prepared items.
+            if restriction == "pescatarian":
+                if fi.food_group not in _PESCATARIAN_SAFE_GROUPS:
+                    for kw in _PESCATARIAN_MEAT_KEYWORDS:
+                        if kw in name_lower:
+                            return False
 
         return True
 
