@@ -247,14 +247,21 @@ def _translate_diet_recommendation(
 
     pydantic_plans: list[MealPlan] = []
     day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    for mp in meal_plans[:7]:
+    for mp in meal_plans:
 
         def _meal_str(items: list[Any]) -> str:
             return ", ".join(f"{fi.name} ({g:.0f}g)" for fi, g in items[:4]) or "Seasonal selection"
 
+        if isinstance(mp.day, int):
+            week_num = (mp.day - 1) // 7 + 1
+            day_label = day_names[(mp.day - 1) % 7]
+            label = f"Week {week_num} — {day_label}" if len(meal_plans) > 7 else day_label
+        else:
+            label = str(mp.day)
+
         pydantic_plans.append(
             MealPlan(
-                day=day_names[mp.day % 7] if isinstance(mp.day, int) else str(mp.day),
+                day=label,
                 breakfast=_meal_str(mp.breakfast),
                 lunch=_meal_str(mp.lunch),
                 dinner=_meal_str(mp.dinner),
@@ -495,8 +502,8 @@ async def _run_full_analysis(
             _diet_advisor.create_meal_plan,
             diet_recs,
             profile.region,
-            2100,
-            3,
+            2000,
+            7,
         )
 
         # Apply dietary restrictions to meal plans (fixes vegetarian/vegan bug)
@@ -936,8 +943,8 @@ async def diet_plan(request: DietPlanRequest) -> DietPlanResponse:
             _diet_advisor.create_meal_plan,
             diet_recs,
             request.region,
-            2100,
-            3,
+            request.calorie_target,
+            request.meal_plan_days,
         )
 
         # Apply dietary restrictions to meal plans
@@ -1031,8 +1038,8 @@ async def profile_analysis(request: ProfileAnalysisRequest) -> ProfileAnalysisRe
                 _diet_advisor.create_meal_plan,
                 diet_recs,
                 request.region,
-                2100,
-                3,
+                2000,
+                7,
             )
             if request.dietary_restrictions:
                 diet_meals = await asyncio.to_thread(
