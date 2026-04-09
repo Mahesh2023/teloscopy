@@ -346,13 +346,13 @@ def _validate_extension(filename: str) -> bool:
 @app.get("/", response_class=HTMLResponse)
 async def index_page(request: Request) -> HTMLResponse:
     """Serve the main landing / upload page."""
-    return templates.TemplateResponse(request, "index.html")
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_page(request: Request) -> HTMLResponse:
     """Serve the dedicated upload page (same template, scroll-to-upload)."""
-    return templates.TemplateResponse(request, "index.html", {"scroll_to": "upload"})
+    return templates.TemplateResponse("index.html", {"request": request, "scroll_to": "upload"})
 
 
 @app.get("/results/{job_id}", response_class=HTMLResponse)
@@ -360,16 +360,15 @@ async def results_page(request: Request, job_id: str) -> HTMLResponse:
     """Serve a results page for a specific job."""
     job: JobStatus | None = _jobs.get(job_id)
     return templates.TemplateResponse(
-        request,
         "index.html",
-        {"job_id": job_id, "job": job, "scroll_to": "results"},
+        {"request": request, "job_id": job_id, "job": job, "scroll_to": "results"},
     )
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request) -> HTMLResponse:
     """Serve the agent-monitoring dashboard."""
-    return templates.TemplateResponse(request, "dashboard.html")
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
 @app.get("/api/debug/templates")
