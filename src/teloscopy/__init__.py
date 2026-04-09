@@ -13,6 +13,7 @@ __all__ = [
     "visualisation",
     "genomics",
     "nutrition",
+    "facial",
     "agents",
     "webapp",
 ]
