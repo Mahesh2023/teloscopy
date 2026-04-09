@@ -162,6 +162,20 @@ class DiseaseRiskRequest(BaseModel):
     sex: Sex = Field(...)
     region: str = Field(..., min_length=1, max_length=128)
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "known_variants": ["rs429358:CT", "rs7412:CC", "rs1801133:AG"],
+                    "telomere_length": 6.8,
+                    "age": 45,
+                    "sex": "female",
+                    "region": "Northern Europe",
+                }
+            ]
+        }
+    }
+
 
 class DiseaseRiskResponse(BaseModel):
     """Response from the standalone disease-risk endpoint."""
@@ -188,6 +202,24 @@ class DietPlanRequest(BaseModel):
     disease_risks: list[DiseaseRisk] = Field(default_factory=list)
     meal_plan_days: int = Field(7, ge=1, le=30)
     calorie_target: int = Field(2000, ge=800, le=5000)
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "age": 34,
+                    "sex": "male",
+                    "region": "East Asia",
+                    "dietary_restrictions": ["vegetarian", "gluten-free"],
+                    "known_variants": ["rs1801133:AG"],
+                    "telomere_length": 7.2,
+                    "disease_risks": [],
+                    "meal_plan_days": 7,
+                    "calorie_target": 2200,
+                }
+            ]
+        }
+    }
 
 
 class DietPlanResponse(BaseModel):
@@ -376,6 +408,23 @@ class ProfileAnalysisRequest(BaseModel):
     include_nutrition: bool = Field(True, description="Include nutrition recommendations")
     include_disease_risk: bool = Field(True, description="Include disease risk assessment")
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "age": 52,
+                    "sex": "female",
+                    "region": "Southern Europe",
+                    "dietary_restrictions": ["lactose-free"],
+                    "known_variants": ["rs429358:CT", "rs7412:CC"],
+                    "telomere_length_kb": 5.9,
+                    "include_nutrition": True,
+                    "include_disease_risk": True,
+                }
+            ]
+        }
+    }
+
 
 class ProfileAnalysisResponse(BaseModel):
     """Response for profile-only analysis."""
@@ -405,6 +454,23 @@ class NutritionRequest(BaseModel):
     )
     calorie_target: int = Field(2000, ge=800, le=5000)
     meal_plan_days: int = Field(7, ge=1, le=30)
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "age": 29,
+                    "sex": "male",
+                    "region": "South Asia",
+                    "dietary_restrictions": ["vegetarian"],
+                    "known_variants": ["rs1801133:AG", "rs4988235:CT"],
+                    "health_conditions": ["hypertension", "prediabetes"],
+                    "calorie_target": 1800,
+                    "meal_plan_days": 14,
+                }
+            ]
+        }
+    }
 
 
 class NutritionResponse(BaseModel):

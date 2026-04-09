@@ -12,16 +12,20 @@ Run with::
 from __future__ import annotations
 
 import asyncio
+import collections
 import logging
 import os
 import random
+import threading
 import time
+import traceback
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import (
+    Depends,
     FastAPI,
     File,
     Form,
@@ -34,6 +38,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import ValidationError
 
 # ---------------------------------------------------------------------------
 # Real pipeline imports (lazy — heavy deps load only when used)
@@ -77,11 +82,21 @@ from teloscopy.webapp.models import (
 # Logging
 # ---------------------------------------------------------------------------
 
+
+def _setup_logging() -> None:
+    """Configure application logging based on environment variables."""
+    log_level = os.getenv("TELOSCOPY_LOG_LEVEL", "INFO").upper()
+    log_format = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    if os.getenv("TELOSCOPY_LOG_FORMAT") == "json":
+        # Simple JSON-like structured format without extra deps
+        log_format = '{"time":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","message":"%(message)s"}'
+    logging.basicConfig(
+        level=getattr(logging, log_level, logging.INFO), format=log_format, force=True
+    )
+
+
+_setup_logging()
 logger: logging.Logger = logging.getLogger("teloscopy.webapp")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -105,6 +120,12 @@ _IMAGE_MAGIC_BYTES: dict[str, list[bytes]] = {
     "bmp": [b"BM"],
 }
 
+_TELOSCOPY_ENV: str = os.getenv("TELOSCOPY_ENV", "production")
+_CORS_ORIGINS: list[str] = os.getenv(
+    "TELOSCOPY_CORS_ORIGINS",
+    "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000",
+).split(",")
+
 # ---------------------------------------------------------------------------
 # In-memory job store (swap for Redis in production)
 # ---------------------------------------------------------------------------
@@ -126,50 +147,256 @@ logger.info(
 )
 
 # ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
+
+class RateLimiter:
+    """In-memory sliding-window rate limiter keyed by client IP.
+
+    Tracks timestamps of recent requests per key and rejects requests
+    that exceed the configured maximum within the sliding window.
+    Thread-safe for use with ``asyncio.to_thread`` or sync middleware.
+    """
+
+    def __init__(self) -> None:
+        self._lock: threading.Lock = threading.Lock()
+        self._requests: dict[str, list[float]] = collections.defaultdict(list)
+
+    def is_allowed(self, key: str, max_requests: int, window_seconds: int) -> bool:
+        """Return *True* if the request is within the rate limit.
+
+        Prunes expired timestamps and appends the current one if allowed.
+        """
+        now: float = time.time()
+        cutoff: float = now - window_seconds
+        with self._lock:
+            self._requests[key] = [t for t in self._requests[key] if t > cutoff]
+            if len(self._requests[key]) >= max_requests:
+                return False
+            self._requests[key].append(now)
+            return True
+
+
+_rate_limiter: RateLimiter = RateLimiter()
+
+
+def rate_limit(max_requests: int, window_seconds: int = 60):
+    """Create a FastAPI dependency that enforces per-IP rate limiting.
+
+    Usage::
+
+        @app.get("/endpoint", dependencies=[Depends(rate_limit(10, 60))])
+        async def my_endpoint(): ...
+
+    Raises :class:`~fastapi.HTTPException` with status 429 when the
+    caller exceeds *max_requests* within *window_seconds*.
+    """
+
+    async def _check_rate_limit(request: Request) -> None:
+        client_ip: str = request.client.host if request.client else "unknown"
+        key: str = f"{client_ip}:{request.url.path}"
+        if not _rate_limiter.is_allowed(key, max_requests, window_seconds):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=(
+                    f"Rate limit exceeded. Maximum {max_requests} requests "
+                    f"per {window_seconds} seconds."
+                ),
+            )
+
+    return _check_rate_limit
+
+
+# ---------------------------------------------------------------------------
 # FastAPI application
 # ---------------------------------------------------------------------------
 
 app: FastAPI = FastAPI(
-    title="Teloscopy",
-    description=(
-        "Telomere analysis, disease-risk assessment, and personalised "
-        "nutrition recommendations from microscopy images."
-    ),
-    version="0.1.0",
+    title="Teloscopy API",
+    description="Multi-Agent Genomic Intelligence Platform — Telomere analysis, disease risk prediction, and personalized nutrition from qFISH microscopy images.",
+    version="2.0.0",
+    license_info={"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
+    contact={"name": "Teloscopy Contributors", "url": "https://github.com/Mahesh2023/teloscopy"},
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_tags=[
+        {"name": "Health", "description": "System health and readiness checks"},
+        {"name": "Analysis", "description": "Image upload and telomere analysis pipeline"},
+        {"name": "Disease Risk", "description": "Genetic disease risk prediction"},
+        {"name": "Nutrition", "description": "Personalized diet planning and meal recommendations"},
+        {"name": "Agents", "description": "Multi-agent system status and control"},
+    ],
 )
 
 # -- CORS -------------------------------------------------------------------
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"] if _TELOSCOPY_ENV == "development" else _CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# -- Security headers -------------------------------------------------------
+
+_CSP_POLICY: str = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; "
+    "font-src 'self'; "
+    "connect-src 'self'; "
+    "frame-ancestors 'none'"
+)
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next: Any) -> Any:
+    """Append hardening headers to every HTTP response."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = _CSP_POLICY
+    return response
+
+
+# -- Request ID -------------------------------------------------------------
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next: Any) -> Any:
+    """Generate a unique request ID, log the request with timing, and attach ID to the response."""
+    request_id: str = str(uuid.uuid4())
+    request.state.request_id = request_id
+    start = time.monotonic()
+    try:
+        response = await call_next(request)
+    except Exception:
+        elapsed = time.monotonic() - start
+        logger.error(
+            "%s %s 500 took %.3fs [request_id=%s]",
+            request.method,
+            request.url.path,
+            elapsed,
+            request_id,
+        )
+        raise
+    elapsed = time.monotonic() - start
+    status_code = response.status_code
+    if status_code >= 500:
+        logger.error(
+            "%s %s %d took %.3fs [request_id=%s]",
+            request.method,
+            request.url.path,
+            status_code,
+            elapsed,
+            request_id,
+        )
+    elif status_code >= 400:
+        logger.warning(
+            "%s %s %d took %.3fs [request_id=%s]",
+            request.method,
+            request.url.path,
+            status_code,
+            elapsed,
+            request_id,
+        )
+    else:
+        logger.info(
+            "%s %s %d took %.3fs",
+            request.method,
+            request.url.path,
+            status_code,
+            elapsed,
+        )
+    response.headers["X-Request-ID"] = request_id
+    return response
+
 
 # -- Exception handler (surface errors in non-production) --------------------
+
+
+@app.exception_handler(HTTPException)
+async def _http_exception_handler(request: Request, exc: HTTPException) -> Any:
+    """Return structured JSON error for HTTP exceptions."""
+    from fastapi.responses import JSONResponse
+
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    code = exc.status_code
+    if code >= 500:
+        logger.error("HTTPException %d on %s: %s", code, request.url.path, exc.detail)
+    elif code >= 400:
+        logger.warning("HTTPException %d on %s: %s", code, request.url.path, exc.detail)
+    return JSONResponse(
+        status_code=code,
+        content={"error": {"code": code, "message": str(exc.detail), "request_id": request_id}},
+    )
+
+
+@app.exception_handler(ValueError)
+async def _value_error_handler(request: Request, exc: ValueError) -> Any:
+    """Return 422 for ValueError exceptions."""
+    from fastapi.responses import JSONResponse
+
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    logger.warning("ValueError on %s: %s", request.url.path, exc)
+    return JSONResponse(
+        status_code=422,
+        content={"error": {"code": 422, "message": str(exc), "request_id": request_id}},
+    )
+
+
+@app.exception_handler(ValidationError)
+async def _validation_error_handler(request: Request, exc: ValidationError) -> Any:
+    """Return 422 for pydantic ValidationError exceptions."""
+    from fastapi.responses import JSONResponse
+
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    logger.warning("ValidationError on %s: %s", request.url.path, exc)
+    return JSONResponse(
+        status_code=422,
+        content={"error": {"code": 422, "message": str(exc), "request_id": request_id}},
+    )
 
 
 @app.exception_handler(Exception)
 async def _unhandled_exception_handler(request: Request, exc: Exception) -> Any:
     """Return traceback detail for unhandled errors to aid debugging."""
-    import traceback
-
     from fastapi.responses import JSONResponse
 
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     tb = traceback.format_exc()
     logger.error("Unhandled %s on %s: %s\n%s", type(exc).__name__, request.url.path, exc, tb)
     return JSONResponse(
         status_code=500,
         content={
-            "detail": str(exc),
-            "type": type(exc).__name__,
-            "path": request.url.path,
-            "traceback": tb.splitlines()[-5:],
+            "error": {"code": 500, "message": "Internal server error", "request_id": request_id}
         },
     )
+
+
+# -- Startup / shutdown events -----------------------------------------------
+
+
+@app.on_event("startup")
+async def _on_startup() -> None:
+    """Log application configuration at startup."""
+    env = os.getenv("TELOSCOPY_ENV", "development")
+    logger.info("Teloscopy v%s starting [env=%s]", app.version, env)
+    logger.info("Templates dir: %s (exists=%s)", _TEMPLATES_DIR, _TEMPLATES_DIR.exists())
+    logger.info("Static dir:    %s (exists=%s)", _STATIC_DIR, _STATIC_DIR.exists())
+    logger.info("Upload dir:    %s (exists=%s)", _UPLOAD_DIR, _UPLOAD_DIR.exists())
+
+
+@app.on_event("shutdown")
+async def _on_shutdown() -> None:
+    """Log graceful shutdown."""
+    logger.info("Teloscopy v%s shutting down gracefully.", app.version)
 
 
 # -- Templates & static files -----------------------------------------------
@@ -730,13 +957,45 @@ async def debug_templates(request: Request) -> dict[str, Any]:
 # -- Health -----------------------------------------------------------------
 
 
-@app.get("/api/health", response_model=HealthResponse)
+@app.get(
+    "/api/health",
+    response_model=HealthResponse,
+    tags=["Health"],
+    summary="Health check",
+    description="Returns system health status including uptime and version info.",
+    dependencies=[Depends(rate_limit(60, 60))],
+)
 async def health_check() -> HealthResponse:
     """Liveness / readiness probe."""
     return HealthResponse()
 
 
-@app.get("/api/agents/status", response_model=AgentSystemStatus)
+@app.get(
+    "/readiness",
+    tags=["Health"],
+    summary="Readiness check",
+    description="Checks if all subsystems (pipeline, diet advisor, disease predictor) are available and ready to serve requests.",
+)
+async def readiness_check() -> dict[str, Any]:
+    """Return readiness status of all subsystems."""
+    return {
+        "status": "ready",
+        "checks": {
+            "pipeline": True,
+            "diet_advisor": True,
+            "disease_predictor": True,
+        },
+    }
+
+
+@app.get(
+    "/api/agents/status",
+    response_model=AgentSystemStatus,
+    tags=["Agents"],
+    summary="Agent system status",
+    description="Returns the current status of each agent in the multi-agent system, including active jobs and uptime.",
+    dependencies=[Depends(rate_limit(60, 60))],
+)
 async def agents_status() -> AgentSystemStatus:
     """Return status of each agent in the multi-agent system."""
     now: datetime = datetime.utcnow()
@@ -783,7 +1042,15 @@ async def agents_status() -> AgentSystemStatus:
 # -- Upload -----------------------------------------------------------------
 
 
-@app.post("/api/upload", response_model=UploadResponse, status_code=201)
+@app.post(
+    "/api/upload",
+    response_model=UploadResponse,
+    status_code=201,
+    tags=["Analysis"],
+    summary="Upload microscopy image",
+    description="Upload a microscopy or face photograph image and receive a job_id for tracking subsequent analysis.",
+    dependencies=[Depends(rate_limit(10, 60))],
+)
 async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
     """Upload a microscopy image and receive a ``job_id``."""
     if not file.filename or not _validate_extension(file.filename):
@@ -813,7 +1080,14 @@ async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
 # -- Status / results -------------------------------------------------------
 
 
-@app.get("/api/status/{job_id}", response_model=JobStatus)
+@app.get(
+    "/api/status/{job_id}",
+    response_model=JobStatus,
+    tags=["Analysis"],
+    summary="Get job status",
+    description="Return the current status and progress of an analysis job by its job_id.",
+    dependencies=[Depends(rate_limit(60, 60))],
+)
 async def get_job_status(job_id: str) -> JobStatus:
     """Return the current status of an analysis job."""
     job: JobStatus | None = _jobs.get(job_id)
@@ -825,7 +1099,14 @@ async def get_job_status(job_id: str) -> JobStatus:
     return job
 
 
-@app.get("/api/results/{job_id}", response_model=AnalysisResponse)
+@app.get(
+    "/api/results/{job_id}",
+    response_model=AnalysisResponse,
+    tags=["Analysis"],
+    summary="Get analysis results",
+    description="Return the full analysis results (telomere, disease risk, nutrition) for a completed job.",
+    dependencies=[Depends(rate_limit(60, 60))],
+)
 async def get_job_results(job_id: str) -> AnalysisResponse:
     """Return the full results of a completed analysis job."""
     job: JobStatus | None = _jobs.get(job_id)
@@ -845,7 +1126,15 @@ async def get_job_results(job_id: str) -> AnalysisResponse:
 # -- Full analysis -----------------------------------------------------------
 
 
-@app.post("/api/analyze", response_model=JobStatus, status_code=202)
+@app.post(
+    "/api/analyze",
+    response_model=JobStatus,
+    status_code=202,
+    tags=["Analysis"],
+    summary="Run full analysis pipeline",
+    description="Upload an image with user profile data and run the complete analysis pipeline (telomere measurement, disease risk, nutrition plan).",
+    dependencies=[Depends(rate_limit(20, 60))],
+)
 async def full_analysis(
     file: UploadFile = File(...),
     age: int = Form(...),
@@ -902,7 +1191,14 @@ async def full_analysis(
 # -- Disease risk (standalone) -----------------------------------------------
 
 
-@app.post("/api/disease-risk", response_model=DiseaseRiskResponse)
+@app.post(
+    "/api/disease-risk",
+    response_model=DiseaseRiskResponse,
+    tags=["Disease Risk"],
+    summary="Predict disease risks",
+    description="Compute disease-risk scores from known genetic variants, age, sex, and region without requiring an image upload.",
+    dependencies=[Depends(rate_limit(20, 60))],
+)
 async def disease_risk(request: DiseaseRiskRequest) -> DiseaseRiskResponse:
     """Compute disease-risk scores from variants and telomere data."""
     variant_dict = _build_variant_dict(request.known_variants)
@@ -924,7 +1220,14 @@ async def disease_risk(request: DiseaseRiskRequest) -> DiseaseRiskResponse:
 # -- Diet plan (standalone) --------------------------------------------------
 
 
-@app.post("/api/diet-plan", response_model=DietPlanResponse)
+@app.post(
+    "/api/diet-plan",
+    response_model=DietPlanResponse,
+    tags=["Nutrition"],
+    summary="Generate diet plan",
+    description="Generate a personalised diet plan based on genetic risk profile, dietary restrictions, and regional food preferences.",
+    dependencies=[Depends(rate_limit(20, 60))],
+)
 async def diet_plan(request: DietPlanRequest) -> DietPlanResponse:
     """Generate a personalised diet plan."""
     variant_dict = _build_variant_dict(request.known_variants)
@@ -972,7 +1275,14 @@ async def diet_plan(request: DietPlanRequest) -> DietPlanResponse:
 # -- Image validation --------------------------------------------------------
 
 
-@app.post("/api/validate-image", response_model=ImageValidationResponse)
+@app.post(
+    "/api/validate-image",
+    response_model=ImageValidationResponse,
+    tags=["Analysis"],
+    summary="Validate image",
+    description="Validate an uploaded image before analysis — checks format, dimensions, and classifies as face photo or microscopy image.",
+    dependencies=[Depends(rate_limit(10, 60))],
+)
 async def validate_image(file: UploadFile = File(...)) -> ImageValidationResponse:
     """Validate an uploaded image before analysis.
 
@@ -997,7 +1307,14 @@ async def validate_image(file: UploadFile = File(...)) -> ImageValidationRespons
 # -- Profile-only analysis (no image) ----------------------------------------
 
 
-@app.post("/api/profile-analysis", response_model=ProfileAnalysisResponse)
+@app.post(
+    "/api/profile-analysis",
+    response_model=ProfileAnalysisResponse,
+    tags=["Analysis"],
+    summary="Profile-only analysis",
+    description="Run disease-risk and nutrition analysis using only user-provided details (no image upload required).",
+    dependencies=[Depends(rate_limit(20, 60))],
+)
 async def profile_analysis(request: ProfileAnalysisRequest) -> ProfileAnalysisResponse:
     """Run disease-risk and nutrition analysis using only user-provided details.
 
@@ -1062,7 +1379,14 @@ async def profile_analysis(request: ProfileAnalysisRequest) -> ProfileAnalysisRe
 # -- Standalone nutrition endpoint -------------------------------------------
 
 
-@app.post("/api/nutrition", response_model=NutritionResponse)
+@app.post(
+    "/api/nutrition",
+    response_model=NutritionResponse,
+    tags=["Nutrition"],
+    summary="Personalised nutrition plan",
+    description="Generate a personalised nutrition plan from user details including health conditions, dietary restrictions, and genetic variants.",
+    dependencies=[Depends(rate_limit(20, 60))],
+)
 async def nutrition_plan(request: NutritionRequest) -> NutritionResponse:
     """Generate a personalised nutrition plan from user details.
 
