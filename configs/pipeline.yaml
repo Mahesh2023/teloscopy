@@ -1,0 +1,51 @@
+pipeline:
+  # Image preprocessing
+  preprocessing:
+    background_method: "rolling_ball"    # rolling_ball | tophat | gaussian
+    background_radius: 50               # pixels
+    denoise_sigma: 1.0                  # Gaussian blur sigma
+    
+  # Chromosome segmentation (DAPI channel)
+  segmentation:
+    method: "otsu_watershed"            # otsu_watershed | cellpose
+    min_chromosome_area: 500            # pixels, filter small objects
+    watershed_min_distance: 20          # pixels, min distance between chromosome centers
+    cellpose_model: "nuclei"            # cellpose model type (if method=cellpose)
+    cellpose_diameter: 60               # expected chromosome diameter in pixels
+    
+  # Telomere spot detection (Cy3/FITC channel)
+  spot_detection:
+    method: "blob_log"                  # blob_log | blob_dog | blob_doh
+    min_sigma: 1.0                      # minimum spot size (sigma)
+    max_sigma: 5.0                      # maximum spot size (sigma)
+    num_sigma: 10                       # number of intermediate sigma values
+    threshold: 0.05                     # detection threshold (lower = more sensitive)
+    min_intensity: 100                  # minimum spot intensity (filter noise)
+    
+  # Telomere-chromosome association
+  association:
+    max_distance: 15                    # pixels, max distance from chromosome tip
+    
+  # Intensity quantification
+  quantification:
+    spot_radius: 5                      # pixels, measurement aperture
+    bg_inner_radius: 7                  # pixels, background annulus inner
+    bg_outer_radius: 12                 # pixels, background annulus outer
+
+# Calibration: intensity to base pairs conversion
+calibration:
+  enabled: false
+  method: "linear"                      # linear | polynomial
+  # Reference points (intensity, length_bp)
+  references:
+    - intensity: 5000
+      length_bp: 10000
+    - intensity: 50000
+      length_bp: 80000
+
+# Output settings
+output:
+  format: "csv"                         # csv | excel | json
+  save_overlays: true                   # save annotated images
+  save_individual_cells: false          # save cropped cell images
+  report: true                          # generate HTML report

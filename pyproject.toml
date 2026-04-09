@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "teloscopy"
+version = "0.1.0"
+description = "Python pipeline for telomere length analysis from qFISH microscopy images and sequencing data"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Teloscopy Contributors"},
+]
+keywords = ["telomere", "qFISH", "microscopy", "bioinformatics", "image-analysis", "fluorescence"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.1",
+    "scikit-image>=0.22",
+    "opencv-python-headless>=4.8",
+    "tifffile>=2023.7",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "click>=8.1",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+cellpose = ["cellpose>=3.0"]
+sequencing = ["biopython>=1.83", "pysam>=0.22"]
+interactive = ["plotly>=5.18", "napari>=0.4"]
+all = [
+    "cellpose>=3.0",
+    "biopython>=1.83",
+    "pysam>=0.22",
+    "plotly>=5.18",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.3",
+]
+
+[project.scripts]
+teloscopy = "teloscopy.cli:main"
+
+[project.urls]
+Repository = "https://github.com/teloscopy/teloscopy"
+Documentation = "https://teloscopy.readthedocs.io"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
