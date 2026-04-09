@@ -41,7 +41,6 @@ from teloscopy.tracking.longitudinal import (
 )
 
 logger = logging.getLogger(__name__)
-
 _EPS = 1e-12  # guard against division by zero
 
 # ---------------------------------------------------------------------------
@@ -112,15 +111,12 @@ def _match_spots(
         return 0, len(pred), 0, 0.0
     if len(pred) == 0:
         return 0, 0, len(gt), 0.0
-
     diff = pred[:, np.newaxis, :] - gt[np.newaxis, :, :]
     dists = np.sqrt((diff**2).sum(axis=2))
-
     matched_gt: set[int] = set()
     matched_pred: set[int] = set()
     errors: list[float] = []
     n_gt = dists.shape[1]
-
     for flat_idx in np.argsort(dists, axis=None):
         pi, gi = int(flat_idx // n_gt), int(flat_idx % n_gt)
         if pi in matched_pred or gi in matched_gt:
@@ -131,7 +127,6 @@ def _match_spots(
         matched_pred.add(pi)
         matched_gt.add(gi)
         errors.append(float(d))
-
     tp = len(matched_gt)
     return tp, len(pred) - tp, len(gt) - tp, (float(np.mean(errors)) if errors else 0.0)
 
@@ -318,7 +313,7 @@ def _load_nhanes(ds: Path) -> list[dict[str, float]]:
                 except (ValueError, TypeError):
                     continue
             return rows
-    # SAS XPORT fallback
+    # SAS XPORT fallback (NHANES distributes .XPT files)
     for xpt in sorted(ds.glob("*.XPT")) + sorted(ds.glob("*.xpt")):
         try:
             import pandas as pd  # type: ignore[import-untyped]
@@ -349,6 +344,12 @@ class BenchmarkSuite:
         Root directory for benchmark datasets (``~`` expanded).
     output_dir : str
         Directory for reports and exported JSON.
+
+    Examples
+    --------
+    >>> suite = BenchmarkSuite()
+    >>> report = suite.run_all()
+    >>> print(suite.generate_report(report))
     """
 
     def __init__(
@@ -363,7 +364,7 @@ class BenchmarkSuite:
     # ------------------------------------------------------------------
 
     def run_all(self) -> BenchmarkReport:
-        """Execute every benchmark and return an aggregate report."""
+        """Execute every benchmark and return an aggregate :class:`BenchmarkReport`."""
         ts = datetime.now(tz=timezone.utc).isoformat()
         logger.info("Starting full benchmark run at %s", ts)
         spot = self.benchmark_spot_detection()
@@ -391,39 +392,44 @@ class BenchmarkSuite:
         return report
 
     # ------------------------------------------------------------------
-    # Spot detection
+    # Spot detection benchmark
     # ------------------------------------------------------------------
 
     def benchmark_spot_detection(self, dataset_name: str = "spotiflow_fish") -> SpotDetectionResult:
-        """Evaluate CNN spot detector on Spotiflow FISH data.  Compares
-        :class:`CNNSpotDetector` against LoG baseline at multiple thresholds.
+        """Evaluate CNN spot detector on Spotiflow FISH benchmark data.
+
+        Compares :class:`~teloscopy.ml.cnn_spot_detector.CNNSpotDetector`
+        against a classical LoG baseline.  Reports F1, precision, recall
+        at different confidence thresholds.
         """
         ds = _resolve_dir(self.data_dir, dataset_name)
         data = _load_spot_annotations(ds)
         if not data:
-            logger.warning("'%s' not found at %s — skipping.", dataset_name, ds)
+            logger.warning("Dataset '%s' not found at %s — skipping.", dataset_name, ds)
             return SpotDetectionResult(dataset_name=dataset_name)
 
         logger.info("Spot detection benchmark: %d images", len(data))
         tol = 5.0
         thresholds = [0.15, 0.25, 0.35, 0.50, 0.65, 0.80]
 
-        def _eval(detect_fn):
-            """Run *detect_fn(img)→list[dict]* over all images."""
-            at, af, an, ds_ = 0, 0, 0, []  # type: ignore[var-annotated]
+        def _eval(detect_fn):  # type: ignore[no-untyped-def]
+            """Run *detect_fn(img) -> list[dict]* over all images."""
+            at, af, an = 0, 0, 0
+            ds_: list[float] = []
             for _, image, gt in data:
                 img = image if image.ndim == 2 else image[:, :, 0]
                 spots = detect_fn(img)
                 pc = np.array([[s["y"], s["x"]] for s in spots]) if spots else np.empty((0, 2))
-                tp, fp, fn, me = _match_spots(pc, gt, tol)
+                tp, fp, fn_, me = _match_spots(pc, gt, tol)
                 at += tp
                 af += fp
-                an += fn
+                an += fn_  # noqa: E702
                 if me > 0:
                     ds_.append(me)
             p, r, f = _precision_recall_f1(at, af, an)
             return p, r, f, (float(np.mean(ds_)) if ds_ else 0.0)
 
+        # CNN at multiple thresholds
         per_thresh: dict[str, float] = {}
         headline: dict[str, float] = {}
         for th in thresholds:
@@ -433,10 +439,9 @@ class BenchmarkSuite:
             if th == 0.35:
                 headline = {"precision": p, "recall": r, "f1": f, "mean_distance_error": me}
         if not headline:
-            headline = {"precision": 0, "recall": 0, "f1": 0, "mean_distance_error": 0}
-
+            headline = {"precision": 0.0, "recall": 0.0, "f1": 0.0, "mean_distance_error": 0.0}
+        # LoG baseline comparison
         lp, lr, lf, ld = _eval(lambda img: detect_spots(img, method="blob_log"))
-
         return SpotDetectionResult(
             dataset_name=dataset_name,
             n_images=len(data),
@@ -450,14 +455,17 @@ class BenchmarkSuite:
         )
 
     # ------------------------------------------------------------------
-    # Disease prediction
+    # Disease prediction benchmark
     # ------------------------------------------------------------------
 
     def benchmark_disease_prediction(
         self, dataset_name: str = "clinvar_variants"
     ) -> DiseaseRiskResult:
-        """Validate disease risk predictions against ClinVar pathogenic/benign
-        annotations.  Reports sensitivity/specificity for known pathogenic variants.
+        """Validate disease risk predictions against ClinVar-annotated variants.
+
+        Cross-references ClinVar pathogenic/benign annotations against
+        :data:`~teloscopy.genomics.disease_risk.BUILTIN_VARIANT_DB`.
+        Reports sensitivity/specificity for known pathogenic variants.
         """
         ds = _resolve_dir(self.data_dir, dataset_name)
         clinvar = _load_clinvar_tsv(ds)
@@ -465,7 +473,6 @@ class BenchmarkSuite:
         if not clinvar:
             logger.warning("ClinVar not found at %s — internal validation.", ds)
             return self._disease_internal(dataset_name, builtin)
-
         logger.info("Disease benchmark: %d ClinVar rows vs %d built-in", len(clinvar), len(builtin))
         tp, tn, fp, fn = 0, 0, 0, 0
         gene_ok: dict[str, list[bool]] = {}
@@ -480,13 +487,13 @@ class BenchmarkSuite:
             pred_path = builtin[row["rsid"]].effect_size > 0
             gene_ok.setdefault(row["gene"], []).append(pred_path == is_path)
             if is_path and pred_path:
-                tp += 1
+                tp += 1  # noqa: E701
             elif is_ben and not pred_path:
-                tn += 1
+                tn += 1  # noqa: E701
             elif is_ben and pred_path:
-                fp += 1
+                fp += 1  # noqa: E701
             elif is_path and not pred_path:
-                fn += 1
+                fn += 1  # noqa: E701
         return self._disease_result(dataset_name, tp, tn, fp, fn, gene_ok)
 
     def _disease_internal(
@@ -502,19 +509,20 @@ class BenchmarkSuite:
             is_risk = v.effect_size > 0
             gene_ok.setdefault(v.gene, []).append(has_risk == is_risk)
             if is_risk and has_risk:
-                tp += 1
+                tp += 1  # noqa: E701
             elif not is_risk and not has_risk:
-                tn += 1
+                tn += 1  # noqa: E701
             elif not is_risk and has_risk:
-                fp += 1
+                fp += 1  # noqa: E701
             else:
-                fn += 1
+                fn += 1  # noqa: E701
         return self._disease_result(f"{dataset_name} (internal)", tp, tn, fp, fn, gene_ok)
 
     @staticmethod
     def _disease_result(
         name: str, tp: int, tn: int, fp: int, fn: int, gene_ok: dict[str, list[bool]]
     ) -> DiseaseRiskResult:
+        """Construct a :class:`DiseaseRiskResult` from raw confusion-matrix counts."""
         return DiseaseRiskResult(
             dataset_name=name,
             n_variants_tested=tp + tn + fp + fn,
@@ -527,7 +535,7 @@ class BenchmarkSuite:
         )
 
     # ------------------------------------------------------------------
-    # Telomere population
+    # Telomere population benchmark
     # ------------------------------------------------------------------
 
     def benchmark_telomere_population(
@@ -537,88 +545,77 @@ class BenchmarkSuite:
 
         Compares predicted vs actual age-stratified telomere length
         distributions.  Reports R², RMSE, Bland–Altman metrics.
-
-        References: Needham *et al.*, *Soc. Sci. Med.* 85 (2013).
         """
         ds = _resolve_dir(self.data_dir, dataset_name)
         nhanes = _load_nhanes(ds)
         if not nhanes:
-            logger.warning("NHANES dataset not found at %s — synthetic validation.", ds)
+            logger.warning("NHANES not found at %s — synthetic validation.", ds)
             return self._telomere_pop_synthetic(dataset_name)
-
         logger.info("Telomere pop benchmark: %d NHANES subjects", len(nhanes))
-
         # Bin by age groups matching _POPULATION_REFERENCE
         bins: dict[str, list[float]] = {}
         for rec in nhanes:
-            age = int(rec["age"])
             for lo, hi in _POPULATION_REFERENCE:
-                if lo <= age <= hi:
+                if lo <= int(rec["age"]) <= hi:
                     bins.setdefault(f"{lo}-{hi}", []).append(rec["mean_tl_kb"])
                     break
-
-        obs_means, pred_means, labels = [], [], []  # type: ignore[var-annotated]
+        obs, pred, labels = [], [], []  # type: ignore[var-annotated]
         per_grp: dict[str, float] = {}
         for (lo, hi), (ref_mean, _) in sorted(_POPULATION_REFERENCE.items()):
-            label = f"{lo}-{hi}"
-            if label not in bins or len(bins[label]) < 2:
+            lbl = f"{lo}-{hi}"
+            if lbl not in bins or len(bins[lbl]) < 2:
                 continue
-            om = float(np.mean(bins[label]))
-            obs_means.append(om)
-            pred_means.append(ref_mean)
-            labels.append(label)
-            per_grp[label] = max(0.0, 1.0 - abs(ref_mean - om) / (om + _EPS))
-
-        if len(obs_means) < 2:
+            om = float(np.mean(bins[lbl]))
+            obs.append(om)
+            pred.append(ref_mean)
+            labels.append(lbl)  # noqa: E702
+            per_grp[lbl] = max(0.0, 1.0 - abs(ref_mean - om) / (om + _EPS))
+        if len(obs) < 2:
             return TelomerePopResult(dataset_name=dataset_name, n_subjects=len(nhanes))
-
-        oa, pa = np.array(obs_means), np.array(pred_means)
-        ba_m, ba_l = _bland_altman(pa, oa)
-        return TelomerePopResult(
-            dataset_name=dataset_name,
-            n_subjects=len(nhanes),
-            r_squared=_r_squared(oa, pa),
-            rmse=_rmse(oa, pa),
-            bland_altman_mean_diff=ba_m,
-            bland_altman_limits=ba_l,
-            age_groups_tested=labels,
-            per_age_group_correlation=per_grp,
-        )
+        return self._pop_result(dataset_name, len(nhanes), obs, pred, labels, per_grp)
 
     def _telomere_pop_synthetic(self, dataset_name: str) -> TelomerePopResult:
         """Self-consistency check with synthetic samples from built-in stats."""
         rng = np.random.default_rng(42)
-        n_per = 200
-        obs_means, pred_means, labels = [], [], []  # type: ignore[var-annotated]
+        n_per, total = 200, 0
+        obs, pred, labels = [], [], []  # type: ignore[var-annotated]
         per_grp: dict[str, float] = {}
-        total = 0
-
-        for (lo, hi), (ref_mean, ref_sd) in sorted(_POPULATION_REFERENCE.items()):
-            label = f"{lo}-{hi}"
-            samples = np.clip(rng.normal(ref_mean, ref_sd, n_per), 0.5, 20.0)
-            om = float(np.mean(samples))
+        for (lo, hi), (rm, sd) in sorted(_POPULATION_REFERENCE.items()):
+            lbl = f"{lo}-{hi}"
+            om = float(np.mean(np.clip(rng.normal(rm, sd, n_per), 0.5, 20.0)))
             pm, _ = _population_stats_for_age((lo + hi) // 2)
-            obs_means.append(om)
-            pred_means.append(pm)
-            labels.append(label)
-            per_grp[label] = max(0.0, 1.0 - abs(pm - om) / (om + _EPS))
+            obs.append(om)
+            pred.append(pm)
+            labels.append(lbl)  # noqa: E702
+            per_grp[lbl] = max(0.0, 1.0 - abs(pm - om) / (om + _EPS))
             total += n_per
+        return self._pop_result(f"{dataset_name} (synthetic)", total, obs, pred, labels, per_grp)
 
-        oa, pa = np.array(obs_means), np.array(pred_means)
+    @staticmethod
+    def _pop_result(
+        name: str,
+        n: int,
+        obs: list[float],
+        pred: list[float],
+        labels: list[str],
+        pg: dict[str, float],
+    ) -> TelomerePopResult:
+        """Construct a :class:`TelomerePopResult` from observed/predicted arrays."""
+        oa, pa = np.array(obs), np.array(pred)
         ba_m, ba_l = _bland_altman(pa, oa)
         return TelomerePopResult(
-            dataset_name=f"{dataset_name} (synthetic)",
-            n_subjects=total,
+            dataset_name=name,
+            n_subjects=n,
             r_squared=_r_squared(oa, pa),
             rmse=_rmse(oa, pa),
             bland_altman_mean_diff=ba_m,
             bland_altman_limits=ba_l,
             age_groups_tested=labels,
-            per_age_group_correlation=per_grp,
+            per_age_group_correlation=pg,
         )
 
     # ------------------------------------------------------------------
-    # Nuclear segmentation
+    # Nuclear segmentation benchmark
     # ------------------------------------------------------------------
 
     def benchmark_nuclear_segmentation(self, dataset_name: str = "bbbc039") -> SegmentationResult:
@@ -626,19 +623,16 @@ class BenchmarkSuite:
 
         Uses :func:`~teloscopy.telomere.segmentation.segment` with
         ``otsu_watershed``.  Reports IoU and Dice coefficient.
-
-        References: Ljosa *et al.*, *Nature Methods* 9.7 (2012).
         """
         ds = _resolve_dir(self.data_dir, dataset_name)
         pairs = _load_images_and_labels(ds)
         if not pairs:
-            logger.warning("BBBC039 dataset not found at %s — skipping.", ds)
+            logger.warning("BBBC039 not found at %s — skipping.", ds)
             return SegmentationResult(dataset_name=dataset_name)
-
         logger.info("Segmentation benchmark: %d images", len(pairs))
         per_img: dict[str, float] = {}
-        ious, dices = [], []  # type: ignore[var-annotated]
-
+        ious: list[float] = []
+        dices: list[float] = []
         for fname, image, gt_labels in pairs:
             img = image if image.ndim == 2 else image[:, :, 0]
             pred_labels = segment(img, method="otsu_watershed")
@@ -647,7 +641,6 @@ class BenchmarkSuite:
             per_img[fname] = iou
             ious.append(iou)
             dices.append(dice)
-
         return SegmentationResult(
             dataset_name=dataset_name,
             n_images=len(pairs),
@@ -657,11 +650,11 @@ class BenchmarkSuite:
         )
 
     # ------------------------------------------------------------------
-    # Reporting
+    # Report generation & export
     # ------------------------------------------------------------------
 
     def generate_report(self, results: BenchmarkReport) -> str:
-        """Generate a Markdown report from benchmark results."""
+        """Generate a human-readable Markdown report from benchmark results."""
         lines = [
             "# Teloscopy Benchmark Report",
             "",
@@ -670,15 +663,11 @@ class BenchmarkSuite:
             "",
         ]
         if results.metadata:
-            lines += (
-                ["## Environment", ""]
-                + [f"- **{k}:** {v}" for k, v in results.metadata.items()]
-                + [""]
-            )
-
+            lines += ["## Environment", ""]
+            lines += [f"- **{k}:** {v}" for k, v in results.metadata.items()]
+            lines += [""]
         for res in results.results:
             lines.extend(self._fmt(res))
-
         lines += ["---", "*Generated by `teloscopy.data.benchmarks.BenchmarkSuite`*"]
         return "\n".join(lines)
 
@@ -691,7 +680,7 @@ class BenchmarkSuite:
         logger.info("Exported results to %s", out)
 
     # ------------------------------------------------------------------
-    # Private
+    # Private helpers
     # ------------------------------------------------------------------
 
     @staticmethod
@@ -706,7 +695,7 @@ class BenchmarkSuite:
                 f"- **Mean dist error:** {result.mean_distance_error:.2f} px",
             ]
             if result.per_threshold_f1:
-                lines += ["", "| Thresh | F1 |", "|--------|------|"]
+                lines += ["", "| Threshold | F1 |", "|-----------|------|"]
                 lines += [f"| {t} | {f:.4f} |" for t, f in result.per_threshold_f1.items()]
             if result.comparison_vs_log:
                 cv = result.comparison_vs_log

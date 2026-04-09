@@ -404,6 +404,7 @@
     <ul class="navbar-links">
         <li><a href="#hero" class="active">Home</a></li>
         <li><a href="#upload-section">Analyze</a></li>
+        <li><a href="#nutrition-section">Nutrition</a></li>
         <li><a href="#results-section">Results</a></li>
         <li><a href="#agents-section">Agents</a></li>
         <li><a href="/dashboard">Dashboard</a></li>
@@ -416,16 +417,16 @@
 <section class="hero" id="hero">
     <h1>Decode Your <span class="highlight">Telomeres</span></h1>
     <p>
-        Upload a fluorescence microscopy image and receive a comprehensive
-        analysis of telomere length, personalised disease-risk assessment,
-        and AI-driven dietary recommendations &mdash; all powered by our
-        multi-agent genomics pipeline.
+        Upload a fluorescence microscopy image <strong>or a face photo</strong> and
+        receive a comprehensive analysis of telomere length, personalised
+        disease-risk assessment, and AI-driven dietary recommendations &mdash;
+        or skip the image and get nutrition &amp; risk insights from your profile alone.
     </p>
     <div class="hero-badges">
         <span class="badge"><span class="dot dot--green"></span> Image Analysis</span>
         <span class="badge"><span class="dot dot--blue"></span> Genomics</span>
         <span class="badge"><span class="dot dot--yellow"></span> Nutrition AI</span>
-        <span class="badge"><span class="dot dot--green"></span> Improvement Agent</span>
+        <span class="badge"><span class="dot dot--green"></span> Face Analysis</span>
     </div>
 </section>
 
@@ -435,7 +436,7 @@
 <section class="section" id="upload-section">
     <h2 class="section-title">Upload &amp; Profile</h2>
     <p class="section-subtitle">
-        Drag-and-drop a microscopy image and fill in your profile to start the analysis.
+        Upload a microscopy image or face photo, <strong>or skip the image</strong> and enter your details for nutrition &amp; risk analysis.
     </p>
 
     <!-- Drop zone -->
@@ -443,15 +444,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
         </svg>
-        <h3>Drop your microscopy image here</h3>
-        <p>or click to browse &mdash; PNG, JPEG, TIFF, BMP up to 50 MB</p>
+        <h3>Drop your image here</h3>
+        <p>Microscopy images (FISH/qFISH) <strong>or face photos</strong> &mdash; PNG, JPEG, TIFF, BMP up to 50 MB</p>
         <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp">
     </div>
     <div class="file-info" id="file-info">
         <span id="file-name"></span>
         <span id="file-size" style="color:var(--text-dim);"></span>
+        <span id="image-type-badge" class="badge" style="display:none;margin-left:.5rem;"></span>
         <button class="btn btn-outline" style="padding:.3rem .8rem;font-size:.8rem;margin-left:auto;" onclick="clearFile()">Remove</button>
     </div>
+    <!-- Image validation feedback -->
+    <div id="image-validation" style="display:none;margin-top:.75rem;padding:.75rem 1rem;border-radius:var(--radius-sm);font-size:.88rem;"></div>
 
     <!-- Profile form -->
     <form id="profile-form" class="profile-form" onsubmit="return false;">
@@ -493,6 +497,14 @@
             <label for="variants">Known Genetic Variants</label>
             <input type="text" id="variants" name="known_variants" placeholder="e.g. APOE-e4, BRCA1, rs429358">
         </div>
+        <div class="form-group">
+            <label for="health-conditions">Health Conditions</label>
+            <input type="text" id="health-conditions" name="health_conditions" placeholder="e.g. diabetes, hypertension">
+        </div>
+        <div class="form-group">
+            <label for="calorie-target">Calorie Target</label>
+            <input type="number" id="calorie-target" name="calorie_target" min="800" max="5000" placeholder="e.g. 2000" value="2000">
+        </div>
         <div class="form-group" style="grid-column: 1 / -1;">
             <label>Dietary Restrictions</label>
             <div class="checkbox-group">
@@ -511,7 +523,11 @@
     <div class="btn-row">
         <button class="btn btn-primary" id="analyze-btn" onclick="startAnalysis()">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-            Analyze
+            Analyze with Image
+        </button>
+        <button class="btn btn-outline" id="profile-btn" onclick="startProfileAnalysis()" style="border-color:var(--accent);color:var(--accent);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+            Analyze Profile Only
         </button>
     </div>
 
@@ -529,6 +545,98 @@
 </section>
 
 <!-- ================================================================
+     NUTRITION (standalone)
+     ================================================================ -->
+<section class="section" id="nutrition-section" style="scroll-margin-top:80px;">
+    <h2 class="section-title">Nutrition Planner</h2>
+    <p class="section-subtitle">
+        Get a personalised nutrition plan based on your profile, dietary preferences, and health goals &mdash; no image needed.
+    </p>
+    <form id="nutrition-form" class="profile-form" onsubmit="return false;">
+        <div class="form-group">
+            <label for="nut-age">Age</label>
+            <input type="number" id="nut-age" min="1" max="150" placeholder="e.g. 35" required>
+        </div>
+        <div class="form-group">
+            <label for="nut-sex">Biological Sex</label>
+            <select id="nut-sex" required>
+                <option value="">Select&hellip;</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="nut-region">Region</label>
+            <select id="nut-region" required>
+                <option value="">Select&hellip;</option>
+                <option value="East Asia">East Asia</option>
+                <option value="South Asia">South Asia</option>
+                <option value="Southeast Asia">Southeast Asia</option>
+                <option value="Central Asia">Central Asia</option>
+                <option value="Western Asia">Western Asia</option>
+                <option value="Northern Europe">Northern Europe</option>
+                <option value="Western Europe">Western Europe</option>
+                <option value="Eastern Europe">Eastern Europe</option>
+                <option value="Southern Europe">Southern Europe</option>
+                <option value="North Africa">North Africa</option>
+                <option value="Sub-Saharan Africa">Sub-Saharan Africa</option>
+                <option value="North America">North America</option>
+                <option value="Central America">Central America</option>
+                <option value="South America">South America</option>
+                <option value="Oceania">Oceania</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="nut-calories">Calorie Target</label>
+            <input type="number" id="nut-calories" min="800" max="5000" placeholder="e.g. 2000" value="2000">
+        </div>
+        <div class="form-group">
+            <label for="nut-days">Meal Plan Days</label>
+            <select id="nut-days">
+                <option value="3">3 days</option>
+                <option value="5">5 days</option>
+                <option value="7" selected>7 days</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="nut-conditions">Health Conditions</label>
+            <input type="text" id="nut-conditions" placeholder="e.g. diabetes, hypertension, obesity">
+        </div>
+        <div class="form-group">
+            <label for="nut-variants">Known Genetic Variants</label>
+            <input type="text" id="nut-variants" placeholder="e.g. MTHFR, APOE-e4, rs429358">
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Dietary Restrictions</label>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="nut-diet" value="vegetarian"> Vegetarian</label>
+                <label><input type="checkbox" name="nut-diet" value="vegan"> Vegan</label>
+                <label><input type="checkbox" name="nut-diet" value="gluten-free"> Gluten-free</label>
+                <label><input type="checkbox" name="nut-diet" value="dairy-free"> Dairy-free</label>
+                <label><input type="checkbox" name="nut-diet" value="nut-free"> Nut-free</label>
+                <label><input type="checkbox" name="nut-diet" value="halal"> Halal</label>
+                <label><input type="checkbox" name="nut-diet" value="kosher"> Kosher</label>
+                <label><input type="checkbox" name="nut-diet" value="low-sodium"> Low-sodium</label>
+            </div>
+        </div>
+    </form>
+    <div class="btn-row">
+        <button class="btn btn-primary" id="nutrition-btn" onclick="startNutritionPlan()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75-1.5.75a3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0L3 16.5m15-3.379a48.474 48.474 0 0 0-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 0 1 6 13.12"/></svg>
+            Generate Nutrition Plan
+        </button>
+    </div>
+    <!-- Nutrition results -->
+    <div id="nutrition-results" style="display:none;margin-top:2rem;">
+        <div class="result-card" style="border-color:var(--accent);">
+            <h3><span class="icon">&#x1F957;</span> Your Personalised Nutrition Plan</h3>
+            <div id="nutrition-content"></div>
+        </div>
+    </div>
+</section>
+
+<!-- ================================================================
      RESULTS
      ================================================================ -->
 <section class="section" id="results-section">
@@ -541,6 +649,12 @@
             <h3><span class="icon">&#x1F9EC;</span> Telomere Analysis</h3>
             <div class="stat-grid" id="telomere-stats"></div>
             <div id="telomere-overlay" class="mt-2"></div>
+        </div>
+
+        <!-- Facial Analysis Card (hidden by default) -->
+        <div class="result-card" id="facial-card" style="display:none;">
+            <h3><span class="icon">&#x1F9D1;</span> Facial Analysis</h3>
+            <div id="facial-content"></div>
         </div>
 
         <!-- Disease Risk Card -->
@@ -613,11 +727,14 @@
     const fileName        = document.getElementById('file-name');
     const fileSize        = document.getElementById('file-size');
     const analyzeBtn      = document.getElementById('analyze-btn');
+    const profileBtn      = document.getElementById('profile-btn');
     const progressWrapper = document.getElementById('progress-wrapper');
     const progressFill    = document.getElementById('progress-fill');
     const progressPct     = document.getElementById('progress-pct');
     const progressMessage = document.getElementById('progress-message');
     const resultsSection  = document.getElementById('results-section');
+    const imageTypeBadge  = document.getElementById('image-type-badge');
+    const imageValidation = document.getElementById('image-validation');
 
     /* ---- Drag & Drop ---- */
     ['dragenter', 'dragover'].forEach(ev => {
@@ -639,12 +756,57 @@
         fileName.textContent = file.name;
         fileSize.textContent = '(' + (file.size / 1024 / 1024).toFixed(2) + ' MB)';
         fileInfo.classList.add('visible');
+        imageTypeBadge.style.display = 'none';
+        imageValidation.style.display = 'none';
+        validateImage(file);
+    }
+
+    async function validateImage(file) {
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch('/api/validate-image', { method: 'POST', body: fd });
+            if (!res.ok) return;
+            const v = await res.json();
+
+            /* Show image type badge */
+            if (v.image_type && v.image_type !== 'unknown') {
+                const typeLabels = {
+                    'face_photo': 'Face Photo',
+                    'fish_microscopy': 'Microscopy Image',
+                    'unknown_photo': 'Unknown Image'
+                };
+                imageTypeBadge.innerHTML = '<span class="dot dot--' +
+                    (v.image_type === 'face_photo' ? 'blue' : v.image_type === 'fish_microscopy' ? 'green' : 'yellow') +
+                    '"></span> ' + (typeLabels[v.image_type] || v.image_type);
+                imageTypeBadge.style.display = 'inline-flex';
+            }
+
+            /* Show validation issues or success */
+            if (!v.valid && v.issues && v.issues.length) {
+                imageValidation.style.display = 'block';
+                imageValidation.style.background = 'rgba(255,77,106,.1)';
+                imageValidation.style.border = '1px solid rgba(255,77,106,.3)';
+                imageValidation.style.color = 'var(--danger)';
+                imageValidation.innerHTML = '<strong>Image issues:</strong> ' + v.issues.join('; ');
+            } else if (v.valid) {
+                imageValidation.style.display = 'block';
+                imageValidation.style.background = 'rgba(0,212,170,.08)';
+                imageValidation.style.border = '1px solid rgba(0,212,170,.25)';
+                imageValidation.style.color = 'var(--accent)';
+                let msg = 'Image validated: ' + v.width + 'x' + v.height + 'px, ' + v.format_detected.toUpperCase();
+                if (v.face_detected) msg += ' (face detected)';
+                imageValidation.innerHTML = msg;
+            }
+        } catch (e) { /* silent */ }
     }
 
     window.clearFile = function () {
         selectedFile = null;
         fileInput.value = '';
         fileInfo.classList.remove('visible');
+        imageTypeBadge.style.display = 'none';
+        imageValidation.style.display = 'none';
     };
 
     /* ---- Toasts ---- */
@@ -657,9 +819,9 @@
         setTimeout(() => el.remove(), 4000);
     }
 
-    /* ---- Analysis ---- */
+    /* ---- Analysis with image ---- */
     window.startAnalysis = async function () {
-        if (!selectedFile) { toast('Please select an image first.', 'error'); return; }
+        if (!selectedFile) { toast('Please select an image first. Or use "Analyze Profile Only".', 'error'); return; }
         const age    = document.getElementById('age').value;
         const sex    = document.getElementById('sex').value;
         const region = document.getElementById('region').value;
@@ -677,6 +839,7 @@
         fd.append('known_variants', variants);
 
         analyzeBtn.disabled = true;
+        profileBtn.disabled = true;
         progressWrapper.classList.add('visible');
         progressFill.style.width = '0%';
         progressPct.textContent = '0%';
@@ -696,9 +859,94 @@
         } catch (err) {
             toast(err.message, 'error');
             analyzeBtn.disabled = false;
+            profileBtn.disabled = false;
             progressWrapper.classList.remove('visible');
         }
     };
+
+    /* ---- Profile-only analysis (no image) ---- */
+    window.startProfileAnalysis = async function () {
+        const age    = document.getElementById('age').value;
+        const sex    = document.getElementById('sex').value;
+        const region = document.getElementById('region').value;
+        if (!age || !sex || !region) { toast('Please fill in age, sex, and region.', 'error'); return; }
+
+        const diets = Array.from(document.querySelectorAll('input[name="diet"]:checked')).map(cb => cb.value);
+        const variants = document.getElementById('variants').value;
+
+        analyzeBtn.disabled = true;
+        profileBtn.disabled = true;
+        progressWrapper.classList.add('visible');
+        progressFill.style.width = '30%';
+        progressPct.textContent = '30%';
+        progressMessage.textContent = 'Analyzing your profile\u2026';
+        resultsSection.classList.remove('visible');
+
+        try {
+            const res = await fetch('/api/profile-analysis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    age: parseInt(age),
+                    sex: sex,
+                    region: region,
+                    dietary_restrictions: diets,
+                    known_variants: variants ? variants.split(',').map(s => s.trim()).filter(Boolean) : [],
+                    include_nutrition: true,
+                    include_disease_risk: true
+                })
+            });
+
+            progressFill.style.width = '80%';
+            progressPct.textContent = '80%';
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || 'Analysis failed');
+            }
+            const data = await res.json();
+
+            progressFill.style.width = '100%';
+            progressPct.textContent = '100%';
+            progressMessage.textContent = 'Done!';
+
+            /* Render profile results */
+            renderProfileResults(data);
+            toast('Profile analysis complete!', 'success');
+        } catch (err) {
+            toast(err.message, 'error');
+        }
+        analyzeBtn.disabled = false;
+        profileBtn.disabled = false;
+    };
+
+    function renderProfileResults(data) {
+        resultsSection.classList.add('visible');
+        document.getElementById('telomere-card').style.display = 'none';
+        document.getElementById('facial-card').style.display = 'none';
+
+        /* Disease risks */
+        const rl = document.getElementById('risk-list');
+        rl.innerHTML = '';
+        if (data.disease_risks && data.disease_risks.length) {
+            document.getElementById('risk-card').style.display = '';
+            data.disease_risks.forEach(d => {
+                const cls = d.risk_level;
+                rl.innerHTML += '<div class="risk-item ' + cls + '">' +
+                    '<span class="risk-name">' + d.disease + '</span>' +
+                    '<span class="risk-badge ' + cls + '">' + d.risk_level.replace('_', ' ') + '</span>' +
+                    '<span class="risk-prob">' + (d.probability * 100).toFixed(1) + '%</span></div>';
+            });
+        }
+
+        /* Diet */
+        if (data.diet_recommendations) {
+            document.getElementById('diet-card').style.display = '';
+            renderDiet(data.diet_recommendations);
+        }
+
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
     /* ---- Polling ---- */
     function startPolling() {
@@ -725,6 +973,7 @@
                 pollTimer = null;
                 toast('Analysis failed: ' + data.message, 'error');
                 analyzeBtn.disabled = false;
+                profileBtn.disabled = false;
             }
         } catch (err) {
             /* ignore transient fetch errors */
@@ -741,68 +990,112 @@
             toast('Could not load results.', 'error');
         }
         analyzeBtn.disabled = false;
+        profileBtn.disabled = false;
     }
 
-    /* ---- Render ---- */
+    /* ---- Render diet helper ---- */
+    function renderDiet(diet) {
+        const dc = document.getElementById('diet-content');
+        let html = '<p class="diet-summary">' + diet.summary + '</p>';
+        html += '<div class="nutrient-tags">';
+        diet.key_nutrients.forEach(n => { html += '<span class="nutrient-tag">' + n + '</span>'; });
+        html += '</div>';
+        html += '<div class="food-columns">';
+        html += '<div class="food-col increase"><h4>Increase</h4><ul>';
+        diet.foods_to_increase.forEach(f => { html += '<li>' + f + '</li>'; });
+        html += '</ul></div>';
+        html += '<div class="food-col avoid"><h4>Avoid / Reduce</h4><ul>';
+        diet.foods_to_avoid.forEach(f => { html += '<li>' + f + '</li>'; });
+        html += '</ul></div></div>';
+
+        if (diet.meal_plans && diet.meal_plans.length) {
+            html += '<h4 style="margin-bottom:.5rem;color:var(--text-dim);">Sample Meal Plans</h4><div class="meal-plans">';
+            diet.meal_plans.forEach((mp, i) => {
+                html += '<div class="meal-day" id="meal-' + i + '">' +
+                    '<div class="meal-day-header" onclick="toggleMeal(' + i + ')">' + mp.day + ' <span>&#9660;</span></div>' +
+                    '<div class="meal-day-body">' +
+                    '<p><span class="meal-label">Breakfast:</span> ' + mp.breakfast + '</p>' +
+                    '<p><span class="meal-label">Lunch:</span> ' + mp.lunch + '</p>' +
+                    '<p><span class="meal-label">Dinner:</span> ' + mp.dinner + '</p>' +
+                    (mp.snacks.length ? '<p><span class="meal-label">Snacks:</span> ' + mp.snacks.join(', ') + '</p>' : '') +
+                    '</div></div>';
+            });
+            html += '</div>';
+        }
+        if (diet.calorie_target) {
+            html += '<p class="mt-2" style="font-size:.9rem;color:var(--text-dim);">Target: ~' + diet.calorie_target + ' kcal/day</p>';
+        }
+        dc.innerHTML = html;
+    }
+
+    /* ---- Render full results ---- */
     function renderResults(r) {
         resultsSection.classList.add('visible');
+        document.getElementById('telomere-card').style.display = '';
+        document.getElementById('risk-card').style.display = '';
+        document.getElementById('diet-card').style.display = '';
 
         /* Telomere stats */
         const t = r.telomere_results;
-        document.getElementById('telomere-stats').innerHTML = `
-            <div class="stat-item"><div class="stat-label">Mean Length</div><div class="stat-value">${t.mean_length} kb</div></div>
-            <div class="stat-item"><div class="stat-label">Std Dev</div><div class="stat-value">${t.std_dev} kb</div></div>
-            <div class="stat-item"><div class="stat-label">T/S Ratio</div><div class="stat-value">${t.t_s_ratio}</div></div>
-            <div class="stat-item"><div class="stat-label">Bio Age Est.</div><div class="stat-value">${t.biological_age_estimate} yr</div></div>
-        `;
+        document.getElementById('telomere-stats').innerHTML =
+            '<div class="stat-item"><div class="stat-label">Mean Length</div><div class="stat-value">' + t.mean_length + ' kb</div></div>' +
+            '<div class="stat-item"><div class="stat-label">Std Dev</div><div class="stat-value">' + t.std_dev + ' kb</div></div>' +
+            '<div class="stat-item"><div class="stat-label">T/S Ratio</div><div class="stat-value">' + t.t_s_ratio + '</div></div>' +
+            '<div class="stat-item"><div class="stat-label">Bio Age Est.</div><div class="stat-value">' + t.biological_age_estimate + ' yr</div></div>';
+
+        /* Facial analysis (if present) */
+        const facialCard = document.getElementById('facial-card');
+        if (r.facial_analysis) {
+            facialCard.style.display = '';
+            const fa = r.facial_analysis;
+            let fhtml = '<div class="stat-grid">';
+            fhtml += '<div class="stat-item"><div class="stat-label">Biological Age</div><div class="stat-value">' + fa.estimated_biological_age + ' yr</div></div>';
+            fhtml += '<div class="stat-item"><div class="stat-label">Telomere Length</div><div class="stat-value">' + fa.estimated_telomere_length_kb.toFixed(2) + ' kb</div></div>';
+            fhtml += '<div class="stat-item"><div class="stat-label">Skin Health</div><div class="stat-value">' + (fa.skin_health_score * 100).toFixed(0) + '%</div></div>';
+            fhtml += '<div class="stat-item"><div class="stat-label">Oxidative Stress</div><div class="stat-value">' + (fa.oxidative_stress_score * 100).toFixed(0) + '%</div></div>';
+            fhtml += '</div>';
+            if (fa.predicted_eye_colour !== 'unknown' || fa.predicted_hair_colour !== 'unknown') {
+                fhtml += '<div class="mt-2" style="font-size:.88rem;color:var(--text-dim);">';
+                if (fa.predicted_eye_colour !== 'unknown') fhtml += 'Eye colour: <strong style="color:var(--text);">' + fa.predicted_eye_colour + '</strong> &nbsp; ';
+                if (fa.predicted_hair_colour !== 'unknown') fhtml += 'Hair colour: <strong style="color:var(--text);">' + fa.predicted_hair_colour + '</strong> &nbsp; ';
+                if (fa.predicted_skin_type !== 'unknown') fhtml += 'Skin type: <strong style="color:var(--text);">' + fa.predicted_skin_type + '</strong>';
+                fhtml += '</div>';
+            }
+            if (fa.ancestry && fa.ancestry.confidence > 0) {
+                fhtml += '<div class="mt-2" style="font-size:.85rem;color:var(--text-dim);">Ancestry estimate (conf. ' + (fa.ancestry.confidence * 100).toFixed(0) + '%): ';
+                const anc = fa.ancestry;
+                const parts = [];
+                if (anc.european > 0.05) parts.push('European ' + (anc.european * 100).toFixed(0) + '%');
+                if (anc.east_asian > 0.05) parts.push('East Asian ' + (anc.east_asian * 100).toFixed(0) + '%');
+                if (anc.south_asian > 0.05) parts.push('South Asian ' + (anc.south_asian * 100).toFixed(0) + '%');
+                if (anc.african > 0.05) parts.push('African ' + (anc.african * 100).toFixed(0) + '%');
+                if (anc.middle_eastern > 0.05) parts.push('Middle Eastern ' + (anc.middle_eastern * 100).toFixed(0) + '%');
+                if (anc.latin_american > 0.05) parts.push('Latin American ' + (anc.latin_american * 100).toFixed(0) + '%');
+                fhtml += parts.join(', ') + '</div>';
+            }
+            if (fa.analysis_warnings && fa.analysis_warnings.length) {
+                fhtml += '<div class="mt-2" style="font-size:.82rem;color:var(--warning);">';
+                fa.analysis_warnings.forEach(w => { fhtml += '<p>' + w + '</p>'; });
+                fhtml += '</div>';
+            }
+            document.getElementById('facial-content').innerHTML = fhtml;
+        } else {
+            facialCard.style.display = 'none';
+        }
 
         /* Disease risks */
         const rl = document.getElementById('risk-list');
         rl.innerHTML = '';
         r.disease_risks.forEach(d => {
             const cls = d.risk_level;
-            rl.innerHTML += `
-                <div class="risk-item ${cls}">
-                    <span class="risk-name">${d.disease}</span>
-                    <span class="risk-badge ${cls}">${d.risk_level.replace('_', ' ')}</span>
-                    <span class="risk-prob">${(d.probability * 100).toFixed(1)}%</span>
-                </div>`;
+            rl.innerHTML += '<div class="risk-item ' + cls + '">' +
+                '<span class="risk-name">' + d.disease + '</span>' +
+                '<span class="risk-badge ' + cls + '">' + d.risk_level.replace('_', ' ') + '</span>' +
+                '<span class="risk-prob">' + (d.probability * 100).toFixed(1) + '%</span></div>';
         });
 
         /* Diet */
-        const dc = document.getElementById('diet-content');
-        const diet = r.diet_recommendations;
-        let html = `<p class="diet-summary">${diet.summary}</p>`;
-        html += '<div class="nutrient-tags">';
-        diet.key_nutrients.forEach(n => { html += `<span class="nutrient-tag">${n}</span>`; });
-        html += '</div>';
-        html += '<div class="food-columns">';
-        html += '<div class="food-col increase"><h4>Increase</h4><ul>';
-        diet.foods_to_increase.forEach(f => { html += `<li>${f}</li>`; });
-        html += '</ul></div>';
-        html += '<div class="food-col avoid"><h4>Avoid / Reduce</h4><ul>';
-        diet.foods_to_avoid.forEach(f => { html += `<li>${f}</li>`; });
-        html += '</ul></div></div>';
-
-        if (diet.meal_plans && diet.meal_plans.length) {
-            html += '<h4 style="margin-bottom:.5rem;color:var(--text-dim);">Sample Meal Plans</h4><div class="meal-plans">';
-            diet.meal_plans.forEach((mp, i) => {
-                html += `<div class="meal-day" id="meal-${i}">
-                    <div class="meal-day-header" onclick="toggleMeal(${i})">${mp.day} <span>&#9660;</span></div>
-                    <div class="meal-day-body">
-                        <p><span class="meal-label">Breakfast:</span> ${mp.breakfast}</p>
-                        <p><span class="meal-label">Lunch:</span> ${mp.lunch}</p>
-                        <p><span class="meal-label">Dinner:</span> ${mp.dinner}</p>
-                        ${mp.snacks.length ? '<p><span class="meal-label">Snacks:</span> ' + mp.snacks.join(', ') + '</p>' : ''}
-                    </div>
-                </div>`;
-            });
-            html += '</div>';
-        }
-        if (diet.calorie_target) {
-            html += `<p class="mt-2" style="font-size:.9rem;color:var(--text-dim);">Target: ~${diet.calorie_target} kcal/day</p>`;
-        }
-        dc.innerHTML = html;
+        renderDiet(r.diet_recommendations);
 
         document.getElementById('download-row').style.display = 'flex';
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -810,6 +1103,88 @@
 
     window.toggleMeal = function (i) {
         document.getElementById('meal-' + i).classList.toggle('open');
+    };
+
+    /* ---- Standalone Nutrition ---- */
+    window.startNutritionPlan = async function () {
+        const age    = document.getElementById('nut-age').value;
+        const sex    = document.getElementById('nut-sex').value;
+        const region = document.getElementById('nut-region').value;
+        if (!age || !sex || !region) { toast('Please fill in age, sex, and region.', 'error'); return; }
+
+        const diets = Array.from(document.querySelectorAll('input[name="nut-diet"]:checked')).map(cb => cb.value);
+        const variants = document.getElementById('nut-variants').value;
+        const conditions = document.getElementById('nut-conditions').value;
+        const calories = parseInt(document.getElementById('nut-calories').value) || 2000;
+        const days = parseInt(document.getElementById('nut-days').value) || 7;
+
+        const btn = document.getElementById('nutrition-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Generating\u2026';
+
+        try {
+            const res = await fetch('/api/nutrition', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    age: parseInt(age),
+                    sex: sex,
+                    region: region,
+                    dietary_restrictions: diets,
+                    known_variants: variants ? variants.split(',').map(s => s.trim()).filter(Boolean) : [],
+                    health_conditions: conditions ? conditions.split(',').map(s => s.trim()).filter(Boolean) : [],
+                    calorie_target: calories,
+                    meal_plan_days: days
+                })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || 'Failed to generate nutrition plan');
+            }
+            const data = await res.json();
+            const nr = document.getElementById('nutrition-results');
+            nr.style.display = 'block';
+
+            /* Render nutrition results inline */
+            const nc = document.getElementById('nutrition-content');
+            const diet = data.recommendation;
+            let html = '<p class="diet-summary">' + diet.summary + '</p>';
+            html += '<div class="nutrient-tags">';
+            diet.key_nutrients.forEach(n => { html += '<span class="nutrient-tag">' + n + '</span>'; });
+            html += '</div>';
+            html += '<div class="food-columns">';
+            html += '<div class="food-col increase"><h4>Increase</h4><ul>';
+            diet.foods_to_increase.forEach(f => { html += '<li>' + f + '</li>'; });
+            html += '</ul></div>';
+            html += '<div class="food-col avoid"><h4>Avoid / Reduce</h4><ul>';
+            diet.foods_to_avoid.forEach(f => { html += '<li>' + f + '</li>'; });
+            html += '</ul></div></div>';
+            if (diet.meal_plans && diet.meal_plans.length) {
+                html += '<h4 style="margin-bottom:.5rem;color:var(--text-dim);">Meal Plans</h4><div class="meal-plans">';
+                diet.meal_plans.forEach((mp, i) => {
+                    const mid = 'nutmeal-' + i;
+                    html += '<div class="meal-day" id="' + mid + '">' +
+                        '<div class="meal-day-header" onclick="document.getElementById(\'' + mid + '\').classList.toggle(\'open\')">' + mp.day + ' <span>&#9660;</span></div>' +
+                        '<div class="meal-day-body">' +
+                        '<p><span class="meal-label">Breakfast:</span> ' + mp.breakfast + '</p>' +
+                        '<p><span class="meal-label">Lunch:</span> ' + mp.lunch + '</p>' +
+                        '<p><span class="meal-label">Dinner:</span> ' + mp.dinner + '</p>' +
+                        (mp.snacks.length ? '<p><span class="meal-label">Snacks:</span> ' + mp.snacks.join(', ') + '</p>' : '') +
+                        '</div></div>';
+                });
+                html += '</div>';
+            }
+            if (diet.calorie_target) {
+                html += '<p class="mt-2" style="font-size:.9rem;color:var(--text-dim);">Target: ~' + diet.calorie_target + ' kcal/day</p>';
+            }
+            nc.innerHTML = html;
+            nr.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            toast('Nutrition plan generated!', 'success');
+        } catch (err) {
+            toast(err.message, 'error');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75-1.5.75a3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0L3 16.5m15-3.379a48.474 48.474 0 0 0-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 0 1 6 13.12"/></svg> Generate Nutrition Plan';
     };
 
     /* ---- Downloads ---- */
@@ -830,13 +1205,13 @@
         if (!lastResult) return;
         const t = lastResult.telomere_results;
         let csv = 'metric,value\n';
-        csv += `mean_length,${t.mean_length}\n`;
-        csv += `std_dev,${t.std_dev}\n`;
-        csv += `t_s_ratio,${t.t_s_ratio}\n`;
-        csv += `biological_age_estimate,${t.biological_age_estimate}\n\n`;
+        csv += 'mean_length,' + t.mean_length + '\n';
+        csv += 'std_dev,' + t.std_dev + '\n';
+        csv += 't_s_ratio,' + t.t_s_ratio + '\n';
+        csv += 'biological_age_estimate,' + t.biological_age_estimate + '\n\n';
         csv += 'disease,risk_level,probability\n';
         lastResult.disease_risks.forEach(d => {
-            csv += `"${d.disease}",${d.risk_level},${d.probability}\n`;
+            csv += '"' + d.disease + '",' + d.risk_level + ',' + d.probability + '\n';
         });
         downloadBlob(csv, 'teloscopy_results.csv', 'text/csv');
     };
@@ -849,16 +1224,15 @@
             const grid = document.getElementById('agent-grid');
             grid.innerHTML = '';
             data.agents.forEach(a => {
-                grid.innerHTML += `
-                    <div class="agent-card">
-                        <span class="agent-name">${a.name}</span>
-                        <span class="agent-status-badge ${a.status}">
-                            <span class="dot dot--${a.status === 'idle' ? 'green' : a.status === 'busy' ? 'blue' : 'yellow'}"></span>
-                            ${a.status}
-                        </span>
-                        <span class="agent-tasks">${a.tasks_completed} tasks completed</span>
-                        ${a.current_task ? '<span class="agent-tasks" style="color:var(--info);">Current: ' + a.current_task + '</span>' : ''}
-                    </div>`;
+                grid.innerHTML +=
+                    '<div class="agent-card">' +
+                    '<span class="agent-name">' + a.name + '</span>' +
+                    '<span class="agent-status-badge ' + a.status + '">' +
+                    '<span class="dot dot--' + (a.status === 'idle' ? 'green' : a.status === 'busy' ? 'blue' : 'yellow') + '"></span> ' +
+                    a.status + '</span>' +
+                    '<span class="agent-tasks">' + a.tasks_completed + ' tasks completed</span>' +
+                    (a.current_task ? '<span class="agent-tasks" style="color:var(--info);">Current: ' + a.current_task + '</span>' : '') +
+                    '</div>';
             });
         } catch (e) { /* silent */ }
     }
