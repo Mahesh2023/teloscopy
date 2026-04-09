@@ -186,6 +186,8 @@ class DietPlanRequest(BaseModel):
     known_variants: list[str] = Field(default_factory=list)
     telomere_length: float | None = Field(None, description="Mean telomere length in kb")
     disease_risks: list[DiseaseRisk] = Field(default_factory=list)
+    meal_plan_days: int = Field(7, ge=1, le=30)
+    calorie_target: int = Field(2000, ge=800, le=5000)
 
 
 class DietPlanResponse(BaseModel):
@@ -402,7 +404,7 @@ class NutritionRequest(BaseModel):
         description="Known health conditions (e.g. 'diabetes', 'hypertension')",
     )
     calorie_target: int = Field(2000, ge=800, le=5000)
-    meal_plan_days: int = Field(3, ge=1, le=7)
+    meal_plan_days: int = Field(7, ge=1, le=30)
 
 
 class NutritionResponse(BaseModel):
