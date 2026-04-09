@@ -532,11 +532,14 @@ async def dashboard_page(request: Request) -> HTMLResponse:
 
 
 @app.get("/api/debug/templates")
-async def debug_templates() -> dict[str, Any]:
+async def debug_templates(request: Request) -> dict[str, Any]:
     """Diagnostic endpoint for template debugging."""
     import os
+    import traceback
 
-    return {
+    import starlette
+
+    diag: dict[str, Any] = {
         "templates_dir": str(_TEMPLATES_DIR),
         "templates_dir_exists": _TEMPLATES_DIR.exists(),
         "template_files": (
@@ -546,7 +549,19 @@ async def debug_templates() -> dict[str, Any]:
         "static_dir_exists": _STATIC_DIR.exists(),
         "cwd": os.getcwd(),
         "app_file": str(Path(__file__).resolve()),
+        "starlette_version": starlette.__version__,
     }
+
+    # Try rendering index.html to catch the actual error
+    try:
+        resp = templates.TemplateResponse("index.html", {"request": request})
+        diag["index_render"] = "OK"
+        diag["index_status"] = resp.status_code
+    except Exception as exc:
+        diag["index_render_error"] = f"{type(exc).__name__}: {exc}"
+        diag["index_traceback"] = traceback.format_exc()
+
+    return diag
 
 
 # ===================================================================== #
