@@ -346,13 +346,13 @@ def _validate_extension(filename: str) -> bool:
 @app.get("/", response_class=HTMLResponse)
 async def index_page(request: Request) -> HTMLResponse:
     """Serve the main landing / upload page."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_page(request: Request) -> HTMLResponse:
     """Serve the dedicated upload page (same template, scroll-to-upload)."""
-    return templates.TemplateResponse("index.html", {"request": request, "scroll_to": "upload"})
+    return templates.TemplateResponse(request, "index.html", {"scroll_to": "upload"})
 
 
 @app.get("/results/{job_id}", response_class=HTMLResponse)
@@ -360,15 +360,34 @@ async def results_page(request: Request, job_id: str) -> HTMLResponse:
     """Serve a results page for a specific job."""
     job: JobStatus | None = _jobs.get(job_id)
     return templates.TemplateResponse(
+        request,
         "index.html",
-        {"request": request, "job_id": job_id, "job": job, "scroll_to": "results"},
+        {"job_id": job_id, "job": job, "scroll_to": "results"},
     )
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request) -> HTMLResponse:
     """Serve the agent-monitoring dashboard."""
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(request, "dashboard.html")
+
+
+@app.get("/api/debug/templates")
+async def debug_templates() -> dict[str, Any]:
+    """Diagnostic endpoint for template debugging."""
+    import os
+
+    return {
+        "templates_dir": str(_TEMPLATES_DIR),
+        "templates_dir_exists": _TEMPLATES_DIR.exists(),
+        "template_files": (
+            [f.name for f in _TEMPLATES_DIR.iterdir()] if _TEMPLATES_DIR.exists() else []
+        ),
+        "static_dir": str(_STATIC_DIR),
+        "static_dir_exists": _STATIC_DIR.exists(),
+        "cwd": os.getcwd(),
+        "app_file": str(Path(__file__).resolve()),
+    }
 
 
 # ===================================================================== #
