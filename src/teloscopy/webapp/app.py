@@ -134,6 +134,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# -- Exception handler (surface errors in non-production) --------------------
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> Any:
+    """Return traceback detail for unhandled errors to aid debugging."""
+    import traceback
+
+    from fastapi.responses import JSONResponse
+
+    tb = traceback.format_exc()
+    logger.error("Unhandled %s on %s: %s\n%s", type(exc).__name__, request.url.path, exc, tb)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": str(exc),
+            "type": type(exc).__name__,
+            "path": request.url.path,
+            "traceback": tb.splitlines()[-5:],
+        },
+    )
+
+
 # -- Templates & static files -----------------------------------------------
 
 templates: Jinja2Templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
@@ -506,13 +530,15 @@ def _validate_extension(filename: str) -> bool:
 @app.get("/", response_class=HTMLResponse)
 async def index_page(request: Request) -> HTMLResponse:
     """Serve the main landing / upload page."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_page(request: Request) -> HTMLResponse:
     """Serve the dedicated upload page (same template, scroll-to-upload)."""
-    return templates.TemplateResponse("index.html", {"request": request, "scroll_to": "upload"})
+    return templates.TemplateResponse(
+        request=request, name="index.html", context={"scroll_to": "upload"}
+    )
 
 
 @app.get("/results/{job_id}", response_class=HTMLResponse)
@@ -520,15 +546,16 @@ async def results_page(request: Request, job_id: str) -> HTMLResponse:
     """Serve a results page for a specific job."""
     job: JobStatus | None = _jobs.get(job_id)
     return templates.TemplateResponse(
-        "index.html",
-        {"request": request, "job_id": job_id, "job": job, "scroll_to": "results"},
+        request=request,
+        name="index.html",
+        context={"job_id": job_id, "job": job, "scroll_to": "results"},
     )
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request) -> HTMLResponse:
     """Serve the agent-monitoring dashboard."""
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="dashboard.html")
 
 
 @app.get("/api/debug/templates")
