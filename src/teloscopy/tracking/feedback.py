@@ -13,7 +13,7 @@ import logging
 import uuid
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -185,7 +185,7 @@ class ImprovementReport:
 
     def __post_init__(self) -> None:
         if not self.created_at:
-            self.created_at = datetime.now(UTC).isoformat()
+            self.created_at = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict:
         """Serialise to a plain dictionary."""
@@ -255,7 +255,7 @@ class FeedbackCollector:
 
         entry = FeedbackEntry(
             entry_id=uuid.uuid4().hex,
-            timestamp=datetime.now(UTC).isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             job_id=job_id,
             category=category,
             rating=rating,
@@ -307,7 +307,7 @@ class FeedbackCollector:
             original_value=original_value,
             corrected_value=corrected_value,
             reason=reason,
-            timestamp=datetime.now(UTC).isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
         )
         self._append_jsonl(self._corrections_path, correction.to_dict())
         logger.info(
@@ -326,7 +326,7 @@ class FeedbackCollector:
         Returns:
             A :class:`FeedbackSummary` with counts, averages, breakdowns, and trend.
         """
-        cutoff = datetime.now(UTC) - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         entries = self._load_feedback(since=cutoff)
         corrections = self._load_corrections(since=cutoff)
 
@@ -429,7 +429,7 @@ class FeedbackCollector:
                 )
 
         # Declining trend (60 days)
-        cutoff_60 = datetime.now(UTC) - timedelta(days=60)
+        cutoff_60 = datetime.now(timezone.utc) - timedelta(days=60)
         recent_cats: dict[str, list[FeedbackEntry]] = defaultdict(list)
         for fb in all_feedback:
             if datetime.fromisoformat(fb.timestamp) >= cutoff_60:
@@ -663,12 +663,12 @@ class ModelRetrainer:
             samples=samples,
             labels=labels,
             metadata={
-                "created_at": datetime.now(UTC).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
                 "correction_count": len(relevant),
                 "since": last_retrain or "epoch",
             },
         )
-        self._retrain_log[model_name] = datetime.now(UTC).isoformat()
+        self._retrain_log[model_name] = datetime.now(timezone.utc).isoformat()
         logger.info(
             "Prepared training batch %s for '%s' with %d samples.",
             batch.batch_id,

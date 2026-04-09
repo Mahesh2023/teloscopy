@@ -52,7 +52,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -170,7 +170,7 @@ def _generate_id() -> str:
 
 def _now_iso() -> str:
     """Return the current UTC timestamp in ISO-8601 format for FHIR ``instant``."""
-    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
 def _make_meta(profile: str | None = None) -> dict:

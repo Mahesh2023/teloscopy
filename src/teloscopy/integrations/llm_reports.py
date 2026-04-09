@@ -24,7 +24,7 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -128,7 +128,7 @@ class FullReport:
             "STELA, Flow-FISH).  Cross-method comparisons require caution.",
         ]
     )
-    generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     model_used: str = "unknown"
 
     def to_markdown(self) -> str:
@@ -649,7 +649,7 @@ class ReportGenerator:
                 "Repeat telomere assessment in 12-24 months.",
             ],
             model_used=self.model if not self._using_fallback else "template-fallback",
-            generated_at=datetime.now(UTC),
+            generated_at=datetime.now(timezone.utc),
         )
 
     @property

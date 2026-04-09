@@ -34,7 +34,7 @@ import random
 import statistics
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -494,7 +494,7 @@ class TelomereTracker:
         path = self._patient_file(patient_id)
         payload = {
             "patient_id": patient_id,
-            "updated_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
             "measurements": records,
         }
         with open(path, "w", encoding="utf-8") as fh:
@@ -556,7 +556,7 @@ class TelomereTracker:
         meas = Measurement(
             measurement_id=str(uuid.uuid4()),
             patient_id=patient_id,
-            timestamp=datetime.now(UTC).isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             telomere_length_kb=telomere_length_kb,
             biological_age=biological_age,
             chronological_age=chronological_age,
@@ -974,7 +974,7 @@ class TelomereTracker:
 
         return TrendReport(
             patient_id=patient_id,
-            generated_at=datetime.now(UTC).isoformat(),
+            generated_at=datetime.now(timezone.utc).isoformat(),
             history_summary=history_summary,
             attrition=attrition,
             population=population,
@@ -1168,7 +1168,7 @@ class TelomereTracker:
                 patient_id=patient_id,
                 timestamp=row.get(
                     "timestamp",
-                    datetime.now(UTC).isoformat(),
+                    datetime.now(timezone.utc).isoformat(),
                 ),
                 telomere_length_kb=float(row["telomere_length_kb"]),
                 biological_age=int(row["biological_age"]),
