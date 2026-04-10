@@ -204,7 +204,7 @@ class AnalysisRepository @Inject constructor(
      * Wraps a Retrofit [Response] call in a [Result], mapping HTTP errors
      * to descriptive failure messages.
      */
-    private inline fun <T> safeApiCall(
+    private suspend inline fun <T> safeApiCall(
         crossinline call: suspend () -> Response<T>
     ): Result<T> = runCatching {
         val response = call()

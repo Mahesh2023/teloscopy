@@ -49,7 +49,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -398,14 +397,13 @@ fun AnalysisScreen(
                                     },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                                        .menuAnchor(),
                                     colors = analysisTextFieldColors()
                                 )
 
                                 ExposedDropdownMenu(
                                     expanded = regionDropdownExpanded,
-                                    onDismissRequest = { regionDropdownExpanded = false },
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    onDismissRequest = { regionDropdownExpanded = false }
                                 ) {
                                     regionOptions.forEach { region ->
                                         DropdownMenuItem(
