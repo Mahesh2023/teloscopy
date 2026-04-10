@@ -506,83 +506,158 @@ def _extract_facial_measurements(
 # ---------------------------------------------------------------------------
 
 
-def _estimate_biological_age(measurements: FacialMeasurements, chronological_age: int) -> int:
+def _estimate_biological_age(
+    measurements: FacialMeasurements,
+    chronological_age: int,
+    sex: str = "unknown",
+) -> int:
     """Estimate biological age from facial measurements.
 
     Uses a weighted combination of wrinkle score, skin uniformity,
-    dark circles, texture roughness, and UV damage — calibrated
-    against published perceived-age studies (Christensen et al., 2009).
+    dark circles, texture roughness, UV damage, and symmetry —
+    calibrated against published perceived-age studies (Christensen
+    et al., 2009; Matts et al., 2007).
 
-    Measurements are expected from blurred cheek patches so that
-    camera noise, compression artefacts, and structural face features
-    do not inflate the scores.
+    Key improvements over naive linear baselines:
+    - Non-linear aging curves: baselines accelerate after age 50
+      (menopause, cumulative UV threshold, elastin collapse).
+    - Pigmentation uniformity (UV damage) given higher weight per
+      Matts et al. (2007) — strongest single cue for perceived age.
+    - Sex adjustment: women appear ~2 years younger on average
+      (higher subcutaneous fat, estrogen-mediated collagen retention).
+    - Fitzpatrick skin-type proxy: darker skin ages visibly slower
+      due to melanin photoprotection.
+    - Offset clamped to ±10 years (credible range for photo-based
+      estimation per Horvath clock population SD ~5.5 years).
 
-    Typical value ranges (post-blur, smartphone photos):
-    - wrinkle_score:     young 0.002–0.01,  aged 0.03–0.06
-    - texture_roughness: young 0.01–0.05,   aged 0.10–0.30
-    - uv_damage_score:   young 0.05–0.12,   aged 0.20–0.40
+    References
+    ----------
+    .. [1] Matts P.J. et al. (2007) — Skin color homogeneity is the
+           strongest predictor of perceived age.
+    .. [2] Christensen K. et al. (2009) BMJ — Perceived age predicts
+           survival in Danish twins.
+    .. [3] Glogau R.G. (1996) — Wrinkle classification scale.
     """
-    # Base: chronological age
     age_offset = 0.0
 
-    # Wrinkles add perceived age.
-    # The forehead region now excludes the hairline (10%–25% of face
-    # height), and uses Blur(7,7) + Canny(80,180) to isolate real
-    # creases.  Young skin with no wrinkles should be near 0.005.
-    expected_wrinkle = 0.005 + max(chronological_age - 25, 0) * 0.0005
-    wrinkle_diff = measurements.wrinkle_score - max(expected_wrinkle, 0.003)
-    age_offset += wrinkle_diff * 100  # ~+10 years per 0.1 excess
+    # ── Non-linear "expected" baselines ──────────────────────────
+    # Aging accelerates after ~50 (Glogau type II→III transition ~50,
+    # post-menopausal collagen loss, cumulative photodamage threshold).
+    age_over_25 = max(chronological_age - 25, 0)
+    age_over_50 = max(chronological_age - 50, 0)
 
-    # Skin texture roughness (blurred cheek Laplacian, /3000 normalised).
-    # Pre-blur removes camera noise / JPEG artefacts.  Young skin is
-    # typically 0.01–0.05, visibly aged skin 0.10–0.30.
-    expected_texture = 0.02 + max(chronological_age - 20, 0) * 0.002
+    # 1. WRINKLES (weight: 80)
+    # Baseline: slow increase 25–50, then accelerates
+    expected_wrinkle = 0.005 + age_over_25 * 0.0004 + age_over_50 * 0.0003
+    wrinkle_diff = measurements.wrinkle_score - max(expected_wrinkle, 0.003)
+    age_offset += wrinkle_diff * 80
+
+    # 2. TEXTURE ROUGHNESS (weight: 30)
+    expected_texture = 0.02 + max(chronological_age - 20, 0) * 0.0015 + age_over_50 * 0.002
     texture_diff = measurements.texture_roughness - expected_texture
     age_offset += texture_diff * 30
 
-    # Dark circles add perceived age (baseline already subtracted)
-    age_offset += measurements.dark_circle_score * 5
+    # 3. DARK CIRCLES (weight: 5, now with age-expected baseline)
+    # Dark circles increase naturally with age (skin thinning,
+    # orbital fat descent — Matsui et al., 2012).
+    expected_dc = min(max(chronological_age - 30, 0) * 0.01, 0.3)
+    dc_excess = measurements.dark_circle_score - expected_dc
+    age_offset += dc_excess * 5
 
-    # UV damage (blurred cheek L-std, /60 normalised).
-    # The blur suppresses high-frequency noise; /60 accounts for the
-    # natural L-channel variation from 3D face curvature and lighting.
-    expected_uv = 0.05 + max(chronological_age - 25, 0) * 0.002
+    # 4. UV DAMAGE / PIGMENTATION IRREGULARITY (weight: 25)
+    # Matts et al. (2007): skin color homogeneity is the strongest
+    # single predictor of perceived age — even stronger than wrinkles.
+    expected_uv = 0.05 + age_over_25 * 0.0015 + age_over_50 * 0.002
     uv_diff = measurements.uv_damage_score - expected_uv
-    age_offset += uv_diff * 10
+    age_offset += uv_diff * 25
 
-    # Good symmetry reduces perceived age
+    # 5. SYMMETRY (weight: -8, good symmetry reduces perceived age)
     age_offset -= (measurements.symmetry_score - 0.7) * 8
 
-    # Skin uniformity (lower = better) — cheek std dev
+    # 6. SKIN UNIFORMITY (high std dev → more aging)
     if measurements.skin_uniformity > 20:
         age_offset += (measurements.skin_uniformity - 20) * 0.2
 
-    # Clamp the total offset so a single bad metric can't wildly
-    # skew the result: max ±15 years from chronological.
-    age_offset = max(-15.0, min(15.0, age_offset))
+    # ── Sex adjustment ───────────────────────────────────────────
+    # Women appear ~2 years younger at same chronological age due
+    # to higher subcutaneous fat and estrogen-mediated collagen
+    # retention (though post-menopausal acceleration exists).
+    if sex.lower() == "female":
+        age_offset -= 2.0
+    elif sex.lower() == "male":
+        age_offset += 0.5
+
+    # ── Fitzpatrick / skin-type adjustment ───────────────────────
+    # Darker skin ages visibly slower due to melanin photoprotection.
+    # Fitzpatrick V–VI: ~5 years slower visible aging vs III.
+    # Use skin brightness as proxy (lower brightness → darker skin).
+    brightness = measurements.skin_brightness
+    if brightness < 100:
+        # Fitzpatrick V–VI: strongly slower visible aging
+        age_offset -= 3.0
+    elif brightness < 130:
+        # Fitzpatrick IV: moderately slower
+        age_offset -= 1.5
+
+    # ── Clamp ────────────────────────────────────────────────────
+    # ±10 years is the credible range for photo-based estimation.
+    # Horvath clock population SD is ~5.5 years; ±10 covers ~95%.
+    age_offset = max(-10.0, min(10.0, age_offset))
 
     bio_age = chronological_age + age_offset
     bio_age = max(15, min(110, bio_age))
     return int(round(bio_age))
 
 
-def _telomere_from_age(biological_age: int) -> float:
+def _telomere_from_age(biological_age: int, sex: str = "unknown") -> float:
     """Estimate telomere length from biological age.
 
-    Uses a consensus linear model calibrated against population studies:
-    TL (kb) ≈ 11.0 − 0.040 × age
-    (Müezzinler et al. 2013; Aubert & Lansdorp 2008)
+    Uses a two-phase piecewise model calibrated against population
+    studies (Müezzinler et al., 2013; Aubert & Lansdorp, 2008):
+
+    - Birth–20: faster attrition (~60 bp/year → 0.060 kb/year)
+    - 20+: slower adult attrition (~25 bp/year → 0.025 kb/year)
+
+    Females have ~0.2 kb longer telomeres on average (estrogen
+    activates telomerase via hTERT promoter; Barrett & Richardson,
+    2011; Gardner et al., 2014).
     """
-    tl = 11.0 - 0.040 * biological_age
-    return max(round(tl, 2), 2.0)
+    if biological_age <= 20:
+        # Childhood/adolescent phase: ~60 bp/year attrition
+        tl = 11.0 - 0.060 * biological_age
+    else:
+        # Adult phase: starts at TL(20) ≈ 9.8, then ~25 bp/year
+        tl = 9.80 - 0.025 * (biological_age - 20)
+
+    # Sex adjustment: females ~0.2 kb longer
+    if sex.lower() == "female":
+        tl += 0.2
+    elif sex.lower() == "male":
+        tl -= 0.05
+
+    # Floor at 4.0 kb — cells with TL < 4 kb are in crisis/senescence;
+    # 2.0 kb floor was unrealistically low for living adults.
+    return max(round(tl, 2), 4.0)
 
 
-def _telomere_percentile(tl_kb: float, chronological_age: int) -> int:
+def _telomere_percentile(tl_kb: float, chronological_age: int, sex: str = "unknown") -> int:
     """Compute telomere length percentile for chronological age.
 
-    Uses age-adjusted reference ranges from population studies.
+    Uses age-adjusted reference ranges from population studies,
+    with the two-phase attrition model and sex correction.
     """
-    expected = 11.0 - 0.040 * chronological_age
+    # Expected TL for this age (using the same two-phase model)
+    if chronological_age <= 20:
+        expected = 11.0 - 0.060 * chronological_age
+    else:
+        expected = 9.80 - 0.025 * (chronological_age - 20)
+
+    # Sex adjustment to expected
+    if sex.lower() == "female":
+        expected += 0.2
+    elif sex.lower() == "male":
+        expected -= 0.05
+
     sd = 1.2  # population SD ≈ 1.2 kb
     z = (tl_kb - expected) / sd
     # Convert z-score to percentile using sigmoid approximation
@@ -906,11 +981,11 @@ def analyze_face(
     measurements = _extract_facial_measurements(img, face_box)
 
     # Estimate biological age
-    bio_age = _estimate_biological_age(measurements, chronological_age)
+    bio_age = _estimate_biological_age(measurements, chronological_age, sex)
 
     # Estimate telomere length
-    tl_kb = _telomere_from_age(bio_age)
-    tl_percentile = _telomere_percentile(tl_kb, chronological_age)
+    tl_kb = _telomere_from_age(bio_age, sex)
+    tl_percentile = _telomere_percentile(tl_kb, chronological_age, sex)
 
     # Estimate ancestry
     ancestry = _estimate_ancestry(measurements)

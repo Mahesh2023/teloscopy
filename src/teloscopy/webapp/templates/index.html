@@ -13,8 +13,10 @@
         :root {
             --bg-primary:    #0b0f19;
             --bg-secondary:  #131825;
-            --bg-card:       #1a2035;
+            --bg-card:       rgba(26, 32, 53, .65);
+            --bg-card-solid: #1a2035;
             --bg-card-hover: #222b45;
+            --bg-glass:      rgba(26, 32, 53, 0.65);
             --accent:        #00d4aa;
             --accent-dim:    #009e7e;
             --accent-glow:   rgba(0, 212, 170, .15);
@@ -23,13 +25,20 @@
             --info:          #4da6ff;
             --text:          #e0e6ed;
             --text-dim:      #a0aec0;
-            --border:        #2e3a59;
+            --border:        rgba(46, 58, 89, .6);
+            --border-solid:  #2e3a59;
             --radius:        12px;
             --radius-sm:     8px;
             --shadow:        0 4px 24px rgba(0,0,0,.35);
+            --shadow-lg:     0 8px 40px rgba(0,0,0,.45);
             --font:          'Segoe UI', system-ui, -apple-system, sans-serif;
             --mono:          'Fira Code', 'Consolas', monospace;
             --transition:    .25s ease;
+            --sidebar-width: 260px;
+            --sidebar-collapsed: 60px;
+            --glass-bg:      rgba(26, 32, 53, .55);
+            --glass-border:  rgba(46, 58, 89, .45);
+            --glass-blur:    16px;
         }
 
         html { scroll-behavior: smooth; }
@@ -39,12 +48,13 @@
             color: var(--text);
             line-height: 1.6;
             min-height: 100vh;
+            overflow-x: hidden;
         }
         a { color: var(--accent); text-decoration: none; }
         a:hover { text-decoration: underline; }
         img { max-width: 100%; height: auto; }
 
-        /* Skip link for keyboard navigation */
+        /* Skip link */
         .skip-link {
             position: absolute; top: -40px; left: 0;
             background: var(--accent); color: var(--bg-primary);
@@ -55,59 +65,220 @@
         }
         .skip-link:focus { top: 0; text-decoration: none; }
 
-        /* Focus-visible styles for keyboard navigation */
         :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         .form-group input:focus-visible, .form-group select:focus-visible {
             outline: 2px solid var(--accent); outline-offset: 2px;
         }
 
         /* ============================================================
-           NAVBAR
+           SIDEBAR
            ============================================================ */
-        .navbar {
-            position: sticky; top: 0; z-index: 100;
-            display: flex; align-items: center; justify-content: space-between;
-            padding: .75rem 2rem;
-            background: rgba(11, 15, 25, .92);
+        .sidebar {
+            position: fixed;
+            top: 0; left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: rgba(13, 17, 27, .92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            transition: width .3s cubic-bezier(.4,0,.2,1);
+            overflow: hidden;
+        }
+        .sidebar.collapsed { width: var(--sidebar-collapsed); }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.15rem 1rem 1.15rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            min-height: 60px;
+            flex-shrink: 0;
+        }
+        .sidebar-brand {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: .5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-decoration: none;
+        }
+        .sidebar-brand:hover { text-decoration: none; }
+        .sidebar-brand span { color: var(--text); }
+        .sidebar.collapsed .sidebar-brand-text { display: none; }
+        .sidebar.collapsed .sidebar-brand { font-size: 1.1rem; }
+
+        .sidebar-toggle {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            width: 30px; height: 30px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all var(--transition);
+        }
+        .sidebar-toggle:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .sidebar-toggle svg {
+            width: 16px; height: 16px;
+            transition: transform .3s ease;
+        }
+        .sidebar.collapsed .sidebar-toggle svg {
+            transform: rotate(180deg);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: .75rem 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .sidebar-nav::-webkit-scrollbar { width: 4px; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: var(--border-solid); border-radius: 2px; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: .85rem;
+            padding: .7rem 1.25rem;
+            margin: 2px .6rem;
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-size: .92rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all var(--transition);
+            white-space: nowrap;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+        }
+        .nav-item:hover {
+            color: var(--text);
+            background: rgba(255,255,255,.04);
+            text-decoration: none;
+        }
+        .nav-item.active {
+            color: var(--accent);
+            background: var(--accent-glow);
+        }
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 3px; height: 60%;
+            background: var(--accent);
+            border-radius: 0 3px 3px 0;
+        }
+        .nav-item svg {
+            width: 20px; height: 20px;
+            flex-shrink: 0;
+        }
+        .nav-item-label {
+            opacity: 1;
+            transition: opacity .2s ease;
+        }
+        .sidebar.collapsed .nav-item-label { opacity: 0; width: 0; }
+        .sidebar.collapsed .nav-item { justify-content: center; padding: .7rem; }
+
+        .sidebar-footer {
+            padding: .75rem 1rem;
+            border-top: 1px solid var(--border);
+            font-size: .75rem;
+            color: var(--text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .sidebar.collapsed .sidebar-footer-text { display: none; }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.6);
+            z-index: 199;
+        }
+        .sidebar-overlay.visible { display: block; }
+
+        .mobile-header {
+            display: none;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: .75rem 1rem;
+            background: rgba(11, 15, 25, .95);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border);
+            align-items: center;
+            gap: .75rem;
         }
-        .navbar-brand {
-            font-size: 1.4rem; font-weight: 700;
-            color: var(--accent); letter-spacing: .5px;
+        .hamburger-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            width: 36px; height: 36px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
         }
-        .navbar-brand span { color: var(--text); }
-        .navbar-links { display: flex; gap: 1.5rem; list-style: none; }
-        .navbar-links a {
-            color: var(--text-dim); font-size: .95rem; transition: color var(--transition);
+        .hamburger-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .hamburger-btn svg { width: 20px; height: 20px; }
+        .mobile-brand {
+            font-size: 1.2rem; font-weight: 700;
+            color: var(--accent);
         }
-        .navbar-links a:hover, .navbar-links a.active { color: var(--accent); text-decoration: none; }
+        .mobile-brand span { color: var(--text); }
 
-        .hamburger { display: none; background: none; border: none; color: var(--text); font-size: 1.5rem; cursor: pointer; }
+        /* Main content offset for sidebar */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            transition: margin-left .3s cubic-bezier(.4,0,.2,1);
+            min-height: 100vh;
+        }
+        .sidebar.collapsed ~ .sidebar-overlay ~ .main-content,
+        .sidebar.collapsed ~ .main-content {
+            margin-left: var(--sidebar-collapsed);
+        }
 
         /* ============================================================
            HERO
            ============================================================ */
         .hero {
             text-align: center;
-            padding: 5rem 1.5rem 3rem;
+            padding: 3.5rem 1.5rem 2.5rem;
             background: linear-gradient(180deg, rgba(0,212,170,.06) 0%, transparent 70%);
         }
-        .hero h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; margin-bottom: .75rem; }
+        .hero h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; margin-bottom: .6rem; }
         .hero h1 .highlight { color: var(--accent); }
         .hero p {
-            max-width: 680px; margin: 0 auto 2rem; font-size: 1.1rem;
+            max-width: 640px; margin: 0 auto 1.5rem; font-size: 1.05rem;
             color: var(--text-dim); line-height: 1.7;
         }
-        .hero-badges { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+        .hero-badges { display: flex; gap: .6rem; justify-content: center; flex-wrap: wrap; }
         .badge {
             display: inline-flex; align-items: center; gap: .4rem;
-            padding: .35rem .9rem; border-radius: 999px; font-size: .8rem;
-            background: var(--bg-card); border: 1px solid var(--border);
+            padding: .3rem .8rem; border-radius: 999px; font-size: .78rem;
+            background: var(--bg-glass); border: 1px solid var(--border);
             color: var(--text-dim);
+            backdrop-filter: blur(8px);
         }
         .badge .dot {
-            width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+            width: 7px; height: 7px; border-radius: 50%; display: inline-block;
         }
         .dot--green  { background: var(--accent); }
         .dot--blue   { background: var(--info); }
@@ -118,40 +289,66 @@
            ============================================================ */
         .section {
             max-width: 1100px; margin: 0 auto;
-            padding: 3rem 1.5rem;
+            padding: 3rem 2rem;
+            content-visibility: auto;
+            contain-intrinsic-size: auto 600px;
         }
         .section-title {
-            font-size: 1.6rem; font-weight: 700; margin-bottom: .5rem;
+            font-size: 1.5rem; font-weight: 700; margin-bottom: .4rem;
         }
         .section-subtitle {
-            color: var(--text-dim); margin-bottom: 2rem; font-size: .95rem;
+            color: var(--text-dim); margin-bottom: 2rem; font-size: .93rem;
+        }
+
+        /* Scroll reveal animation */
+        .reveal {
+            opacity: 0; transform: translateY(24px);
+            transition: opacity .6s cubic-bezier(.4,0,.2,1), transform .6s cubic-bezier(.4,0,.2,1);
+            will-change: transform, opacity;
+        }
+        .reveal.revealed {
+            opacity: 1; transform: translateY(0);
         }
 
         /* ============================================================
            UPLOAD AREA
            ============================================================ */
-        #upload-section { scroll-margin-top: 80px; }
+        #upload-section { scroll-margin-top: 20px; }
 
         .upload-card {
-            background: var(--bg-card); border: 2px dashed var(--border);
-            border-radius: var(--radius); padding: 3rem 2rem; text-align: center;
-            transition: border-color var(--transition), background var(--transition);
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 2px dashed var(--border);
+            border-radius: var(--radius); padding: 2.5rem 2rem; text-align: center;
+            transition: border-color .3s ease, background .3s ease, box-shadow .3s ease;
             cursor: pointer; position: relative;
         }
-        .upload-card.drag-over {
-            border-color: var(--accent); background: var(--accent-glow);
+        /* Pulsing border when empty */
+        .upload-card:not(.has-file) {
+            animation: pulse-border 2.5s ease-in-out infinite;
         }
-        .upload-card svg { width: 56px; height: 56px; stroke: var(--accent); margin-bottom: 1rem; }
-        .upload-card h3 { margin-bottom: .5rem; font-size: 1.15rem; }
-        .upload-card p  { color: var(--text-dim); font-size: .9rem; }
+        @keyframes pulse-border {
+            0%, 100% { border-color: var(--border); }
+            50% { border-color: rgba(0, 212, 170, .5); }
+        }
+        /* Glow effect on drag-over */
+        .upload-card.drag-over {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+            box-shadow: 0 0 30px rgba(0, 212, 170, .2), inset 0 0 30px rgba(0, 212, 170, .05);
+            animation: none;
+        }
+        .upload-card svg { width: 48px; height: 48px; stroke: var(--accent); margin-bottom: .75rem; }
+        .upload-card h3 { margin-bottom: .4rem; font-size: 1.1rem; }
+        .upload-card p  { color: var(--text-dim); font-size: .88rem; }
         .upload-card input[type="file"] {
             position: absolute; inset: 0; opacity: 0; cursor: pointer;
         }
         .file-info {
-            margin-top: 1rem; padding: .6rem 1rem; background: var(--bg-secondary);
-            border-radius: var(--radius-sm); display: none; font-size: .9rem;
+            margin-top: .75rem; padding: .6rem 1rem; background: var(--bg-secondary);
+            border-radius: var(--radius-sm); display: none; font-size: .88rem;
         }
-        .file-info.visible { display: flex; align-items: center; gap: .5rem; justify-content: center; }
+        .file-info.visible { display: flex; align-items: center; gap: .5rem; justify-content: center; flex-wrap: wrap; }
 
         /* ============================================================
            PROFILE FORM
@@ -159,22 +356,23 @@
         .profile-form {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.25rem; margin-top: 2rem;
+            gap: 1.5rem; margin-top: 2rem;
         }
-        .form-group { display: flex; flex-direction: column; gap: .35rem; }
+        .form-group { display: flex; flex-direction: column; gap: .4rem; }
         .form-group label {
-            font-size: .85rem; font-weight: 600; color: var(--text-dim);
-            text-transform: uppercase; letter-spacing: .5px;
+            font-size: .8rem; font-weight: 600; color: var(--text-dim);
+            text-transform: uppercase; letter-spacing: .6px;
         }
         .form-group input,
         .form-group select {
-            padding: .65rem .9rem; border-radius: var(--radius-sm);
+            padding: .7rem 1rem; border-radius: var(--radius-sm);
             border: 1px solid var(--border); background: var(--bg-secondary);
-            color: var(--text); font-size: .95rem; outline: none;
-            transition: border-color var(--transition);
+            color: var(--text); font-size: .93rem; outline: none;
+            transition: border-color var(--transition), box-shadow var(--transition);
         }
         .form-group input:focus, .form-group select:focus {
             border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0,212,170,.12);
         }
 
         .checkbox-group {
@@ -182,11 +380,15 @@
         }
         .checkbox-group label {
             display: flex; align-items: center; gap: .35rem;
-            font-size: .88rem; color: var(--text); text-transform: none;
+            font-size: .86rem; color: var(--text); text-transform: none;
             letter-spacing: 0; font-weight: 400; cursor: pointer;
+            padding: .3rem .6rem; border-radius: var(--radius-sm);
+            background: var(--bg-secondary); border: 1px solid transparent;
+            transition: border-color var(--transition), background var(--transition);
         }
+        .checkbox-group label:hover { border-color: var(--border); }
         .checkbox-group input[type="checkbox"] {
-            accent-color: var(--accent); width: 16px; height: 16px;
+            accent-color: var(--accent); width: 15px; height: 15px;
         }
 
         /* ============================================================
@@ -194,21 +396,18 @@
            ============================================================ */
         .btn {
             display: inline-flex; align-items: center; justify-content: center;
-            gap: .5rem; padding: .75rem 2rem; border-radius: var(--radius-sm);
-            font-size: 1rem; font-weight: 600; border: none; cursor: pointer;
-            transition: background var(--transition), transform .15s;
+            gap: .5rem; padding: .7rem 1.8rem; border-radius: var(--radius-sm);
+            font-size: .95rem; font-weight: 600; border: none; cursor: pointer;
+            transition: background var(--transition), transform .15s, box-shadow var(--transition);
         }
         .btn:active { transform: scale(.97); }
         .btn-primary {
             background: var(--accent); color: var(--bg-primary);
         }
-        .btn-primary:hover { background: var(--accent-dim); }
-        .btn-primary:disabled {
-            opacity: .5; cursor: not-allowed;
-        }
+        .btn-primary:hover { background: var(--accent-dim); box-shadow: 0 4px 16px rgba(0,212,170,.25); }
+        .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
         .btn-outline {
-            background: transparent; border: 1px solid var(--border);
-            color: var(--text);
+            background: transparent; border: 1px solid var(--border); color: var(--text);
         }
         .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
         .btn-row { display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap; justify-content: center; }
@@ -218,13 +417,15 @@
            ============================================================ */
         .progress-wrapper {
             display: none; margin-top: 2rem;
-            background: var(--bg-card); border-radius: var(--radius);
-            padding: 1.5rem 2rem;
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 1.5rem 2rem;
         }
         .progress-wrapper.visible { display: block; }
-        .progress-header { display: flex; justify-content: space-between; margin-bottom: .5rem; font-size: .9rem; }
+        .progress-header { display: flex; justify-content: space-between; margin-bottom: .5rem; font-size: .88rem; }
         .progress-bar-bg {
-            height: 10px; border-radius: 99px; background: var(--bg-secondary); overflow: hidden;
+            height: 8px; border-radius: 99px; background: var(--bg-secondary); overflow: hidden;
         }
         .progress-bar-fill {
             height: 100%; width: 0%;
@@ -232,27 +433,161 @@
             border-radius: 99px; transition: width .4s ease;
         }
         .progress-message {
-            margin-top: .75rem; font-size: .85rem; color: var(--text-dim);
+            margin-top: .65rem; font-size: .83rem; color: var(--text-dim);
         }
 
         /* ============================================================
-           RESULTS
+           SKELETON LOADING
            ============================================================ */
-        #results-section { scroll-margin-top: 80px; display: none; }
+        .skeleton-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem; margin-top: 1.5rem;
+        }
+        .skeleton-card {
+            background: var(--bg-card-solid); border-radius: var(--radius);
+            padding: 1.5rem; border: 1px solid var(--border);
+        }
+        .skeleton-line {
+            height: 14px; border-radius: 6px; margin-bottom: .75rem;
+            background: linear-gradient(90deg, var(--bg-card-solid) 25%, var(--bg-card-hover) 50%, var(--bg-card-solid) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.6s ease-in-out infinite;
+        }
+        .skeleton-line.skeleton-title { height: 20px; width: 60%; margin-bottom: 1rem; }
+        .skeleton-line.short { width: 40%; }
+        .skeleton-line.medium { width: 75%; }
+        .skeleton-line:last-child { margin-bottom: 0; }
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton-grid.hidden { display: none; }
+
+        /* ============================================================
+           RESULTS — TABS
+           ============================================================ */
+        #results-section { scroll-margin-top: 20px; display: none; }
         #results-section.visible { display: block; }
 
+        .results-content { opacity: 0; transition: opacity .5s ease; }
+        .results-content.fade-in { opacity: 1; }
+
+        .tab-bar {
+            display: flex; gap: .5rem; margin-bottom: 1.5rem;
+            overflow-x: auto; padding-bottom: .5rem;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        .tab-bar::-webkit-scrollbar { height: 4px; }
+        .tab-bar::-webkit-scrollbar-track { background: transparent; }
+        .tab-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+        .tab-pill {
+            display: inline-flex; align-items: center; gap: .4rem;
+            padding: .55rem 1.2rem; border-radius: 999px;
+            font-size: .85rem; font-weight: 600;
+            background: var(--bg-card-solid); border: 1px solid var(--border);
+            color: var(--text-dim); cursor: pointer; white-space: nowrap;
+            transition: all var(--transition);
+        }
+        .tab-pill:hover { color: var(--text); border-color: var(--accent); }
+        .tab-pill.active {
+            background: var(--accent-glow); border-color: var(--accent);
+            color: var(--accent);
+        }
+        .tab-pill svg { width: 16px; height: 16px; }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; animation: fadeTabIn .35s ease; }
+        @keyframes fadeTabIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============================================================
+           GLASSMORPHISM CARDS
+           ============================================================ */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            transition: all .3s ease;
+        }
+        .glass-card:hover {
+            border-color: rgba(0, 212, 170, .25);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .3), 0 0 0 1px rgba(0, 212, 170, .08);
+            transform: translateY(-2px);
+        }
+
+        /* ============================================================
+           RESULT TABS
+           ============================================================ */
+        .result-tabs {
+            display: flex;
+            gap: .5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0;
+            overflow-x: auto;
+        }
+        .result-tab {
+            padding: .65rem 1.25rem;
+            border: none;
+            background: none;
+            color: var(--text-dim);
+            font-size: .9rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all var(--transition);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+        }
+        .result-tab:hover {
+            color: var(--text);
+        }
+        .result-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+        .result-tab-panel {
+            display: none;
+        }
+        .result-tab-panel.active {
+            display: block;
+            animation: fadeIn .3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============================================================
+           RESULT CARDS (glassmorphism)
+           ============================================================ */
         .results-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 1.5rem;
         }
         .result-card {
-            background: var(--bg-card); border-radius: var(--radius);
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border-radius: var(--radius);
             padding: 1.5rem; box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-            transition: border-color var(--transition);
+            border: 1px solid rgba(0, 212, 170, .08);
+            transition: border-color var(--transition), box-shadow var(--transition);
         }
-        .result-card:hover { border-color: var(--accent); }
+        .result-card:hover {
+            border-color: rgba(0, 212, 170, .25);
+            box-shadow: var(--shadow-lg);
+        }
         .result-card h3 {
             font-size: 1.1rem; margin-bottom: 1rem;
             display: flex; align-items: center; gap: .5rem;
@@ -263,43 +598,65 @@
         .stat-grid {
             display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
         }
-        .stat-item { background: var(--bg-secondary); padding: .75rem; border-radius: var(--radius-sm); }
-        .stat-label { font-size: .75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
-        .stat-value { font-size: 1.4rem; font-weight: 700; color: var(--accent); margin-top: .15rem; }
+        .stat-item {
+            background: var(--bg-secondary); padding: .85rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255,255,255,.03);
+        }
+        .stat-label { font-size: .73rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
+        .stat-value {
+            font-size: 1.4rem; font-weight: 700; margin-top: .15rem;
+            background: linear-gradient(135deg, var(--accent), var(--info));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
         /* Disease risk cards */
-        .risk-list { display: flex; flex-direction: column; gap: .75rem; }
+        .risk-list { display: flex; flex-direction: column; gap: .6rem; }
         .risk-item {
             display: flex; align-items: center; gap: .75rem;
-            padding: .75rem; background: var(--bg-secondary); border-radius: var(--radius-sm);
+            padding: .75rem; border-radius: var(--radius-sm);
             border-left: 4px solid transparent;
+            transition: transform .15s ease;
         }
-        .risk-item.low       { border-left-color: var(--accent); }
-        .risk-item.moderate  { border-left-color: var(--warning); }
-        .risk-item.high      { border-left-color: var(--danger); }
-        .risk-item.very_high { border-left-color: #ff1a40; }
+        .risk-item:hover { transform: translateX(2px); }
+        .risk-item.low {
+            border-left-color: var(--accent);
+            background: linear-gradient(90deg, rgba(0,212,170,.06), transparent 60%);
+        }
+        .risk-item.moderate {
+            border-left-color: var(--warning);
+            background: linear-gradient(90deg, rgba(255,179,71,.06), transparent 60%);
+        }
+        .risk-item.high {
+            border-left-color: var(--danger);
+            background: linear-gradient(90deg, rgba(255,77,106,.06), transparent 60%);
+        }
+        .risk-item.very_high {
+            border-left-color: #ff1a40;
+            background: linear-gradient(90deg, rgba(255,26,64,.08), transparent 60%);
+        }
         .risk-name { font-weight: 600; flex: 1; }
         .risk-badge {
-            padding: .2rem .6rem; border-radius: 999px; font-size: .75rem;
+            padding: .2rem .6rem; border-radius: 999px; font-size: .73rem;
             font-weight: 600; text-transform: uppercase;
         }
         .risk-badge.low       { background: rgba(0,212,170,.15); color: var(--accent); }
         .risk-badge.moderate  { background: rgba(255,179,71,.15); color: var(--warning); }
         .risk-badge.high      { background: rgba(255,77,106,.15); color: var(--danger); }
         .risk-badge.very_high { background: rgba(255,26,64,.2); color: #ff1a40; }
-
-        .risk-prob { font-size: .85rem; color: var(--text-dim); min-width: 45px; text-align: right; }
+        .risk-prob { font-size: .83rem; color: var(--text-dim); min-width: 45px; text-align: right; }
 
         /* Diet */
-        .diet-summary { font-size: .92rem; color: var(--text-dim); margin-bottom: 1rem; line-height: 1.6; }
+        .diet-summary { font-size: .92rem; color: var(--text-dim); margin-bottom: 1rem; line-height: 1.7; }
         .nutrient-tags { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
         .nutrient-tag {
-            padding: .2rem .6rem; border-radius: 999px; font-size: .78rem;
-            background: rgba(77,166,255,.12); color: var(--info); border: 1px solid rgba(77,166,255,.25);
+            padding: .2rem .6rem; border-radius: 999px; font-size: .76rem;
+            background: rgba(77,166,255,.1); color: var(--info); border: 1px solid rgba(77,166,255,.2);
         }
         .food-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
         .food-col h4 { font-size: .85rem; margin-bottom: .5rem; color: var(--text-dim); }
-        .food-col ul { list-style: none; font-size: .88rem; }
+        .food-col ul { list-style: none; font-size: .86rem; }
         .food-col ul li { padding: .2rem 0; }
         .food-col ul li::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: .5rem; vertical-align: middle; }
         .food-col.increase ul li::before { background: var(--accent); }
@@ -312,21 +669,45 @@
             margin-bottom: .5rem; overflow: hidden;
         }
         .meal-day-header {
-            padding: .65rem 1rem; cursor: pointer; font-weight: 600;
+            padding: .6rem 1rem; cursor: pointer; font-weight: 600;
             display: flex; justify-content: space-between; align-items: center;
             user-select: none; transition: background var(--transition);
         }
         .meal-day-header:hover { background: var(--bg-card-hover); }
         .meal-day-body { padding: 0 1rem; max-height: 0; overflow: hidden; transition: max-height .3s ease, padding .3s ease; }
         .meal-day.open .meal-day-body { max-height: 300px; padding: .75rem 1rem; }
-        .meal-day-body p { font-size: .88rem; margin-bottom: .3rem; }
+        .meal-day-body p { font-size: .86rem; margin-bottom: .3rem; }
         .meal-day-body .meal-label { font-weight: 600; color: var(--accent); }
 
         /* Downloads */
         .download-row { display: flex; gap: .75rem; margin-top: 1.5rem; flex-wrap: wrap; }
 
         /* ============================================================
-           DASHBOARD TEASER
+           CHARTS
+           ============================================================ */
+        .chart-container {
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem; margin: 1rem 0;
+            display: none;
+        }
+        .chart-container.visible { display: block; }
+        .chart-container canvas { max-height: 400px; }
+        .chart-container h4 {
+            font-size: .95rem; font-weight: 600; margin-bottom: 1rem;
+            display: flex; align-items: center; gap: .5rem;
+            color: var(--text);
+        }
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* ============================================================
+           AGENT STATUS GRID
            ============================================================ */
         .agent-status-grid {
             display: grid;
@@ -334,21 +715,26 @@
             gap: 1rem;
         }
         .agent-card {
-            background: var(--bg-card); border-radius: var(--radius);
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-radius: var(--radius);
             padding: 1.25rem; border: 1px solid var(--border);
             display: flex; flex-direction: column; gap: .5rem;
+            transition: border-color var(--transition);
         }
-        .agent-card .agent-name { font-weight: 600; font-size: 1rem; }
+        .agent-card:hover { border-color: rgba(0,212,170,.2); }
+        .agent-card .agent-name { font-weight: 600; font-size: .95rem; }
         .agent-card .agent-status-badge {
             display: inline-flex; align-items: center; gap: .3rem;
-            font-size: .8rem; padding: .15rem .6rem; border-radius: 999px;
+            font-size: .78rem; padding: .15rem .6rem; border-radius: 999px;
             width: fit-content;
         }
         .agent-status-badge.idle    { background: rgba(0,212,170,.12); color: var(--accent); }
         .agent-status-badge.busy    { background: rgba(77,166,255,.12); color: var(--info); }
         .agent-status-badge.error   { background: rgba(255,77,106,.12); color: var(--danger); }
         .agent-status-badge.offline { background: rgba(143,155,179,.12); color: var(--text-dim); }
-        .agent-card .agent-tasks { font-size: .85rem; color: var(--text-dim); }
+        .agent-card .agent-tasks { font-size: .83rem; color: var(--text-dim); }
 
         /* ============================================================
            FOOTER
@@ -356,17 +742,19 @@
         .footer {
             text-align: center; padding: 2rem 1.5rem;
             border-top: 1px solid var(--border); color: var(--text-dim);
-            font-size: .85rem; margin-top: 3rem;
+            font-size: .83rem; margin-top: 3rem;
         }
 
         /* ============================================================
            RESPONSIVE
            ============================================================ */
+        @media (max-width: 1024px) {
+            .sidebar { display: none; }
+            .sidebar.mobile-open { display: flex; width: var(--sidebar-width); }
+            .mobile-header { display: flex; }
+            .main-content { margin-left: 0 !important; }
+        }
         @media (max-width: 768px) {
-            .navbar { padding: .75rem; }
-            .navbar-links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-primary); border-bottom: 1px solid var(--border); padding: 1rem; gap: .5rem; flex-wrap: wrap; }
-            .navbar-links.open { display: flex; }
-            .hamburger { display: block; }
             .hero { padding: 3rem 1rem 2rem; }
             .section { padding: 1.5rem 1rem !important; }
             .section-title { font-size: 1.5rem !important; }
@@ -380,40 +768,13 @@
             .download-row { flex-direction: column; align-items: stretch; }
             .upload-card { padding: 2rem 1rem; }
         }
-
         @media (max-width: 480px) {
-            .navbar-brand { font-size: 1.1rem; }
             .btn { width: 100%; }
             .hero h1 { font-size: 1.8rem; }
             .hero p { font-size: .95rem; }
             .section { padding: 1rem .75rem !important; }
             .stat-value { font-size: 1.2rem; }
             .badge { font-size: .72rem; padding: .25rem .6rem; }
-        }
-
-        /* ============================================================
-           CHARTS (Chart.js)
-           ============================================================ */
-        .chart-container {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1.5rem;
-            margin: 1rem 0;
-            display: none;
-        }
-        .chart-container.visible { display: block; }
-        .chart-container canvas { max-height: 400px; }
-        .chart-container h4 {
-            font-size: 1rem; font-weight: 600; margin-bottom: 1rem;
-            display: flex; align-items: center; gap: .5rem;
-            color: var(--text);
-        }
-        .charts-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 1.5rem;
-            margin-top: 1.5rem;
         }
 
         /* ============================================================
@@ -439,54 +800,90 @@
             display: flex; flex-direction: column; gap: .5rem;
         }
         .toast {
-            padding: .75rem 1.25rem; border-radius: var(--radius-sm);
-            font-size: .9rem; color: #fff; animation: fadeInUp .3s ease;
+            padding: .7rem 1.2rem; border-radius: var(--radius-sm);
+            font-size: .88rem; color: #fff; animation: fadeInUp .3s ease;
             box-shadow: var(--shadow);
+            backdrop-filter: blur(8px);
         }
-        .toast.success { background: #1a8a6e; }
-        .toast.error   { background: #c0394f; }
-        .toast.info    { background: #2e6fbf; }
+        .toast.success { background: rgba(26,138,110,.92); }
+        .toast.error   { background: rgba(192,57,79,.92); }
+        .toast.info    { background: rgba(46,111,191,.92); }
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(12px); }
             to   { opacity: 1; transform: translateY(0); }
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- ================================================================
-     NAVBAR
+     SIDEBAR
      ================================================================ -->
-<nav class="navbar" role="navigation" aria-label="Main navigation">
-    <div class="navbar-brand">Telo<span>scopy</span></div>
-    <button class="hamburger" onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); document.querySelector('.navbar-links').classList.toggle('open')" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navbar-links">&#9776;</button>
-    <ul class="navbar-links" id="navbar-links">
-        <li><a href="#hero" class="active">Home</a></li>
-        <li><a href="#upload-section">Analyze</a></li>
-        <li><a href="#nutrition-section">Nutrition</a></li>
-        <li><a href="#results-section">Results</a></li>
-        <li><a href="#agents-section">Agents</a></li>
-        <li><a href="/dashboard">Dashboard</a></li>
-    </ul>
-</nav>
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <a href="/" class="sidebar-brand">T<span class="sidebar-brand-text">eloscopy</span></a>
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+        </button>
+    </div>
+    <nav class="sidebar-nav" aria-label="Main navigation">
+        <a href="#hero" class="nav-item active" data-section="hero">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
+            <span class="nav-item-label">Home</span>
+        </a>
+        <a href="#upload-section" class="nav-item" data-section="upload-section">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+            <span class="nav-item-label">Analyze</span>
+        </a>
+        <a href="#nutrition-section" class="nav-item" data-section="nutrition-section">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75-1.5.75a3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0L3 16.5m15-3.379a48.474 48.474 0 0 0-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 0 1 6 13.12"/></svg>
+            <span class="nav-item-label">Nutrition</span>
+        </a>
+        <a href="#results-section" class="nav-item" data-section="results-section">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+            <span class="nav-item-label">Results</span>
+        </a>
+        <a href="#agents-section" class="nav-item" data-section="agents-section">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"/></svg>
+            <span class="nav-item-label">Agents</span>
+        </a>
+        <a href="/dashboard" class="nav-item">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z"/></svg>
+            <span class="nav-item-label">Dashboard</span>
+        </a>
+    </nav>
+    <div class="sidebar-footer">
+        <span class="sidebar-footer-text">Teloscopy v2.0</span>
+    </div>
+</aside>
 
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- Mobile header -->
+<div class="mobile-header" id="mobile-header">
+    <button class="hamburger-btn" id="mobile-menu-btn" aria-label="Open navigation menu">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+    </button>
+    <span class="mobile-brand">Telo<span>scopy</span></span>
+</div>
+
+<div class="main-content">
 <main id="main-content" role="main">
 
 <!-- ================================================================
      HERO
      ================================================================ -->
 <section class="hero" id="hero">
-    <h1>Decode Your <span class="highlight">Telomeres</span></h1>
-    <p>
+    <h1 class="reveal">Decode Your <span class="highlight">Telomeres</span></h1>
+    <p class="reveal">
         Upload a fluorescence microscopy image <strong>or a face photo</strong> and
         receive a comprehensive analysis of telomere length, personalised
         disease-risk assessment, and AI-driven dietary recommendations &mdash;
         or skip the image and get nutrition &amp; risk insights from your profile alone.
     </p>
-    <div class="hero-badges">
+    <div class="hero-badges reveal">
         <span class="badge"><span class="dot dot--green" aria-hidden="true"></span> Image Analysis</span>
         <span class="badge"><span class="dot dot--blue" aria-hidden="true"></span> Genomics</span>
         <span class="badge"><span class="dot dot--yellow" aria-hidden="true"></span> Nutrition AI</span>
@@ -498,13 +895,13 @@
      UPLOAD & PROFILE
      ================================================================ -->
 <section class="section" id="upload-section">
-    <h2 class="section-title">Upload &amp; Profile</h2>
-    <p class="section-subtitle">
+    <h2 class="section-title reveal">Upload &amp; Profile</h2>
+    <p class="section-subtitle reveal">
         Upload a microscopy image or face photo, <strong>or skip the image</strong> and enter your details for nutrition &amp; risk analysis.
     </p>
 
     <!-- Drop zone -->
-    <div class="upload-card" id="drop-zone">
+    <div class="upload-card glass-card reveal" id="drop-zone">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
         </svg>
@@ -516,13 +913,13 @@
         <span id="file-name"></span>
         <span id="file-size" style="color:var(--text-dim);"></span>
         <span id="image-type-badge" class="badge" style="display:none;margin-left:.5rem;"></span>
-        <button class="btn btn-outline" style="padding:.3rem .8rem;font-size:.8rem;margin-left:auto;" onclick="clearFile()" aria-label="Remove selected file">Remove</button>
+        <button class="btn btn-outline" style="padding:.3rem .8rem;font-size:.78rem;margin-left:auto;" onclick="clearFile()" aria-label="Remove selected file">Remove</button>
     </div>
     <!-- Image validation feedback -->
-    <div id="image-validation" style="display:none;margin-top:.75rem;padding:.75rem 1rem;border-radius:var(--radius-sm);font-size:.88rem;"></div>
+    <div id="image-validation" style="display:none;margin-top:.75rem;padding:.75rem 1rem;border-radius:var(--radius-sm);font-size:.86rem;"></div>
 
     <!-- Profile form -->
-    <form id="profile-form" class="profile-form" onsubmit="return false;" aria-label="User profile for analysis">
+    <form id="profile-form" class="profile-form reveal" onsubmit="return false;" aria-label="User profile for analysis">
         <div class="form-group">
             <label for="age">Age</label>
             <input type="number" id="age" name="age" min="1" max="150" placeholder="e.g. 35" required>
@@ -558,6 +955,18 @@
             </select>
         </div>
         <div class="form-group">
+            <label for="country">Country</label>
+            <select id="country" name="country">
+                <option value="">Select country&hellip;</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="state">State / Province</label>
+            <select id="state" name="state">
+                <option value="">Select state&hellip;</option>
+            </select>
+        </div>
+        <div class="form-group">
             <label for="variants">Known Genetic Variants</label>
             <input type="text" id="variants" name="known_variants" placeholder="e.g. APOE-e4, BRCA1, rs429358" autocomplete="off">
         </div>
@@ -584,7 +993,7 @@
         </div>
     </form>
 
-    <div class="btn-row">
+    <div class="btn-row reveal">
         <button class="btn btn-primary" id="analyze-btn" onclick="startAnalysis()">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
             Analyze with Image
@@ -611,12 +1020,12 @@
 <!-- ================================================================
      NUTRITION (standalone)
      ================================================================ -->
-<section class="section" id="nutrition-section" style="scroll-margin-top:80px;">
-    <h2 class="section-title">Nutrition Planner</h2>
-    <p class="section-subtitle">
+<section class="section" id="nutrition-section" style="scroll-margin-top:20px;">
+    <h2 class="section-title reveal">Nutrition Planner</h2>
+    <p class="section-subtitle reveal">
         Get a personalised nutrition plan based on your profile, dietary preferences, and health goals &mdash; no image needed.
     </p>
-    <form id="nutrition-form" class="profile-form" onsubmit="return false;" aria-label="Nutrition plan preferences">
+    <form id="nutrition-form" class="profile-form reveal" onsubmit="return false;" aria-label="Nutrition plan preferences">
         <div class="form-group">
             <label for="nut-age">Age</label>
             <input type="number" id="nut-age" min="1" max="150" placeholder="e.g. 35" required>
@@ -649,6 +1058,18 @@
                 <option value="Central America">Central America</option>
                 <option value="South America">South America</option>
                 <option value="Oceania">Oceania</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="nut-country">Country</label>
+            <select id="nut-country">
+                <option value="">Select country&hellip;</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="nut-state">State / Province</label>
+            <select id="nut-state">
+                <option value="">Select state&hellip;</option>
             </select>
         </div>
         <div class="form-group">
@@ -688,7 +1109,7 @@
             </div>
         </div>
     </form>
-    <div class="btn-row">
+    <div class="btn-row reveal">
         <button class="btn btn-primary" id="nutrition-btn" onclick="startNutritionPlan()">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75-1.5.75a3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0L3 16.5m15-3.379a48.474 48.474 0 0 0-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 0 1 6 13.12"/></svg>
             Generate Nutrition Plan
@@ -696,7 +1117,7 @@
     </div>
     <!-- Nutrition results -->
     <div id="nutrition-results" style="display:none;margin-top:2rem;" aria-live="polite">
-        <div class="result-card" style="border-color:var(--accent);">
+        <div class="result-card glass-card" style="border-color:var(--accent);">
             <h3><span class="icon">&#x1F957;</span> Your Personalised Nutrition Plan</h3>
             <div id="nutrition-content"></div>
         </div>
@@ -704,54 +1125,94 @@
 </section>
 
 <!-- ================================================================
-     RESULTS
+     RESULTS (tabbed)
      ================================================================ -->
 <section class="section" id="results-section" aria-live="polite">
     <h2 class="section-title">Analysis Results</h2>
     <p class="section-subtitle" id="results-subtitle">Your personalised telomere analysis and health recommendations.</p>
 
-    <div class="results-grid" id="results-grid">
-        <!-- Telomere Card -->
-        <div class="result-card" id="telomere-card">
+    <!-- Skeleton loading -->
+    <div class="skeleton-grid" id="results-skeleton" style="display:none;">
+        <div class="skeleton-card">
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line short"></div>
+        </div>
+        <div class="skeleton-card">
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line short"></div>
+        </div>
+        <div class="skeleton-card">
+            <div class="skeleton-line skeleton-title"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line medium"></div>
+        </div>
+    </div>
+
+    <!-- Results content with tabs -->
+    <div class="results-content" id="results-content">
+
+    <!-- Result Tabs -->
+    <div class="result-tabs" id="result-tabs" role="tablist">
+        <button class="result-tab active" data-tab="telomere" role="tab" aria-selected="true" aria-controls="tab-telomere">&#x1F9EC; Telomere</button>
+        <button class="result-tab" data-tab="facial" role="tab" aria-selected="false" aria-controls="tab-facial" id="facial-tab-btn" style="display:none;">&#x1F9D1; Facial</button>
+        <button class="result-tab" data-tab="risk" role="tab" aria-selected="false" aria-controls="tab-risk">&#x1F3E5; Risk</button>
+        <button class="result-tab" data-tab="diet" role="tab" aria-selected="false" aria-controls="tab-diet">&#x1F957; Diet</button>
+        <button class="result-tab" data-tab="charts" role="tab" aria-selected="false" aria-controls="tab-charts">&#x1F4CA; Charts</button>
+    </div>
+
+    <!-- Tab Panels -->
+    <div class="result-tab-panel active" id="tab-telomere" role="tabpanel">
+        <div class="result-card glass-card" id="telomere-card">
             <h3><span class="icon">&#x1F9EC;</span> Telomere Analysis</h3>
             <div class="stat-grid" id="telomere-stats"></div>
             <div id="telomere-overlay" class="mt-2"></div>
         </div>
+    </div>
 
-        <!-- Facial Analysis Card (hidden by default) -->
-        <div class="result-card" id="facial-card" style="display:none;">
+    <div class="result-tab-panel" id="tab-facial" role="tabpanel">
+        <div class="result-card glass-card" id="facial-card">
             <h3><span class="icon">&#x1F9D1;</span> Facial Analysis</h3>
             <div id="facial-content"></div>
         </div>
+    </div>
 
-        <!-- Disease Risk Card -->
-        <div class="result-card" id="risk-card">
+    <div class="result-tab-panel" id="tab-risk" role="tabpanel">
+        <div class="result-card glass-card" id="risk-card">
             <h3><span class="icon">&#x1F3E5;</span> Disease Risk Assessment</h3>
             <div class="risk-list" id="risk-list"></div>
         </div>
+    </div>
 
-        <!-- Diet Card (spans full width) -->
-        <div class="result-card" style="grid-column: 1 / -1;" id="diet-card">
+    <div class="result-tab-panel" id="tab-diet" role="tabpanel">
+        <div class="result-card glass-card" id="diet-card">
             <h3><span class="icon">&#x1F957;</span> Dietary Recommendations</h3>
             <div id="diet-content"></div>
         </div>
     </div>
 
-    <!-- Interactive Charts -->
-    <div class="charts-row">
-        <div class="chart-container" id="telomereChartContainer">
-            <h4>&#x1F4CA; Telomere Length by Chromosome</h4>
-            <canvas id="telomereChart"></canvas>
-        </div>
-        <div class="chart-container" id="riskChartContainer">
-            <h4>&#x1F3AF; Disease Risk Overview</h4>
-            <canvas id="riskChart"></canvas>
-        </div>
-        <div class="chart-container" id="nutritionChartContainer">
-            <h4>&#x1F34E; Macronutrient Breakdown</h4>
-            <canvas id="nutritionChart"></canvas>
+    <div class="result-tab-panel" id="tab-charts" role="tabpanel">
+        <div class="charts-row">
+            <div class="chart-container" id="telomereChartContainer">
+                <h4>&#x1F4CA; Telomere Length by Chromosome</h4>
+                <canvas id="telomereChart"></canvas>
+            </div>
+            <div class="chart-container" id="riskChartContainer">
+                <h4>&#x1F3AF; Disease Risk Overview</h4>
+                <canvas id="riskChart"></canvas>
+            </div>
+            <div class="chart-container" id="nutritionChartContainer">
+                <h4>&#x1F34E; Macronutrient Breakdown</h4>
+                <canvas id="nutritionChart"></canvas>
+            </div>
         </div>
     </div>
+
+    </div><!-- .results-content -->
 
     <!-- Downloads -->
     <div class="download-row" id="download-row" style="display:none;">
@@ -764,29 +1225,33 @@
             Download JSON
         </button>
     </div>
+
+    <!-- Hidden compat wrapper for results-grid ID -->
+    <div id="results-grid" style="display:none;"></div>
 </section>
 
 <!-- ================================================================
-     AGENT STATUS TEASER
+     AGENT STATUS
      ================================================================ -->
 <section class="section" id="agents-section">
-    <h2 class="section-title">Multi-Agent System</h2>
-    <p class="section-subtitle">Real-time status of the analysis agents.</p>
-    <div class="agent-status-grid" id="agent-grid">
+    <h2 class="section-title reveal">Multi-Agent System</h2>
+    <p class="section-subtitle reveal">Real-time status of the analysis agents.</p>
+    <div class="agent-status-grid reveal" id="agent-grid">
         <!-- Populated by JS -->
     </div>
-    <div class="btn-row">
+    <div class="btn-row reveal">
         <a href="/dashboard" class="btn btn-outline">Open Full Dashboard</a>
     </div>
 </section>
 
 </main>
+</div><!-- .main-content -->
 
 <!-- ================================================================
      FOOTER
      ================================================================ -->
 <footer class="footer">
-    <p>&copy; 2024 Teloscopy &mdash; Multi-agent Telomere Analysis Platform &middot; v0.1.0</p>
+    <p>&copy; 2024 Teloscopy &mdash; Multi-agent Telomere Analysis Platform &middot; v2.0.0</p>
 </footer>
 
 <!-- Toast container -->
@@ -799,40 +1264,456 @@
 (function () {
     'use strict';
 
+    /* ==============================================================
+       COUNTRY / STATE CASCADING DROPDOWNS
+       ============================================================== */
+    var REGION_COUNTRIES = {
+        "East Asia": {
+            "China": ["Beijing","Shanghai","Guangdong","Sichuan","Hunan","Yunnan","Zhejiang","Fujian","Shandong","Xinjiang"],
+            "Japan": ["Tokyo","Osaka","Kyoto","Hokkaido","Okinawa","Hiroshima"],
+            "South Korea": ["Seoul","Busan","Jeju","Gyeonggi"],
+            "Mongolia": [],
+            "Taiwan": ["Taipei","Tainan","Kaohsiung"]
+        },
+        "South Asia": {
+            "India": ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi"],
+            "Pakistan": ["Punjab","Sindh","Khyber Pakhtunkhwa","Balochistan"],
+            "Bangladesh": ["Dhaka","Chittagong","Sylhet","Rajshahi"],
+            "Sri Lanka": ["Western Province","Central Province","Southern Province"],
+            "Nepal": ["Kathmandu Valley","Terai","Hill Region"]
+        },
+        "Southeast Asia": {
+            "Thailand": ["Bangkok","Chiang Mai","Isaan","Southern Thailand"],
+            "Vietnam": ["Hanoi","Ho Chi Minh City","Hue","Da Nang"],
+            "Indonesia": ["Java","Bali","Sumatra","Sulawesi","Kalimantan"],
+            "Philippines": ["Luzon","Visayas","Mindanao"],
+            "Malaysia": ["Peninsular Malaysia","Sabah","Sarawak"],
+            "Myanmar": [],
+            "Cambodia": [],
+            "Laos": [],
+            "Singapore": []
+        },
+        "Central Asia": {
+            "Kazakhstan": [],
+            "Uzbekistan": ["Tashkent","Samarkand","Bukhara"],
+            "Kyrgyzstan": [],
+            "Tajikistan": [],
+            "Turkmenistan": [],
+            "Afghanistan": []
+        },
+        "Western Asia": {
+            "Turkey": ["Istanbul","Ankara","Izmir","Southeastern Anatolia","Black Sea Region"],
+            "Iran": ["Tehran","Isfahan","Shiraz","Tabriz","Gilan"],
+            "Iraq": [],
+            "Saudi Arabia": ["Riyadh","Jeddah","Eastern Province"],
+            "UAE": ["Dubai","Abu Dhabi"],
+            "Israel": [],
+            "Jordan": [],
+            "Lebanon": [],
+            "Syria": [],
+            "Yemen": [],
+            "Oman": [],
+            "Kuwait": [],
+            "Qatar": [],
+            "Bahrain": []
+        },
+        "Northern Europe": {
+            "United Kingdom": ["England","Scotland","Wales","Northern Ireland"],
+            "Ireland": [],
+            "Sweden": [],
+            "Norway": [],
+            "Denmark": [],
+            "Finland": [],
+            "Iceland": []
+        },
+        "Western Europe": {
+            "France": ["Ile-de-France","Provence","Brittany","Alsace","Normandy","Bordeaux"],
+            "Germany": ["Bavaria","North Rhine-Westphalia","Baden-Wurttemberg","Saxony","Berlin"],
+            "Netherlands": [],
+            "Belgium": ["Flanders","Wallonia","Brussels"],
+            "Switzerland": ["German Switzerland","French Switzerland","Italian Switzerland"],
+            "Austria": ["Vienna","Tyrol","Salzburg"],
+            "Luxembourg": []
+        },
+        "Eastern Europe": {
+            "Russia": ["Moscow","St Petersburg","Siberia","Tatarstan","Caucasus"],
+            "Poland": [],
+            "Ukraine": [],
+            "Czech Republic": [],
+            "Hungary": [],
+            "Romania": [],
+            "Bulgaria": [],
+            "Slovakia": [],
+            "Belarus": []
+        },
+        "Southern Europe": {
+            "Italy": ["Lombardy","Tuscany","Sicily","Campania","Emilia-Romagna","Lazio","Veneto"],
+            "Spain": ["Catalonia","Andalusia","Basque Country","Galicia","Valencia","Madrid"],
+            "Portugal": ["Lisbon","Porto","Algarve"],
+            "Greece": ["Athens","Crete","Thessaloniki","Peloponnese"]
+        },
+        "North Africa": {
+            "Egypt": ["Cairo","Alexandria","Upper Egypt"],
+            "Morocco": ["Casablanca","Marrakech","Fez"],
+            "Tunisia": [],
+            "Algeria": [],
+            "Libya": []
+        },
+        "Sub-Saharan Africa": {
+            "Nigeria": ["Lagos","Abuja","Kano","Enugu"],
+            "Ethiopia": ["Addis Ababa","Oromia","Amhara","Tigray"],
+            "Kenya": ["Nairobi","Mombasa","Kisumu"],
+            "South Africa": ["Gauteng","Western Cape","KwaZulu-Natal","Eastern Cape"],
+            "Ghana": [],
+            "Tanzania": [],
+            "Uganda": [],
+            "Senegal": [],
+            "Cameroon": [],
+            "Ivory Coast": [],
+            "Democratic Republic of Congo": [],
+            "Mozambique": []
+        },
+        "North America": {
+            "United States": ["California","New York","Texas","Florida","Illinois","Pennsylvania","Ohio","Georgia","North Carolina","Michigan","New Jersey","Virginia","Washington","Arizona","Massachusetts","Tennessee","Indiana","Missouri","Maryland","Wisconsin","Colorado","Minnesota","South Carolina","Alabama","Louisiana","Kentucky","Oregon","Oklahoma","Connecticut","Utah","Iowa","Nevada","Arkansas","Mississippi","Kansas","New Mexico","Nebraska","Idaho","West Virginia","Hawaii","New Hampshire","Maine","Montana","Rhode Island","Delaware","South Dakota","North Dakota","Alaska","Vermont","Wyoming"],
+            "Canada": ["Ontario","Quebec","British Columbia","Alberta","Manitoba","Saskatchewan","Nova Scotia","New Brunswick","Newfoundland","Prince Edward Island"],
+            "Mexico": ["Mexico City","Jalisco","Oaxaca","Yucatan","Puebla","Veracruz","Nuevo Leon","Baja California"]
+        },
+        "Central America": {
+            "Guatemala": [],
+            "Honduras": [],
+            "El Salvador": [],
+            "Costa Rica": [],
+            "Panama": [],
+            "Nicaragua": [],
+            "Belize": []
+        },
+        "South America": {
+            "Brazil": ["Sao Paulo","Rio de Janeiro","Bahia","Minas Gerais","Rio Grande do Sul","Amazonas","Pernambuco"],
+            "Argentina": ["Buenos Aires","Mendoza","Cordoba","Patagonia"],
+            "Colombia": ["Bogota","Medellin","Cali","Cartagena"],
+            "Peru": ["Lima","Cusco","Arequipa","Amazonas"],
+            "Chile": ["Santiago","Valparaiso","Patagonia"],
+            "Venezuela": [],
+            "Ecuador": [],
+            "Bolivia": [],
+            "Paraguay": [],
+            "Uruguay": []
+        },
+        "Oceania": {
+            "Australia": ["New South Wales","Victoria","Queensland","Western Australia","South Australia","Tasmania"],
+            "New Zealand": ["North Island","South Island"],
+            "Fiji": [],
+            "Papua New Guinea": []
+        }
+    };
+
+    function populateCountries(regionSel, countrySel, stateSel) {
+        var region = regionSel.value;
+        countrySel.innerHTML = '<option value="">Select country&hellip;</option>';
+        stateSel.innerHTML = '<option value="">Select state&hellip;</option>';
+        if (!region || !REGION_COUNTRIES[region]) return;
+        var countries = Object.keys(REGION_COUNTRIES[region]).sort();
+        countries.forEach(function (c) {
+            var opt = document.createElement('option');
+            opt.value = c; opt.textContent = c;
+            countrySel.appendChild(opt);
+        });
+    }
+
+    function populateStates(regionSel, countrySel, stateSel) {
+        var region = regionSel.value;
+        var country = countrySel.value;
+        stateSel.innerHTML = '<option value="">Select state&hellip;</option>';
+        if (!region || !country || !REGION_COUNTRIES[region] || !REGION_COUNTRIES[region][country]) return;
+        var states = REGION_COUNTRIES[region][country];
+        states.forEach(function (s) {
+            var opt = document.createElement('option');
+            opt.value = s; opt.textContent = s;
+            stateSel.appendChild(opt);
+        });
+    }
+
+    /* Wire up profile form cascading dropdowns */
+    var regionSel = document.getElementById('region');
+    var countrySel = document.getElementById('country');
+    var stateSel = document.getElementById('state');
+    regionSel.addEventListener('change', function () { populateCountries(regionSel, countrySel, stateSel); });
+    countrySel.addEventListener('change', function () { populateStates(regionSel, countrySel, stateSel); });
+
+    /* Wire up nutrition form cascading dropdowns */
+    var nutRegionSel = document.getElementById('nut-region');
+    var nutCountrySel = document.getElementById('nut-country');
+    var nutStateSel = document.getElementById('nut-state');
+    nutRegionSel.addEventListener('change', function () { populateCountries(nutRegionSel, nutCountrySel, nutStateSel); });
+    nutCountrySel.addEventListener('change', function () { populateStates(nutRegionSel, nutCountrySel, nutStateSel); });
+
+    /* ==============================================================
+       SIDEBAR LOGIC
+       ============================================================== */
+    var sidebar       = document.getElementById('sidebar');
+    var sidebarToggle = document.getElementById('sidebar-toggle');
+    var sidebarOverlay = document.getElementById('sidebar-overlay');
+    var mobileMenuBtn = document.getElementById('mobile-menu-btn');
+
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('collapsed');
+        });
+    }
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', function() {
+            sidebar.classList.toggle('mobile-open');
+            sidebarOverlay.classList.toggle('visible');
+        });
+    }
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', function() {
+            sidebar.classList.remove('mobile-open');
+            sidebarOverlay.classList.remove('visible');
+        });
+    }
+
+    /* ---- Sidebar active section tracking ---- */
+    var navItems = document.querySelectorAll('.nav-item[data-section]');
+    var sectionObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+                navItems.forEach(function(item) { item.classList.remove('active'); });
+                var activeItem = document.querySelector('.nav-item[data-section="' + entry.target.id + '"]');
+                if (activeItem) activeItem.classList.add('active');
+            }
+        });
+    }, { rootMargin: '-30% 0px -70% 0px' });
+
+    navItems.forEach(function(item) {
+        var sectionId = item.getAttribute('data-section');
+        var section = document.getElementById(sectionId);
+        if (section) sectionObserver.observe(section);
+    });
+
+    /* Sidebar nav-item clicks */
+    document.querySelectorAll('.nav-item').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+            var href = link.getAttribute('href');
+            /* External links (like /dashboard) — navigate normally */
+            if (href && href.charAt(0) === '/') return;
+            e.preventDefault();
+            var target = document.querySelector(href);
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            /* Close mobile sidebar if open */
+            if (sidebar.classList.contains('mobile-open')) {
+                sidebar.classList.remove('mobile-open');
+                sidebarOverlay.classList.remove('visible');
+            }
+        });
+    });
+
+    /* ==============================================================
+       SCROLL REVEAL (IntersectionObserver)
+       ============================================================== */
+    var revealObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('revealed');
+                entry.target.style.willChange = 'auto'; /* Clean up after animation */
+                revealObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(function (el) {
+        revealObserver.observe(el);
+    });
+
+    /* ==============================================================
+       RESULTS TABS (new result-tab style)
+       ============================================================== */
+    var currentTab = 'telomere';
+
+    /* ---- Result tabs (new style) ---- */
+    var resultTabs = document.querySelectorAll('.result-tab');
+    resultTabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            resultTabs.forEach(function(t) {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
+            document.querySelectorAll('.result-tab-panel').forEach(function(p) {
+                p.classList.remove('active');
+            });
+            tab.classList.add('active');
+            tab.setAttribute('aria-selected', 'true');
+            var panelId = 'tab-' + tab.getAttribute('data-tab');
+            var panel = document.getElementById(panelId);
+            if (panel) panel.classList.add('active');
+            currentTab = tab.getAttribute('data-tab');
+            /* Lazy load Chart.js when Charts tab is opened */
+            if (currentTab === 'charts') {
+                ensureChartJS(function () { /* Charts already rendered, just ensure lib is loaded */ });
+            }
+        });
+    });
+
+    /* Also support old tab-pill clicks if any remain */
+    document.querySelectorAll('#results-tab-bar .tab-pill').forEach(function (pill) {
+        pill.addEventListener('click', function () {
+            var tab = pill.dataset.tab;
+            switchResultsTab(tab);
+        });
+    });
+
+    function switchResultsTab(tabName) {
+        currentTab = tabName;
+        /* Update pill states */
+        document.querySelectorAll('#results-tab-bar .tab-pill').forEach(function (p) {
+            p.classList.toggle('active', p.dataset.tab === tabName);
+        });
+        /* Update panel visibility */
+        document.querySelectorAll('.tab-panel').forEach(function (panel) {
+            panel.classList.toggle('active', panel.id === 'tab-' + tabName);
+        });
+        /* Also update result-tab states */
+        resultTabs.forEach(function(t) {
+            var isActive = t.getAttribute('data-tab') === tabName;
+            t.classList.toggle('active', isActive);
+            t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+        document.querySelectorAll('.result-tab-panel').forEach(function(p) {
+            p.classList.toggle('active', p.id === 'tab-' + tabName);
+        });
+        /* Lazy load Chart.js when Charts tab is opened */
+        if (tabName === 'charts') {
+            ensureChartJS(function () { /* Charts already rendered, just ensure lib is loaded */ });
+        }
+    }
+    window.switchResultsTab = switchResultsTab;
+
+    /* Update which tabs are visible based on card display state */
+    function updateResultsTabs() {
+        var tabCardMap = {
+            'telomere': 'telomere-card',
+            'facial': 'facial-card',
+            'risk': 'risk-card',
+            'diet': 'diet-card'
+        };
+        var firstVisible = null;
+
+        Object.keys(tabCardMap).forEach(function (tabName) {
+            var card = document.getElementById(tabCardMap[tabName]);
+            /* For result-tab style buttons */
+            var resultTabBtn = document.querySelector('.result-tab[data-tab="' + tabName + '"]');
+            var isVisible = card && card.style.display !== 'none';
+            if (resultTabBtn) resultTabBtn.style.display = isVisible ? '' : 'none';
+            if (isVisible && !firstVisible) firstVisible = tabName;
+        });
+
+        /* Charts tab: show if any chart container has .visible */
+        var chartsResultTab = document.querySelector('.result-tab[data-tab="charts"]');
+        var hasCharts = document.querySelector('.chart-container.visible');
+        if (chartsResultTab) {
+            chartsResultTab.style.display = hasCharts ? '' : 'none';
+            if (hasCharts && !firstVisible) firstVisible = 'charts';
+        }
+
+        /* Activate first visible tab */
+        if (firstVisible) switchResultsTab(firstVisible);
+    }
+
+    /* ==============================================================
+       SKELETON LOADING
+       ============================================================== */
+    var resultsSkeleton = document.getElementById('results-skeleton');
+    var resultsContent  = document.getElementById('results-content');
+
+    function showSkeleton() {
+        resultsSkeleton.style.display = '';
+        resultsContent.classList.remove('fade-in');
+        resultsContent.style.display = 'none';
+    }
+
+    function hideSkeleton() {
+        resultsSkeleton.style.display = 'none';
+        resultsContent.style.display = '';
+        /* Trigger fade-in on next frame */
+        requestAnimationFrame(function () {
+            resultsContent.classList.add('fade-in');
+        });
+    }
+
+    /* ==============================================================
+       LAZY CHART.JS LOADING
+       ============================================================== */
+    var chartJSLoaded  = false;
+    var chartJSLoading = false;
+    var chartJSQueue   = [];
+
+    function ensureChartJS(callback) {
+        if (chartJSLoaded) { callback(); return; }
+        chartJSQueue.push(callback);
+        if (chartJSLoading) return;
+        chartJSLoading = true;
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.onload = function () {
+            chartJSLoaded = true;
+            Chart.defaults.color = '#e0e6ed';
+            Chart.defaults.borderColor = '#2e3a59';
+            chartJSQueue.forEach(function (cb) { cb(); });
+            chartJSQueue = [];
+        };
+        script.onerror = function () {
+            chartJSLoading = false;
+            chartJSQueue = [];
+        };
+        document.head.appendChild(script);
+    }
+
+    /* ==============================================================
+       DEBOUNCE UTILITY
+       ============================================================== */
+    function debounce(fn, ms) {
+        var timer;
+        return function () {
+            var ctx = this, args = arguments;
+            clearTimeout(timer);
+            timer = setTimeout(function () { fn.apply(ctx, args); }, ms);
+        };
+    }
+
     /* ---- State ---- */
-    let selectedFile = null;
-    let currentJobId = null;
-    let pollTimer    = null;
-    let lastResult   = null;
+    var selectedFile = null;
+    var currentJobId = null;
+    var pollTimer    = null;
+    var lastResult   = null;
 
     /* ---- DOM refs ---- */
-    const dropZone        = document.getElementById('drop-zone');
-    const fileInput       = document.getElementById('file-input');
-    const fileInfo        = document.getElementById('file-info');
-    const fileName        = document.getElementById('file-name');
-    const fileSize        = document.getElementById('file-size');
-    const analyzeBtn      = document.getElementById('analyze-btn');
-    const profileBtn      = document.getElementById('profile-btn');
-    const progressWrapper = document.getElementById('progress-wrapper');
-    const progressFill    = document.getElementById('progress-fill');
-    const progressPct     = document.getElementById('progress-pct');
-    const progressMessage = document.getElementById('progress-message');
-    const resultsSection  = document.getElementById('results-section');
-    const imageTypeBadge  = document.getElementById('image-type-badge');
-    const imageValidation = document.getElementById('image-validation');
+    var dropZone        = document.getElementById('drop-zone');
+    var fileInput       = document.getElementById('file-input');
+    var fileInfo        = document.getElementById('file-info');
+    var fileName        = document.getElementById('file-name');
+    var fileSize        = document.getElementById('file-size');
+    var analyzeBtn      = document.getElementById('analyze-btn');
+    var profileBtn      = document.getElementById('profile-btn');
+    var progressWrapper = document.getElementById('progress-wrapper');
+    var progressFill    = document.getElementById('progress-fill');
+    var progressPct     = document.getElementById('progress-pct');
+    var progressMessage = document.getElementById('progress-message');
+    var resultsSection  = document.getElementById('results-section');
+    var imageTypeBadge  = document.getElementById('image-type-badge');
+    var imageValidation = document.getElementById('image-validation');
 
     /* ---- Drag & Drop ---- */
-    ['dragenter', 'dragover'].forEach(ev => {
-        dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    ['dragenter', 'dragover'].forEach(function (ev) {
+        dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.add('drag-over'); });
     });
-    ['dragleave', 'drop'].forEach(ev => {
-        dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('drag-over'); });
+    ['dragleave', 'drop'].forEach(function (ev) {
+        dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.remove('drag-over'); });
     });
-    dropZone.addEventListener('drop', e => {
-        const files = e.dataTransfer.files;
+    dropZone.addEventListener('drop', function (e) {
+        var files = e.dataTransfer.files;
         if (files.length) handleFile(files[0]);
     });
-    fileInput.addEventListener('change', () => {
+    fileInput.addEventListener('change', function () {
         if (fileInput.files.length) handleFile(fileInput.files[0]);
     });
 
@@ -841,22 +1722,23 @@
         fileName.textContent = file.name;
         fileSize.textContent = '(' + (file.size / 1024 / 1024).toFixed(2) + ' MB)';
         fileInfo.classList.add('visible');
+        dropZone.classList.add('has-file');
         imageTypeBadge.style.display = 'none';
         imageValidation.style.display = 'none';
         validateImage(file);
     }
 
-    async function validateImage(file) {
+    var validateImage = debounce(async function (file) {
         try {
-            const fd = new FormData();
+            var fd = new FormData();
             fd.append('file', file);
-            const res = await fetch('/api/validate-image', { method: 'POST', body: fd });
+            var res = await fetch('/api/validate-image', { method: 'POST', body: fd });
             if (!res.ok) return;
-            const v = await res.json();
+            var v = await res.json();
 
             /* Show image type badge */
             if (v.image_type && v.image_type !== 'unknown') {
-                const typeLabels = {
+                var typeLabels = {
                     'face_photo': 'Face Photo',
                     'fish_microscopy': 'Microscopy Image',
                     'unknown_photo': 'Unknown Image'
@@ -879,17 +1761,18 @@
                 imageValidation.style.background = 'rgba(0,212,170,.08)';
                 imageValidation.style.border = '1px solid rgba(0,212,170,.25)';
                 imageValidation.style.color = 'var(--accent)';
-                let msg = 'Image validated: ' + v.width + 'x' + v.height + 'px, ' + v.format_detected.toUpperCase();
+                var msg = 'Image validated: ' + v.width + 'x' + v.height + 'px, ' + v.format_detected.toUpperCase();
                 if (v.face_detected) msg += ' (face detected)';
                 imageValidation.innerHTML = msg;
             }
         } catch (e) { /* silent */ }
-    }
+    }, 300);
 
     window.clearFile = function () {
         selectedFile = null;
         fileInput.value = '';
         fileInfo.classList.remove('visible');
+        dropZone.classList.remove('has-file');
         imageTypeBadge.style.display = 'none';
         imageValidation.style.display = 'none';
     };
@@ -897,30 +1780,34 @@
     /* ---- Toasts ---- */
     function toast(msg, type) {
         type = type || 'info';
-        const el = document.createElement('div');
+        var el = document.createElement('div');
         el.className = 'toast ' + type;
         el.setAttribute('role', 'alert');
         el.textContent = msg;
         document.getElementById('toast-container').appendChild(el);
-        setTimeout(() => el.remove(), 4000);
+        setTimeout(function () { el.remove(); }, 4000);
     }
 
     /* ---- Analysis with image ---- */
     window.startAnalysis = async function () {
         if (!selectedFile) { toast('Please select an image first. Or use "Analyze Profile Only".', 'error'); return; }
-        const age    = document.getElementById('age').value;
-        const sex    = document.getElementById('sex').value;
-        const region = document.getElementById('region').value;
+        var age    = document.getElementById('age').value;
+        var sex    = document.getElementById('sex').value;
+        var region = document.getElementById('region').value;
         if (!age || !sex || !region) { toast('Please fill in age, sex, and region.', 'error'); return; }
 
-        const diets = Array.from(document.querySelectorAll('input[name="diet"]:checked')).map(cb => cb.value);
-        const variants = document.getElementById('variants').value;
+        var diets = Array.from(document.querySelectorAll('input[name="diet"]:checked')).map(function (cb) { return cb.value; });
+        var variants = document.getElementById('variants').value;
+        var country = document.getElementById('country').value;
+        var state = document.getElementById('state').value;
 
-        const fd = new FormData();
+        var fd = new FormData();
         fd.append('file', selectedFile);
         fd.append('age', age);
         fd.append('sex', sex);
         fd.append('region', region);
+        fd.append('country', country);
+        fd.append('state', state);
         fd.append('dietary_restrictions', diets.join(','));
         fd.append('known_variants', variants);
 
@@ -931,15 +1818,18 @@
         progressFill.setAttribute('aria-valuenow', '0');
         progressPct.textContent = '0%';
         progressMessage.textContent = 'Uploading image\u2026';
-        resultsSection.classList.remove('visible');
+
+        /* Show skeleton loading in results */
+        resultsSection.classList.add('visible');
+        showSkeleton();
 
         try {
-            const res = await fetch('/api/analyze', { method: 'POST', body: fd });
+            var res = await fetch('/api/analyze', { method: 'POST', body: fd });
             if (!res.ok) {
-                const err = await res.json();
+                var err = await res.json();
                 throw new Error(err.detail || 'Upload failed');
             }
-            const data = await res.json();
+            var data = await res.json();
             currentJobId = data.job_id;
             toast('Analysis started!', 'success');
             startPolling();
@@ -948,18 +1838,22 @@
             analyzeBtn.disabled = false;
             profileBtn.disabled = false;
             progressWrapper.classList.remove('visible');
+            resultsSection.classList.remove('visible');
+            hideSkeleton();
         }
     };
 
     /* ---- Profile-only analysis (no image) ---- */
     window.startProfileAnalysis = async function () {
-        const age    = document.getElementById('age').value;
-        const sex    = document.getElementById('sex').value;
-        const region = document.getElementById('region').value;
+        var age    = document.getElementById('age').value;
+        var sex    = document.getElementById('sex').value;
+        var region = document.getElementById('region').value;
         if (!age || !sex || !region) { toast('Please fill in age, sex, and region.', 'error'); return; }
 
-        const diets = Array.from(document.querySelectorAll('input[name="diet"]:checked')).map(cb => cb.value);
-        const variants = document.getElementById('variants').value;
+        var diets = Array.from(document.querySelectorAll('input[name="diet"]:checked')).map(function (cb) { return cb.value; });
+        var variants = document.getElementById('variants').value;
+        var country = document.getElementById('country').value;
+        var state = document.getElementById('state').value;
 
         analyzeBtn.disabled = true;
         profileBtn.disabled = true;
@@ -968,18 +1862,23 @@
         progressFill.setAttribute('aria-valuenow', '30');
         progressPct.textContent = '30%';
         progressMessage.textContent = 'Analyzing your profile\u2026';
-        resultsSection.classList.remove('visible');
+
+        /* Show skeleton loading in results */
+        resultsSection.classList.add('visible');
+        showSkeleton();
 
         try {
-            const res = await fetch('/api/profile-analysis', {
+            var res = await fetch('/api/profile-analysis', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     age: parseInt(age),
                     sex: sex,
                     region: region,
+                    country: country || null,
+                    state: state || null,
                     dietary_restrictions: diets,
-                    known_variants: variants ? variants.split(',').map(s => s.trim()).filter(Boolean) : [],
+                    known_variants: variants ? variants.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [],
                     include_nutrition: true,
                     include_disease_risk: true
                 })
@@ -990,10 +1889,10 @@
             progressPct.textContent = '80%';
 
             if (!res.ok) {
-                const err = await res.json();
+                var err = await res.json();
                 throw new Error(err.detail || 'Analysis failed');
             }
-            const data = await res.json();
+            var data = await res.json();
 
             progressFill.style.width = '100%';
             progressFill.setAttribute('aria-valuenow', '100');
@@ -1005,23 +1904,27 @@
             toast('Profile analysis complete!', 'success');
         } catch (err) {
             toast(err.message, 'error');
+            resultsSection.classList.remove('visible');
+            hideSkeleton();
         }
         analyzeBtn.disabled = false;
         profileBtn.disabled = false;
     };
 
     function renderProfileResults(data) {
+        hideSkeleton();
         resultsSection.classList.add('visible');
         document.getElementById('telomere-card').style.display = 'none';
         document.getElementById('facial-card').style.display = 'none';
+        document.getElementById('facial-tab-btn').style.display = 'none';
 
         /* Disease risks */
-        const rl = document.getElementById('risk-list');
+        var rl = document.getElementById('risk-list');
         rl.innerHTML = '';
         if (data.disease_risks && data.disease_risks.length) {
             document.getElementById('risk-card').style.display = '';
-            data.disease_risks.forEach(d => {
-                const cls = d.risk_level;
+            data.disease_risks.forEach(function (d) {
+                var cls = d.risk_level;
                 rl.innerHTML += '<div class="risk-item ' + cls + '">' +
                     '<span class="risk-name">' + d.disease + '</span>' +
                     '<span class="risk-badge ' + cls + '">' + d.risk_level.replace('_', ' ') + '</span>' +
@@ -1037,11 +1940,14 @@
 
         /* Render interactive charts (profile-only: no telomere chart) */
         hideAllCharts();
-        renderRiskChart(buildRiskChartData(data.disease_risks));
-        if (data.diet_recommendations) {
-            renderNutritionChart(data.diet_recommendations);
-        }
+        ensureChartJS(function () {
+            renderRiskChart(buildRiskChartData(data.disease_risks));
+            if (data.diet_recommendations) {
+                renderNutritionChart(data.diet_recommendations);
+            }
+        });
 
+        updateResultsTabs();
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
@@ -1054,8 +1960,8 @@
     async function pollStatus() {
         if (!currentJobId) return;
         try {
-            const res  = await fetch('/api/status/' + currentJobId);
-            const data = await res.json();
+            var res  = await fetch('/api/status/' + currentJobId);
+            var data = await res.json();
             progressFill.style.width = data.progress_pct + '%';
             progressFill.setAttribute('aria-valuenow', Math.round(data.progress_pct));
             progressPct.textContent  = Math.round(data.progress_pct) + '%';
@@ -1072,6 +1978,7 @@
                 toast('Analysis failed: ' + data.message, 'error');
                 analyzeBtn.disabled = false;
                 profileBtn.disabled = false;
+                hideSkeleton();
             }
         } catch (err) {
             /* ignore transient fetch errors */
@@ -1080,8 +1987,8 @@
 
     async function fetchResults() {
         try {
-            const res  = await fetch('/api/results/' + currentJobId);
-            const data = await res.json();
+            var res  = await fetch('/api/results/' + currentJobId);
+            var data = await res.json();
             lastResult = data;
             renderResults(data);
         } catch (err) {
@@ -1093,22 +2000,22 @@
 
     /* ---- Render diet helper ---- */
     function renderDiet(diet) {
-        const dc = document.getElementById('diet-content');
-        let html = '<p class="diet-summary">' + diet.summary + '</p>';
+        var dc = document.getElementById('diet-content');
+        var html = '<p class="diet-summary">' + diet.summary + '</p>';
         html += '<div class="nutrient-tags">';
-        diet.key_nutrients.forEach(n => { html += '<span class="nutrient-tag">' + n + '</span>'; });
+        diet.key_nutrients.forEach(function (n) { html += '<span class="nutrient-tag">' + n + '</span>'; });
         html += '</div>';
         html += '<div class="food-columns">';
         html += '<div class="food-col increase"><h4>Increase</h4><ul>';
-        diet.foods_to_increase.forEach(f => { html += '<li>' + f + '</li>'; });
+        diet.foods_to_increase.forEach(function (f) { html += '<li>' + f + '</li>'; });
         html += '</ul></div>';
         html += '<div class="food-col avoid"><h4>Avoid / Reduce</h4><ul>';
-        diet.foods_to_avoid.forEach(f => { html += '<li>' + f + '</li>'; });
+        diet.foods_to_avoid.forEach(function (f) { html += '<li>' + f + '</li>'; });
         html += '</ul></div></div>';
 
         if (diet.meal_plans && diet.meal_plans.length) {
             html += '<h4 style="margin-bottom:.5rem;color:var(--text-dim);">Sample Meal Plans</h4><div class="meal-plans">';
-            diet.meal_plans.forEach((mp, i) => {
+            diet.meal_plans.forEach(function (mp, i) {
                 html += '<div class="meal-day" id="meal-' + i + '">' +
                     '<div class="meal-day-header" onclick="toggleMeal(' + i + ')" role="button" tabindex="0" aria-expanded="false" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();toggleMeal(' + i + ')}">' + mp.day + ' <span aria-hidden="true">&#9660;</span></div>' +
                     '<div class="meal-day-body">' +
@@ -1128,13 +2035,14 @@
 
     /* ---- Render full results ---- */
     function renderResults(r) {
+        hideSkeleton();
         resultsSection.classList.add('visible');
         document.getElementById('telomere-card').style.display = '';
         document.getElementById('risk-card').style.display = '';
         document.getElementById('diet-card').style.display = '';
 
         /* Telomere stats */
-        const t = r.telomere_results;
+        var t = r.telomere_results;
         document.getElementById('telomere-stats').innerHTML =
             '<div class="stat-item"><div class="stat-label">Mean Length</div><div class="stat-value">' + t.mean_length + ' kb</div></div>' +
             '<div class="stat-item"><div class="stat-label">Std Dev</div><div class="stat-value">' + t.std_dev + ' kb</div></div>' +
@@ -1142,11 +2050,12 @@
             '<div class="stat-item"><div class="stat-label">Bio Age Est.</div><div class="stat-value">' + t.biological_age_estimate + ' yr</div></div>';
 
         /* Facial analysis (if present) */
-        const facialCard = document.getElementById('facial-card');
+        var facialCard = document.getElementById('facial-card');
         if (r.facial_analysis) {
             facialCard.style.display = '';
-            const fa = r.facial_analysis;
-            let fhtml = '<div class="stat-grid">';
+            document.getElementById('facial-tab-btn').style.display = '';
+            var fa = r.facial_analysis;
+            var fhtml = '<div class="stat-grid">';
             fhtml += '<div class="stat-item"><div class="stat-label">Biological Age</div><div class="stat-value">' + fa.estimated_biological_age + ' yr</div></div>';
             fhtml += '<div class="stat-item"><div class="stat-label">Telomere Length</div><div class="stat-value">' + fa.estimated_telomere_length_kb.toFixed(2) + ' kb</div></div>';
             fhtml += '<div class="stat-item"><div class="stat-label">Skin Health</div><div class="stat-value">' + (fa.skin_health_score * 100).toFixed(0) + '%</div></div>';
@@ -1161,8 +2070,8 @@
             }
             if (fa.ancestry && fa.ancestry.confidence > 0) {
                 fhtml += '<div class="mt-2" style="font-size:.85rem;color:var(--text-dim);">Ancestry estimate (conf. ' + (fa.ancestry.confidence * 100).toFixed(0) + '%): ';
-                const anc = fa.ancestry;
-                const parts = [];
+                var anc = fa.ancestry;
+                var parts = [];
                 if (anc.european > 0.05) parts.push('European ' + (anc.european * 100).toFixed(0) + '%');
                 if (anc.east_asian > 0.05) parts.push('East Asian ' + (anc.east_asian * 100).toFixed(0) + '%');
                 if (anc.south_asian > 0.05) parts.push('South Asian ' + (anc.south_asian * 100).toFixed(0) + '%');
@@ -1173,19 +2082,20 @@
             }
             if (fa.analysis_warnings && fa.analysis_warnings.length) {
                 fhtml += '<div class="mt-2" style="font-size:.82rem;color:var(--warning);">';
-                fa.analysis_warnings.forEach(w => { fhtml += '<p>' + w + '</p>'; });
+                fa.analysis_warnings.forEach(function (w) { fhtml += '<p>' + w + '</p>'; });
                 fhtml += '</div>';
             }
             document.getElementById('facial-content').innerHTML = fhtml;
         } else {
             facialCard.style.display = 'none';
+            document.getElementById('facial-tab-btn').style.display = 'none';
         }
 
         /* Disease risks */
-        const rl = document.getElementById('risk-list');
+        var rl = document.getElementById('risk-list');
         rl.innerHTML = '';
-        r.disease_risks.forEach(d => {
-            const cls = d.risk_level;
+        r.disease_risks.forEach(function (d) {
+            var cls = d.risk_level;
             rl.innerHTML += '<div class="risk-item ' + cls + '">' +
                 '<span class="risk-name">' + d.disease + '</span>' +
                 '<span class="risk-badge ' + cls + '">' + d.risk_level.replace('_', ' ') + '</span>' +
@@ -1199,79 +2109,89 @@
 
         /* Render interactive charts */
         hideAllCharts();
-        const telomereChartData = buildTelomereChartData(r.telomere_results);
-        renderTelomereChart(telomereChartData);
-        renderRiskChart(buildRiskChartData(r.disease_risks));
-        renderNutritionChart(r.diet_recommendations);
+        ensureChartJS(function () {
+            var telomereChartData = buildTelomereChartData(r.telomere_results);
+            renderTelomereChart(telomereChartData);
+            renderRiskChart(buildRiskChartData(r.disease_risks));
+            renderNutritionChart(r.diet_recommendations);
+            /* Update tabs after charts are rendered */
+            updateResultsTabs();
+        });
 
+        /* Update tabs immediately for non-chart tabs */
+        updateResultsTabs();
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     window.toggleMeal = function (i) {
-        const el = document.getElementById('meal-' + i);
+        var el = document.getElementById('meal-' + i);
         el.classList.toggle('open');
-        const header = el.querySelector('.meal-day-header');
+        var header = el.querySelector('.meal-day-header');
         if (header) header.setAttribute('aria-expanded', el.classList.contains('open'));
     };
 
     /* ---- Standalone Nutrition ---- */
     window.startNutritionPlan = async function () {
-        const age    = document.getElementById('nut-age').value;
-        const sex    = document.getElementById('nut-sex').value;
-        const region = document.getElementById('nut-region').value;
+        var age    = document.getElementById('nut-age').value;
+        var sex    = document.getElementById('nut-sex').value;
+        var region = document.getElementById('nut-region').value;
         if (!age || !sex || !region) { toast('Please fill in age, sex, and region.', 'error'); return; }
 
-        const diets = Array.from(document.querySelectorAll('input[name="nut-diet"]:checked')).map(cb => cb.value);
-        const variants = document.getElementById('nut-variants').value;
-        const conditions = document.getElementById('nut-conditions').value;
-        const calories = parseInt(document.getElementById('nut-calories').value) || 2000;
-        const days = parseInt(document.getElementById('nut-days').value) || 7;
+        var diets = Array.from(document.querySelectorAll('input[name="nut-diet"]:checked')).map(function (cb) { return cb.value; });
+        var variants = document.getElementById('nut-variants').value;
+        var conditions = document.getElementById('nut-conditions').value;
+        var calories = parseInt(document.getElementById('nut-calories').value) || 2000;
+        var days = parseInt(document.getElementById('nut-days').value) || 7;
+        var country = document.getElementById('nut-country').value;
+        var state = document.getElementById('nut-state').value;
 
-        const btn = document.getElementById('nutrition-btn');
+        var btn = document.getElementById('nutrition-btn');
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner"></span> Generating\u2026';
 
         try {
-            const res = await fetch('/api/nutrition', {
+            var res = await fetch('/api/nutrition', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     age: parseInt(age),
                     sex: sex,
                     region: region,
+                    country: country || null,
+                    state: state || null,
                     dietary_restrictions: diets,
-                    known_variants: variants ? variants.split(',').map(s => s.trim()).filter(Boolean) : [],
-                    health_conditions: conditions ? conditions.split(',').map(s => s.trim()).filter(Boolean) : [],
+                    known_variants: variants ? variants.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [],
+                    health_conditions: conditions ? conditions.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [],
                     calorie_target: calories,
                     meal_plan_days: days
                 })
             });
             if (!res.ok) {
-                const err = await res.json();
+                var err = await res.json();
                 throw new Error(err.detail || 'Failed to generate nutrition plan');
             }
-            const data = await res.json();
-            const nr = document.getElementById('nutrition-results');
+            var data = await res.json();
+            var nr = document.getElementById('nutrition-results');
             nr.style.display = 'block';
 
             /* Render nutrition results inline */
-            const nc = document.getElementById('nutrition-content');
-            const diet = data.recommendation;
-            let html = '<p class="diet-summary">' + diet.summary + '</p>';
+            var nc = document.getElementById('nutrition-content');
+            var diet = data.recommendation;
+            var html = '<p class="diet-summary">' + diet.summary + '</p>';
             html += '<div class="nutrient-tags">';
-            diet.key_nutrients.forEach(n => { html += '<span class="nutrient-tag">' + n + '</span>'; });
+            diet.key_nutrients.forEach(function (n) { html += '<span class="nutrient-tag">' + n + '</span>'; });
             html += '</div>';
             html += '<div class="food-columns">';
             html += '<div class="food-col increase"><h4>Increase</h4><ul>';
-            diet.foods_to_increase.forEach(f => { html += '<li>' + f + '</li>'; });
+            diet.foods_to_increase.forEach(function (f) { html += '<li>' + f + '</li>'; });
             html += '</ul></div>';
             html += '<div class="food-col avoid"><h4>Avoid / Reduce</h4><ul>';
-            diet.foods_to_avoid.forEach(f => { html += '<li>' + f + '</li>'; });
+            diet.foods_to_avoid.forEach(function (f) { html += '<li>' + f + '</li>'; });
             html += '</ul></div></div>';
             if (diet.meal_plans && diet.meal_plans.length) {
                 html += '<h4 style="margin-bottom:.5rem;color:var(--text-dim);">Meal Plans</h4><div class="meal-plans">';
-                diet.meal_plans.forEach((mp, i) => {
-                    const mid = 'nutmeal-' + i;
+                diet.meal_plans.forEach(function (mp, i) {
+                    var mid = 'nutmeal-' + i;
                     html += '<div class="meal-day" id="' + mid + '">' +
                         '<div class="meal-day-header" onclick="var el=document.getElementById(\'' + mid + '\');el.classList.toggle(\'open\');this.setAttribute(\'aria-expanded\',el.classList.contains(\'open\'))" role="button" tabindex="0" aria-expanded="false" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click()}">' + mp.day + ' <span aria-hidden="true">&#9660;</span></div>' +
                         '<div class="meal-day-body">' +
@@ -1289,8 +2209,10 @@
             nc.innerHTML = html;
             nr.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-            /* Render nutrition doughnut chart in the standalone section */
-            renderNutritionChart(diet);
+            /* Render nutrition doughnut chart */
+            ensureChartJS(function () {
+                renderNutritionChart(diet);
+            });
 
             toast('Nutrition plan generated!', 'success');
         } catch (err) {
@@ -1302,9 +2224,9 @@
 
     /* ---- Downloads ---- */
     function downloadBlob(content, filename, mime) {
-        const blob = new Blob([content], { type: mime });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
+        var blob = new Blob([content], { type: mime });
+        var url  = URL.createObjectURL(blob);
+        var a    = document.createElement('a');
         a.href = url; a.download = filename; a.click();
         URL.revokeObjectURL(url);
     }
@@ -1316,264 +2238,270 @@
 
     window.downloadCSV = function () {
         if (!lastResult) return;
-        const t = lastResult.telomere_results;
-        let csv = 'metric,value\n';
+        var t = lastResult.telomere_results;
+        var csv = 'metric,value\n';
         csv += 'mean_length,' + t.mean_length + '\n';
         csv += 'std_dev,' + t.std_dev + '\n';
         csv += 't_s_ratio,' + t.t_s_ratio + '\n';
         csv += 'biological_age_estimate,' + t.biological_age_estimate + '\n\n';
         csv += 'disease,risk_level,probability\n';
-        lastResult.disease_risks.forEach(d => {
+        lastResult.disease_risks.forEach(function (d) {
             csv += '"' + d.disease + '",' + d.risk_level + ',' + d.probability + '\n';
         });
         downloadBlob(csv, 'teloscopy_results.csv', 'text/csv');
     };
 
-    /* ---- Chart.js Global Defaults ---- */
-    Chart.defaults.color = '#e0e6ed';
-    Chart.defaults.borderColor = '#2e3a59';
+    /* ==============================================================
+       CHART.JS RENDERING (lazy-loaded)
+       ============================================================== */
 
     /* Chart instance refs for destroy-before-recreate */
-    let telomereChartInstance = null;
-    let riskChartInstance     = null;
-    let nutritionChartInstance = null;
+    var telomereChartInstance  = null;
+    var riskChartInstance      = null;
+    var nutritionChartInstance = null;
 
     /* ---- Render Telomere Length Chart ---- */
     function renderTelomereChart(data) {
-        const container = document.getElementById('telomereChartContainer');
-        const canvas    = document.getElementById('telomereChart');
+        var container = document.getElementById('telomereChartContainer');
+        var canvas    = document.getElementById('telomereChart');
         if (!data || !data.chromosome_labels || !data.lengths) {
             container.classList.remove('visible');
             return;
         }
 
-        /* Destroy previous instance */
-        if (telomereChartInstance) { telomereChartInstance.destroy(); telomereChartInstance = null; }
+        ensureChartJS(function () {
+            /* Destroy previous instance */
+            if (telomereChartInstance) { telomereChartInstance.destroy(); telomereChartInstance = null; }
 
-        container.classList.add('visible');
-        const ctx = canvas.getContext('2d');
+            container.classList.add('visible');
+            var ctx = canvas.getContext('2d');
 
-        /* Build gradient for each bar */
-        const barColors = data.lengths.map((_, i) => {
-            const ratio = i / Math.max(data.lengths.length - 1, 1);
-            const r = Math.round(0   + ratio * 0);
-            const g = Math.round(212 - ratio * 60);
-            const b = Math.round(170 + ratio * 85);
-            return 'rgba(' + r + ',' + g + ',' + b + ',0.85)';
-        });
-        const borderColors = barColors.map(c => c.replace('0.85', '1'));
+            /* Build gradient for each bar */
+            var barColors = data.lengths.map(function (_, i) {
+                var ratio = i / Math.max(data.lengths.length - 1, 1);
+                var r = Math.round(0   + ratio * 0);
+                var g = Math.round(212 - ratio * 60);
+                var b = Math.round(170 + ratio * 85);
+                return 'rgba(' + r + ',' + g + ',' + b + ',0.85)';
+            });
+            var borderColors = barColors.map(function (c) { return c.replace('0.85', '1'); });
 
-        telomereChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.chromosome_labels,
-                datasets: [{
-                    label: 'Telomere Length (kb)',
-                    data: data.lengths,
-                    backgroundColor: barColors,
-                    borderColor: borderColors,
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#1a2035',
-                        titleColor: '#e0e6ed',
-                        bodyColor: '#e0e6ed',
-                        borderColor: '#2e3a59',
+            telomereChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.chromosome_labels,
+                    datasets: [{
+                        label: 'Telomere Length (kb)',
+                        data: data.lengths,
+                        backgroundColor: barColors,
+                        borderColor: borderColors,
                         borderWidth: 1,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(ctx) { return ctx.parsed.y.toFixed(2) + ' kb'; }
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1a2035',
+                            titleColor: '#e0e6ed',
+                            bodyColor: '#e0e6ed',
+                            borderColor: '#2e3a59',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(ctx) { return ctx.parsed.y.toFixed(2) + ' kb'; }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(46,58,89,0.4)' },
+                            ticks: { color: '#8f9bb3', font: { size: 11 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(46,58,89,0.4)' },
+                            ticks: { color: '#8f9bb3' },
+                            title: { display: true, text: 'Length (kb)', color: '#8f9bb3' }
                         }
                     }
-                },
-                scales: {
-                    x: {
-                        grid: { color: 'rgba(46,58,89,0.4)' },
-                        ticks: { color: '#8f9bb3', font: { size: 11 } }
-                    },
-                    y: {
-                        grid: { color: 'rgba(46,58,89,0.4)' },
-                        ticks: { color: '#8f9bb3' },
-                        title: { display: true, text: 'Length (kb)', color: '#8f9bb3' }
-                    }
                 }
-            }
+            });
         });
     }
 
     /* ---- Render Disease Risk Chart ---- */
     function renderRiskChart(risks) {
-        const container = document.getElementById('riskChartContainer');
-        const canvas    = document.getElementById('riskChart');
+        var container = document.getElementById('riskChartContainer');
+        var canvas    = document.getElementById('riskChart');
         if (!risks || !risks.length) {
             container.classList.remove('visible');
             return;
         }
 
-        if (riskChartInstance) { riskChartInstance.destroy(); riskChartInstance = null; }
+        ensureChartJS(function () {
+            if (riskChartInstance) { riskChartInstance.destroy(); riskChartInstance = null; }
 
-        container.classList.add('visible');
-        const ctx = canvas.getContext('2d');
+            container.classList.add('visible');
+            var ctx = canvas.getContext('2d');
 
-        const labels = risks.map(r => r.condition || r.disease);
-        const values = risks.map(r => {
-            if (typeof r.risk_pct === 'number') return r.risk_pct;
-            if (typeof r.probability === 'number') return r.probability * 100;
-            return 0;
-        });
+            var labels = risks.map(function (r) { return r.condition || r.disease; });
+            var values = risks.map(function (r) {
+                if (typeof r.risk_pct === 'number') return r.risk_pct;
+                if (typeof r.probability === 'number') return r.probability * 100;
+                return 0;
+            });
 
-        /* Color code: green <20%, yellow 20-50%, red >50% */
-        const barColors = values.map(v => {
-            if (v > 50) return 'rgba(255,77,106,0.8)';   /* --danger */
-            if (v > 20) return 'rgba(255,179,71,0.8)';   /* --warning */
-            return 'rgba(0,212,170,0.8)';                 /* --accent */
-        });
-        const barBorders = values.map(v => {
-            if (v > 50) return '#ff4d6a';
-            if (v > 20) return '#ffb347';
-            return '#00d4aa';
-        });
+            /* Color code: green <20%, yellow 20-50%, red >50% */
+            var barColors = values.map(function (v) {
+                if (v > 50) return 'rgba(255,77,106,0.8)';
+                if (v > 20) return 'rgba(255,179,71,0.8)';
+                return 'rgba(0,212,170,0.8)';
+            });
+            var barBorders = values.map(function (v) {
+                if (v > 50) return '#ff4d6a';
+                if (v > 20) return '#ffb347';
+                return '#00d4aa';
+            });
 
-        riskChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Risk %',
-                    data: values,
-                    backgroundColor: barColors,
-                    borderColor: barBorders,
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#1a2035',
-                        titleColor: '#e0e6ed',
-                        bodyColor: '#e0e6ed',
-                        borderColor: '#2e3a59',
+            riskChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Risk %',
+                        data: values,
+                        backgroundColor: barColors,
+                        borderColor: barBorders,
                         borderWidth: 1,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(ctx) { return ctx.parsed.x.toFixed(1) + '%'; }
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1a2035',
+                            titleColor: '#e0e6ed',
+                            bodyColor: '#e0e6ed',
+                            borderColor: '#2e3a59',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(ctx) { return ctx.parsed.x.toFixed(1) + '%'; }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            min: 0,
+                            max: 100,
+                            grid: { color: 'rgba(46,58,89,0.4)' },
+                            ticks: { color: '#8f9bb3', callback: function(v) { return v + '%'; } },
+                            title: { display: true, text: 'Risk Probability', color: '#8f9bb3' }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#e0e6ed', font: { size: 12 } }
                         }
                     }
-                },
-                scales: {
-                    x: {
-                        min: 0,
-                        max: 100,
-                        grid: { color: 'rgba(46,58,89,0.4)' },
-                        ticks: { color: '#8f9bb3', callback: function(v) { return v + '%'; } },
-                        title: { display: true, text: 'Risk Probability', color: '#8f9bb3' }
-                    },
-                    y: {
-                        grid: { display: false },
-                        ticks: { color: '#e0e6ed', font: { size: 12 } }
-                    }
                 }
-            }
+            });
         });
     }
 
     /* ---- Render Nutrition Breakdown Chart ---- */
     function renderNutritionChart(mealPlan) {
-        const container = document.getElementById('nutritionChartContainer');
-        const canvas    = document.getElementById('nutritionChart');
+        var container = document.getElementById('nutritionChartContainer');
+        var canvas    = document.getElementById('nutritionChart');
         if (!mealPlan) {
             container.classList.remove('visible');
             return;
         }
 
-        if (nutritionChartInstance) { nutritionChartInstance.destroy(); nutritionChartInstance = null; }
+        ensureChartJS(function () {
+            if (nutritionChartInstance) { nutritionChartInstance.destroy(); nutritionChartInstance = null; }
 
-        container.classList.add('visible');
-        const ctx = canvas.getContext('2d');
+            container.classList.add('visible');
+            var ctx = canvas.getContext('2d');
 
-        /* Approximate macros from calorie target or meal plan data */
-        let calories = mealPlan.calorie_target || 2000;
-        let protein, carbs, fat, fiber;
+            /* Approximate macros from calorie target or meal plan data */
+            var calories = mealPlan.calorie_target || 2000;
+            var protein, carbs, fat, fiber;
 
-        if (mealPlan.macros) {
-            protein = mealPlan.macros.protein || 0;
-            carbs   = mealPlan.macros.carbs || 0;
-            fat     = mealPlan.macros.fat || 0;
-            fiber   = mealPlan.macros.fiber || 0;
-        } else {
-            /* Estimate standard macro split: 30% protein, 40% carbs, 25% fat, 5% fiber-equivalent */
-            protein = Math.round(calories * 0.30 / 4);
-            carbs   = Math.round(calories * 0.40 / 4);
-            fat     = Math.round(calories * 0.25 / 9);
-            fiber   = Math.round(calories * 0.05 / 2);
-        }
+            if (mealPlan.macros) {
+                protein = mealPlan.macros.protein || 0;
+                carbs   = mealPlan.macros.carbs || 0;
+                fat     = mealPlan.macros.fat || 0;
+                fiber   = mealPlan.macros.fiber || 0;
+            } else {
+                /* Estimate standard macro split */
+                protein = Math.round(calories * 0.30 / 4);
+                carbs   = Math.round(calories * 0.40 / 4);
+                fat     = Math.round(calories * 0.25 / 9);
+                fiber   = Math.round(calories * 0.05 / 2);
+            }
 
-        nutritionChartInstance = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Protein (' + protein + 'g)', 'Carbs (' + carbs + 'g)', 'Fat (' + fat + 'g)', 'Fiber (' + fiber + 'g)'],
-                datasets: [{
-                    data: [protein, carbs, fat, fiber],
-                    backgroundColor: [
-                        'rgba(0,212,170,0.85)',    /* --accent */
-                        'rgba(77,166,255,0.85)',   /* --info */
-                        'rgba(255,179,71,0.85)',   /* --warning */
-                        'rgba(255,77,106,0.85)'    /* --danger */
-                    ],
-                    borderColor: [
-                        '#00d4aa',
-                        '#4da6ff',
-                        '#ffb347',
-                        '#ff4d6a'
-                    ],
-                    borderWidth: 2,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '55%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: '#e0e6ed',
-                            padding: 16,
-                            usePointStyle: true,
-                            pointStyleWidth: 12,
-                            font: { size: 12 }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: '#1a2035',
-                        titleColor: '#e0e6ed',
-                        bodyColor: '#e0e6ed',
-                        borderColor: '#2e3a59',
-                        borderWidth: 1,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(ctx) {
-                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                                const pct = ((ctx.parsed / total) * 100).toFixed(1);
-                                return ' ' + ctx.label + ' (' + pct + '%)';
+            nutritionChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Protein (' + protein + 'g)', 'Carbs (' + carbs + 'g)', 'Fat (' + fat + 'g)', 'Fiber (' + fiber + 'g)'],
+                    datasets: [{
+                        data: [protein, carbs, fat, fiber],
+                        backgroundColor: [
+                            'rgba(0,212,170,0.85)',
+                            'rgba(77,166,255,0.85)',
+                            'rgba(255,179,71,0.85)',
+                            'rgba(255,77,106,0.85)'
+                        ],
+                        borderColor: [
+                            '#00d4aa',
+                            '#4da6ff',
+                            '#ffb347',
+                            '#ff4d6a'
+                        ],
+                        borderWidth: 2,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '55%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#e0e6ed',
+                                padding: 16,
+                                usePointStyle: true,
+                                pointStyleWidth: 12,
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1a2035',
+                            titleColor: '#e0e6ed',
+                            bodyColor: '#e0e6ed',
+                            borderColor: '#2e3a59',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(ctx) {
+                                    var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
+                                    var pct = ((ctx.parsed / total) * 100).toFixed(1);
+                                    return ' ' + ctx.label + ' (' + pct + '%)';
+                                }
                             }
                         }
                     }
                 }
-            }
+            });
         });
     }
 
@@ -1590,21 +2518,20 @@
         /* If per-chromosome data exists, use it */
         if (telomereResults.per_chromosome && telomereResults.per_chromosome.length) {
             return {
-                chromosome_labels: telomereResults.per_chromosome.map(c => c.chromosome || c.label),
-                lengths: telomereResults.per_chromosome.map(c => c.length || c.value)
+                chromosome_labels: telomereResults.per_chromosome.map(function (c) { return c.chromosome || c.label; }),
+                lengths: telomereResults.per_chromosome.map(function (c) { return c.length || c.value; })
             };
         }
         /* Otherwise, generate synthetic per-chromosome display from summary stats */
         if (telomereResults.mean_length) {
-            const mean = parseFloat(telomereResults.mean_length);
-            const std  = parseFloat(telomereResults.std_dev) || mean * 0.15;
-            const chroms = [];
-            const lengths = [];
-            for (let i = 1; i <= 23; i++) {
+            var mean = parseFloat(telomereResults.mean_length);
+            var std  = parseFloat(telomereResults.std_dev) || mean * 0.15;
+            var chroms = [];
+            var lengths = [];
+            for (var i = 1; i <= 23; i++) {
                 chroms.push(i === 23 ? 'X' : 'Chr ' + i);
-                /* Deterministic pseudo-variation per chromosome */
-                const seed = Math.sin(i * 127.1) * 43758.5453;
-                const variation = (seed - Math.floor(seed)) * 2 - 1; /* -1 to 1 */
+                var seed = Math.sin(i * 127.1) * 43758.5453;
+                var variation = (seed - Math.floor(seed)) * 2 - 1;
                 lengths.push(Math.max(0.5, mean + variation * std));
             }
             return { chromosome_labels: chroms, lengths: lengths };
@@ -1615,20 +2542,22 @@
     /* ---- Helper: build risk chart data from disease_risks ---- */
     function buildRiskChartData(diseaseRisks) {
         if (!diseaseRisks || !diseaseRisks.length) return null;
-        return diseaseRisks.map(d => ({
-            condition: d.disease || d.condition,
-            risk_pct: typeof d.probability === 'number' ? d.probability * 100 : (d.risk_pct || 0)
-        }));
+        return diseaseRisks.map(function (d) {
+            return {
+                condition: d.disease || d.condition,
+                risk_pct: typeof d.probability === 'number' ? d.probability * 100 : (d.risk_pct || 0)
+            };
+        });
     }
 
     /* ---- Agent status (for teaser) ---- */
     async function loadAgents() {
         try {
-            const res  = await fetch('/api/agents/status');
-            const data = await res.json();
-            const grid = document.getElementById('agent-grid');
+            var res  = await fetch('/api/agents/status');
+            var data = await res.json();
+            var grid = document.getElementById('agent-grid');
             grid.innerHTML = '';
-            data.agents.forEach(a => {
+            data.agents.forEach(function (a) {
                 grid.innerHTML +=
                     '<div class="agent-card">' +
                     '<span class="agent-name">' + a.name + '</span>' +
@@ -1645,10 +2574,12 @@
     setInterval(loadAgents, 10000);
 
     /* ---- Auto-load results if job_id in URL ---- */
-    const pathMatch = window.location.pathname.match(/^\/results\/(.+)/);
+    var pathMatch = window.location.pathname.match(/^\/results\/(.+)/);
     if (pathMatch) {
         currentJobId = pathMatch[1];
         progressWrapper.classList.add('visible');
+        resultsSection.classList.add('visible');
+        showSkeleton();
         startPolling();
     }
 
