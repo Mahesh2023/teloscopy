@@ -331,6 +331,8 @@ class PredictedVariantResponse(BaseModel):
     predicted_genotype: str
     confidence: float
     basis: str
+    risk_allele: str = ""
+    ref_allele: str = ""
 
 
 class FacialAnalysisResult(BaseModel):
