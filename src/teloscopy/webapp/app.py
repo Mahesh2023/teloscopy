@@ -1162,6 +1162,74 @@ async def android_apk_status() -> dict[str, Any]:
     }
 
 
+# ===================================================================== #
+#  Research Knowledge Base                                               #
+# ===================================================================== #
+
+_PROJECT_ROOT = _BASE_DIR.parent.parent.parent  # src/teloscopy/webapp → project root
+
+_RESEARCH_FILES: list[dict[str, str]] = [
+    {
+        "id": "knowledge-base",
+        "title": "Gene Sequencing & Telomere Analysis",
+        "file": "KNOWLEDGE_BASE.md",
+    },
+    {
+        "id": "research",
+        "title": "Scientific Foundation & Research",
+        "file": "docs/RESEARCH.md",
+    },
+]
+
+
+@app.get("/api/research")
+async def get_research() -> dict[str, Any]:
+    """Return all research documents as structured sections."""
+    import re
+
+    documents: list[dict[str, Any]] = []
+
+    for doc_meta in _RESEARCH_FILES:
+        filepath = _PROJECT_ROOT / doc_meta["file"]
+        if not filepath.exists():
+            continue
+
+        text = filepath.read_text(encoding="utf-8")
+        sections: list[dict[str, Any]] = []
+        current_section: dict[str, Any] | None = None
+
+        for line in text.split("\n"):
+            # Match ## headings (top-level sections in the doc)
+            m = re.match(r"^##\s+(.+)", line)
+            if m and not line.startswith("###"):
+                if current_section:
+                    current_section["content"] = current_section["content"].rstrip()
+                    sections.append(current_section)
+                title = m.group(1).strip()
+                # Strip leading numbers like "1. " or "1 "
+                title_clean = re.sub(r"^\d+[\.\)]\s*", "", title)
+                current_section = {
+                    "title": title_clean if title_clean else title,
+                    "content": "",
+                }
+            elif current_section is not None:
+                current_section["content"] += line + "\n"
+
+        if current_section:
+            current_section["content"] = current_section["content"].rstrip()
+            sections.append(current_section)
+
+        documents.append(
+            {
+                "id": doc_meta["id"],
+                "title": doc_meta["title"],
+                "sections": sections,
+            }
+        )
+
+    return {"documents": documents}
+
+
 @app.get("/api/debug/templates")
 async def debug_templates(request: Request) -> dict[str, Any]:
     """Diagnostic endpoint for template debugging."""

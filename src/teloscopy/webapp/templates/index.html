@@ -882,6 +882,166 @@
 
         /* Sidebar mobile-app nav item */
         .nav-item-mobile-app { color: var(--accent) !important; }
+        .nav-item-research { color: #7c8cf8 !important; }
+
+        /* ============================================================
+           RESEARCH PANEL — slide-out from right
+           ============================================================ */
+        .research-overlay {
+            display: none; position: fixed; inset: 0; z-index: 900;
+            background: rgba(0,0,0,.55); backdrop-filter: blur(3px);
+            transition: opacity .3s ease;
+        }
+        .research-overlay.visible { display: block; }
+
+        .research-panel {
+            position: fixed; top: 0; right: 0; bottom: 0;
+            width: min(720px, 92vw); z-index: 901;
+            background: var(--bg-primary);
+            border-left: 1px solid var(--border-solid);
+            box-shadow: -8px 0 40px rgba(0,0,0,.5);
+            transform: translateX(100%);
+            transition: transform .35s cubic-bezier(.4,0,.2,1);
+            display: flex; flex-direction: column;
+        }
+        .research-panel.open { transform: translateX(0); }
+
+        .research-panel-header {
+            display: flex; align-items: center; gap: .75rem;
+            padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-solid);
+            background: var(--bg-secondary); flex-shrink: 0;
+        }
+        .research-panel-header h2 {
+            flex: 1; font-size: 1.1rem; font-weight: 700; color: var(--text);
+            display: flex; align-items: center; gap: .5rem;
+        }
+        .research-panel-header h2 svg { width: 22px; height: 22px; color: #7c8cf8; }
+        .research-panel-close {
+            background: none; border: none; color: var(--text-dim);
+            cursor: pointer; font-size: 1.4rem; line-height: 1;
+            padding: .25rem; border-radius: 4px; transition: color .2s;
+        }
+        .research-panel-close:hover { color: var(--text); }
+
+        .research-panel-body {
+            display: flex; flex: 1; overflow: hidden;
+        }
+
+        /* Left table of contents */
+        .research-toc {
+            width: 220px; flex-shrink: 0; overflow-y: auto;
+            border-right: 1px solid var(--border-solid);
+            background: var(--bg-secondary); padding: .75rem 0;
+        }
+        .research-toc::-webkit-scrollbar { width: 3px; }
+        .research-toc::-webkit-scrollbar-thumb { background: var(--border-solid); border-radius: 2px; }
+
+        .research-toc-doc {
+            padding: .5rem .85rem .35rem; font-size: .7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .8px;
+            color: #7c8cf8; margin-top: .35rem;
+        }
+        .research-toc-doc:first-child { margin-top: 0; }
+
+        .research-toc-item {
+            display: block; padding: .35rem .85rem .35rem 1rem;
+            font-size: .78rem; color: var(--text-dim); cursor: pointer;
+            border-left: 3px solid transparent; line-height: 1.35;
+            transition: all .15s ease; text-decoration: none;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .research-toc-item:hover {
+            color: var(--text); background: rgba(255,255,255,.03);
+            text-decoration: none;
+        }
+        .research-toc-item.active {
+            color: #7c8cf8; border-left-color: #7c8cf8;
+            background: rgba(124,140,248,.08);
+        }
+
+        /* Right content area */
+        .research-content {
+            flex: 1; overflow-y: auto; padding: 1.5rem 2rem;
+        }
+        .research-content::-webkit-scrollbar { width: 5px; }
+        .research-content::-webkit-scrollbar-thumb { background: var(--border-solid); border-radius: 3px; }
+
+        .research-loading {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; height: 200px; gap: 1rem; color: var(--text-dim);
+        }
+        .research-loading .spinner {
+            width: 32px; height: 32px; border: 3px solid var(--border-solid);
+            border-top-color: #7c8cf8; border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .research-section { margin-bottom: 2.5rem; }
+        .research-section-title {
+            font-size: 1.15rem; font-weight: 700; color: var(--text);
+            margin-bottom: 1rem; padding-bottom: .5rem;
+            border-bottom: 1px solid var(--border);
+            scroll-margin-top: 1rem;
+        }
+        .research-section-body {
+            font-size: .88rem; line-height: 1.75; color: var(--text-dim);
+        }
+        .research-section-body h3,
+        .research-section-body h4 {
+            color: var(--text); margin: 1.25rem 0 .5rem; font-size: .95rem;
+        }
+        .research-section-body h4 { font-size: .88rem; color: #a0aec0; }
+        .research-section-body p { margin-bottom: .75rem; }
+        .research-section-body ul, .research-section-body ol {
+            padding-left: 1.25rem; margin-bottom: .75rem;
+        }
+        .research-section-body li { margin-bottom: .3rem; }
+        .research-section-body strong { color: var(--text); }
+        .research-section-body code {
+            background: rgba(124,140,248,.1); color: #a5b4fc;
+            padding: .1rem .35rem; border-radius: 3px; font-size: .82rem;
+            font-family: var(--mono);
+        }
+        .research-section-body pre {
+            background: var(--bg-secondary); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 1rem;
+            overflow-x: auto; margin-bottom: 1rem; font-size: .8rem;
+            line-height: 1.55; font-family: var(--mono); color: var(--text-dim);
+        }
+        .research-section-body pre code {
+            background: none; padding: 0; color: inherit; font-size: inherit;
+        }
+        .research-section-body table {
+            width: 100%; border-collapse: collapse; margin-bottom: 1rem;
+            font-size: .82rem;
+        }
+        .research-section-body th {
+            text-align: left; padding: .45rem .6rem;
+            border-bottom: 2px solid var(--border-solid);
+            color: var(--text); font-size: .75rem; text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .research-section-body td {
+            padding: .4rem .6rem; border-bottom: 1px solid var(--glass-border);
+        }
+        .research-section-body blockquote {
+            border-left: 3px solid #7c8cf8; padding: .5rem 1rem;
+            margin: .75rem 0; background: rgba(124,140,248,.05);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            font-style: italic; color: var(--text-dim);
+        }
+        .research-section-body hr {
+            border: none; border-top: 1px solid var(--border);
+            margin: 1.5rem 0;
+        }
+
+        /* Responsive: collapse TOC on narrow screens */
+        @media (max-width: 600px) {
+            .research-toc { display: none; }
+            .research-content { padding: 1rem; }
+            .research-panel { width: 100vw; }
+        }
 
         /* ============================================================
            v2.0 FACIAL-GENOMIC EXPANSION SECTIONS
@@ -1053,6 +1213,10 @@
         <a href="/dashboard" class="nav-item">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z"/></svg>
             <span class="nav-item-label">Dashboard</span>
+        </a>
+        <a href="#" class="nav-item nav-item-research" id="nav-research" onclick="toggleResearchPanel(); return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>
+            <span class="nav-item-label">Research</span>
         </a>
         <a href="#" class="nav-item nav-item-mobile-app" id="nav-mobile-app" onclick="openDownloadModal(); return false;">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/></svg>
@@ -1884,6 +2048,34 @@
     <p>&copy; 2024 Teloscopy &mdash; Multi-agent Telomere Analysis Platform &middot; v2.0.0</p>
 </footer>
 
+<!-- Research panel overlay -->
+<div class="research-overlay" id="research-overlay"></div>
+
+<!-- Research panel (slide-out from right) -->
+<div class="research-panel" id="research-panel" role="dialog" aria-modal="true" aria-label="Telomere Research Library">
+    <div class="research-panel-header">
+        <h2>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>
+            Research Library
+        </h2>
+        <button class="research-panel-close" onclick="closeResearchPanel()" aria-label="Close">&times;</button>
+    </div>
+    <div class="research-panel-body">
+        <nav class="research-toc" id="research-toc" aria-label="Research table of contents">
+            <div class="research-loading" id="research-toc-loading">
+                <div class="spinner"></div>
+                <span>Loading&hellip;</span>
+            </div>
+        </nav>
+        <div class="research-content" id="research-content">
+            <div class="research-loading" id="research-content-loading">
+                <div class="spinner"></div>
+                <span>Loading research documents&hellip;</span>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Android download modal -->
 <div class="download-modal-overlay" id="download-modal" role="dialog" aria-modal="true" aria-label="Download Android app">
     <div class="download-modal">
@@ -2015,6 +2207,257 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+/* ==============================================================
+   RESEARCH PANEL
+   ============================================================== */
+var _researchData = null;
+var _researchLoaded = false;
+
+function toggleResearchPanel() {
+    var panel = document.getElementById('research-panel');
+    if (panel && panel.classList.contains('open')) {
+        closeResearchPanel();
+    } else {
+        openResearchPanel();
+    }
+}
+
+function openResearchPanel() {
+    var panel = document.getElementById('research-panel');
+    var overlay = document.getElementById('research-overlay');
+    if (panel) panel.classList.add('open');
+    if (overlay) overlay.classList.add('visible');
+    /* Close mobile sidebar */
+    var sb = document.getElementById('sidebar');
+    var sbOv = document.getElementById('sidebar-overlay');
+    if (sb) sb.classList.remove('mobile-open');
+    if (sbOv) sbOv.classList.remove('visible');
+    /* Highlight nav item */
+    var navItem = document.getElementById('nav-research');
+    if (navItem) navItem.classList.add('active');
+    /* Load content if not yet loaded */
+    if (!_researchLoaded) loadResearchContent();
+    /* Prevent body scroll */
+    document.body.style.overflow = 'hidden';
+}
+
+function closeResearchPanel() {
+    var panel = document.getElementById('research-panel');
+    var overlay = document.getElementById('research-overlay');
+    if (panel) panel.classList.remove('open');
+    if (overlay) overlay.classList.remove('visible');
+    var navItem = document.getElementById('nav-research');
+    if (navItem) navItem.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+/* Close on overlay click and Escape key */
+document.addEventListener('DOMContentLoaded', function () {
+    var resOverlay = document.getElementById('research-overlay');
+    if (resOverlay) {
+        resOverlay.addEventListener('click', function () { closeResearchPanel(); });
+    }
+});
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        var panel = document.getElementById('research-panel');
+        if (panel && panel.classList.contains('open')) closeResearchPanel();
+    }
+});
+
+function loadResearchContent() {
+    fetch('/api/research')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            _researchData = data;
+            _researchLoaded = true;
+            renderResearchToc(data.documents);
+            renderResearchContent(data.documents);
+            setupResearchScrollSpy();
+        })
+        .catch(function (err) {
+            var content = document.getElementById('research-content');
+            if (content) {
+                content.innerHTML = '<div class="research-loading" style="color:var(--danger);">' +
+                    '<span>Failed to load research content. Please try again.</span></div>';
+            }
+        });
+}
+
+function renderResearchToc(documents) {
+    var toc = document.getElementById('research-toc');
+    if (!toc) return;
+    var html = '';
+    documents.forEach(function (doc) {
+        html += '<div class="research-toc-doc">' + escapeHtml(doc.title) + '</div>';
+        doc.sections.forEach(function (sec, idx) {
+            var sectionId = doc.id + '-' + idx;
+            /* Skip ToC-like sections */
+            if (sec.title === 'Table of Contents' || sec.title === 'Complete Technical Knowledge Base') return;
+            html += '<a class="research-toc-item" data-section="' + sectionId + '" ' +
+                    'onclick="scrollToResearchSection(\'' + sectionId + '\'); return false;" ' +
+                    'href="#" title="' + escapeHtml(sec.title) + '">' +
+                    escapeHtml(sec.title) + '</a>';
+        });
+    });
+    toc.innerHTML = html;
+}
+
+function renderResearchContent(documents) {
+    var container = document.getElementById('research-content');
+    if (!container) return;
+    var html = '';
+    documents.forEach(function (doc) {
+        html += '<div style="margin-bottom:.5rem;"><span style="font-size:.7rem;font-weight:700;' +
+                'text-transform:uppercase;letter-spacing:.8px;color:#7c8cf8;">' +
+                escapeHtml(doc.title) + '</span></div>';
+        doc.sections.forEach(function (sec, idx) {
+            var sectionId = doc.id + '-' + idx;
+            if (sec.title === 'Table of Contents' || sec.title === 'Complete Technical Knowledge Base') return;
+            html += '<div class="research-section" id="rs-' + sectionId + '">' +
+                    '<h3 class="research-section-title">' + escapeHtml(sec.title) + '</h3>' +
+                    '<div class="research-section-body">' + markdownToHtml(sec.content) + '</div>' +
+                    '</div>';
+        });
+    });
+    container.innerHTML = html;
+}
+
+function scrollToResearchSection(sectionId) {
+    var el = document.getElementById('rs-' + sectionId);
+    var container = document.getElementById('research-content');
+    if (el && container) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        /* Highlight in toc */
+        var tocItems = document.querySelectorAll('.research-toc-item');
+        tocItems.forEach(function (item) { item.classList.remove('active'); });
+        var active = document.querySelector('.research-toc-item[data-section="' + sectionId + '"]');
+        if (active) active.classList.add('active');
+    }
+}
+
+function setupResearchScrollSpy() {
+    var contentEl = document.getElementById('research-content');
+    if (!contentEl) return;
+    contentEl.addEventListener('scroll', function () {
+        var sections = contentEl.querySelectorAll('.research-section');
+        var scrollTop = contentEl.scrollTop;
+        var activeId = null;
+        sections.forEach(function (sec) {
+            if (sec.offsetTop - contentEl.offsetTop <= scrollTop + 80) {
+                activeId = sec.id.replace('rs-', '');
+            }
+        });
+        if (activeId) {
+            var tocItems = document.querySelectorAll('.research-toc-item');
+            tocItems.forEach(function (item) { item.classList.remove('active'); });
+            var active = document.querySelector('.research-toc-item[data-section="' + activeId + '"]');
+            if (active) {
+                active.classList.add('active');
+                /* Scroll toc to keep active item visible */
+                var tocEl = document.getElementById('research-toc');
+                if (tocEl) {
+                    var itemTop = active.offsetTop - tocEl.offsetTop;
+                    var tocScroll = tocEl.scrollTop;
+                    var tocHeight = tocEl.clientHeight;
+                    if (itemTop < tocScroll || itemTop > tocScroll + tocHeight - 40) {
+                        tocEl.scrollTop = itemTop - tocHeight / 3;
+                    }
+                }
+            }
+        }
+    });
+}
+
+/* Lightweight Markdown → HTML converter for research content */
+function markdownToHtml(md) {
+    if (!md) return '';
+    var html = md;
+
+    /* Code blocks (``` ... ```) */
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, function (_, lang, code) {
+        return '<pre><code>' + escapeHtml(code.trim()) + '</code></pre>';
+    });
+
+    /* Inline code */
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    /* Headers */
+    html = html.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+
+    /* Bold and italic */
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+    /* Horizontal rules */
+    html = html.replace(/^---+$/gm, '<hr>');
+
+    /* Tables */
+    html = html.replace(/((?:^\|.+\|$\n?)+)/gm, function (tableBlock) {
+        var rows = tableBlock.trim().split('\n');
+        if (rows.length < 2) return tableBlock;
+        var headerCells = rows[0].split('|').filter(function (c) { return c.trim(); });
+        /* Check if row 1 is a separator */
+        var startIdx = 1;
+        if (rows.length > 1 && /^[\s|:-]+$/.test(rows[1])) startIdx = 2;
+        var out = '<table><thead><tr>';
+        headerCells.forEach(function (c) { out += '<th>' + c.trim() + '</th>'; });
+        out += '</tr></thead><tbody>';
+        for (var i = startIdx; i < rows.length; i++) {
+            var cells = rows[i].split('|').filter(function (c) { return c.trim(); });
+            if (cells.length === 0) continue;
+            out += '<tr>';
+            cells.forEach(function (c) { out += '<td>' + c.trim() + '</td>'; });
+            out += '</tr>';
+        }
+        out += '</tbody></table>';
+        return out;
+    });
+
+    /* Blockquotes */
+    html = html.replace(/^>\s?(.*)$/gm, '<blockquote>$1</blockquote>');
+    /* Merge consecutive blockquotes */
+    html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
+
+    /* Unordered lists */
+    html = html.replace(/((?:^[\s]*[-*]\s+.+$\n?)+)/gm, function (block) {
+        var items = block.trim().split('\n');
+        var out = '<ul>';
+        items.forEach(function (item) {
+            var text = item.replace(/^[\s]*[-*]\s+/, '');
+            out += '<li>' + text + '</li>';
+        });
+        out += '</ul>';
+        return out;
+    });
+
+    /* Ordered lists */
+    html = html.replace(/((?:^\d+[\.\)]\s+.+$\n?)+)/gm, function (block) {
+        var items = block.trim().split('\n');
+        var out = '<ol>';
+        items.forEach(function (item) {
+            var text = item.replace(/^\d+[\.\)]\s+/, '');
+            out += '<li>' + text + '</li>';
+        });
+        out += '</ol>';
+        return out;
+    });
+
+    /* Paragraphs: wrap remaining loose lines */
+    html = html.replace(/^(?!<[a-z]|$)(.+)$/gm, '<p>$1</p>');
+    /* Clean up empty paragraphs */
+    html = html.replace(/<p>\s*<\/p>/g, '');
+
+    return html;
+}
+
+function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
 </script>
 <script>
 (function () {
