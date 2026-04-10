@@ -1518,6 +1518,83 @@
         Upload your annual health checkup data &mdash; blood tests, urine tests, and abdomen scan report &mdash; to get a personalised health analysis with condition detection, health scoring, and a tailored diet plan.
     </p>
 
+    <!-- Quick-upload prompt — tells users they can skip manual entry -->
+    <div class="reveal" id="checkup-upload-prompt" style="
+        margin-bottom: 1.75rem;
+        padding: 1.25rem 1.5rem;
+        background: linear-gradient(135deg, rgba(99,102,241,.10) 0%, rgba(0,212,170,.08) 100%);
+        border: 1px solid rgba(99,102,241,.22);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        flex-wrap: wrap;
+        position: relative;
+        overflow: hidden;
+    ">
+        <!-- Decorative glow -->
+        <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:radial-gradient(circle,rgba(99,102,241,.15),transparent 70%);pointer-events:none;"></div>
+
+        <!-- Icon -->
+        <div style="
+            flex-shrink: 0;
+            width: 56px; height: 56px;
+            background: linear-gradient(135deg, #6366f1, #00d4aa);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(99,102,241,.25);
+        ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="#fff" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+            </svg>
+        </div>
+
+        <!-- Text content -->
+        <div style="flex:1;min-width:200px;">
+            <div style="font-weight:700;font-size:1.05rem;color:var(--text);margin-bottom:.3rem;">
+                Skip manual entry &mdash; upload your report instead
+            </div>
+            <div style="font-size:.88rem;color:var(--text-dim);line-height:1.55;">
+                Have a lab report as a <strong style="color:var(--text);">PDF</strong>, <strong style="color:var(--text);">photo</strong>, or <strong style="color:var(--text);">text file</strong>?
+                Just upload it and we'll <strong style="color:var(--text);">automatically extract all your lab values</strong> &mdash; no need to type anything.
+                We support blood work, urine panels, and abdomen scan reports.
+            </div>
+        </div>
+
+        <!-- CTA button -->
+        <button type="button" onclick="
+            document.querySelectorAll('#checkup-tabs .result-tab').forEach(function(t){ t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+            document.querySelectorAll('.chk-tab-panel').forEach(function(p){ p.style.display='none'; });
+            var uploadTab = document.querySelector('[data-chtab=chk-upload]');
+            if(uploadTab){ uploadTab.classList.add('active'); uploadTab.setAttribute('aria-selected','true'); }
+            document.getElementById('chk-upload').style.display='contents';
+            this.closest('#checkup-upload-prompt').style.display='none';
+        " style="
+            flex-shrink: 0;
+            padding: .7rem 1.4rem;
+            background: linear-gradient(135deg, #6366f1, #00d4aa);
+            color: #fff;
+            font-weight: 600;
+            font-size: .92rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            transition: opacity .2s, transform .2s;
+            box-shadow: 0 4px 14px rgba(99,102,241,.3);
+            white-space: nowrap;
+        " onmouseover="this.style.opacity='.88';this.style.transform='translateY(-1px)';" onmouseout="this.style.opacity='1';this.style.transform='none';">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+            </svg>
+            Upload Report
+        </button>
+    </div>
+
     <!-- Checkup form with tabs for each test type -->
     <div class="reveal" style="margin-bottom:1.5rem;">
         <div class="result-tabs" role="tablist" id="checkup-tabs">
@@ -1613,6 +1690,36 @@
         <!-- Upload Report tab -->
         <div id="chk-upload" class="chk-tab-panel" style="display:none;">
             <div style="grid-column:1/-1;">
+
+                <!-- How-it-works steps -->
+                <div style="display:flex;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:140px;padding:.85rem 1rem;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.12);border-radius:10px;text-align:center;">
+                        <div style="font-size:1.4rem;margin-bottom:.3rem;">1</div>
+                        <div style="font-weight:600;font-size:.85rem;color:var(--text);margin-bottom:.15rem;">Upload</div>
+                        <div style="font-size:.78rem;color:var(--text-dim);">Drop or browse your lab report file</div>
+                    </div>
+                    <div style="flex:1;min-width:140px;padding:.85rem 1rem;background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.12);border-radius:10px;text-align:center;">
+                        <div style="font-size:1.4rem;margin-bottom:.3rem;">2</div>
+                        <div style="font-weight:600;font-size:.85rem;color:var(--text);margin-bottom:.15rem;">Auto-Extract</div>
+                        <div style="font-size:.78rem;color:var(--text-dim);">We read your document and pull all lab values</div>
+                    </div>
+                    <div style="flex:1;min-width:140px;padding:.85rem 1rem;background:rgba(255,179,71,.06);border:1px solid rgba(255,179,71,.12);border-radius:10px;text-align:center;">
+                        <div style="font-size:1.4rem;margin-bottom:.3rem;">3</div>
+                        <div style="font-weight:600;font-size:.85rem;color:var(--text);margin-bottom:.15rem;">Review &amp; Analyse</div>
+                        <div style="font-size:.78rem;color:var(--text-dim);">Verify values, then get your full health report</div>
+                    </div>
+                </div>
+
+                <!-- Supported formats bar -->
+                <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;padding:.6rem 1rem;background:var(--card-bg);border:1px solid var(--border-solid);border-radius:8px;font-size:.82rem;color:var(--text-dim);flex-wrap:wrap;">
+                    <span style="font-weight:600;color:var(--text);">Supported formats:</span>
+                    <span style="padding:.2rem .6rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.15);border-radius:5px;color:#f87171;">PDF</span>
+                    <span style="padding:.2rem .6rem;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.15);border-radius:5px;color:#60a5fa;">PNG / JPG</span>
+                    <span style="padding:.2rem .6rem;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15);border-radius:5px;color:#4ade80;">TXT / CSV</span>
+                    <span style="padding:.2rem .6rem;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.15);border-radius:5px;color:#c084fc;">TIFF / BMP</span>
+                    <span style="margin-left:auto;font-size:.78rem;">Max 20 MB</span>
+                </div>
+
                 <div id="chk-upload-zone" style="border:2px dashed var(--border-solid);border-radius:12px;padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:border-color .2s, background .2s;background:var(--card-bg);"
                      ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='rgba(99,102,241,.06)';"
                      ondragleave="this.style.borderColor='var(--border-solid)';this.style.background='var(--card-bg)';"
@@ -1622,8 +1729,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
                     </svg>
                     <p style="font-weight:600;color:var(--text);margin-bottom:.25rem;">Drop your lab report here or click to browse</p>
-                    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:.5rem;">Supports PDF, images (PNG/JPG), and text files (max 20 MB). Lab values are extracted automatically &mdash; no manual entry needed.</p>
-                    <input type="file" id="chk-report-file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,.txt" style="display:none;" onchange="handleReportFileSelect(this);">
+                    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:.5rem;">We'll automatically extract all lab values &mdash; no manual entry needed.</p>
+                    <input type="file" id="chk-report-file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,.txt,.csv" style="display:none;" onchange="handleReportFileSelect(this);">
                 </div>
 
                 <!-- Selected file info -->
