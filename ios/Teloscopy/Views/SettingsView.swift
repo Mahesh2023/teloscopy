@@ -519,7 +519,7 @@ struct SettingsView: View {
                         Text("Grievance Officer")
                             .font(.subheadline)
                             .foregroundColor(TeloscopyTheme.textPrimary)
-                        Text("grievance@teloscopy.app")
+                        Text("animaticalpha123@gmail.com")
                             .font(.caption)
                             .foregroundColor(TeloscopyTheme.primaryBlue)
                     }
@@ -549,22 +549,84 @@ struct SettingsView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 
+                Text("Effective Date: 1 January 2026  |  Version: 1.0")
+                    .font(.caption)
+                    .foregroundColor(TeloscopyTheme.textSecondary)
+                
                 Group {
-                    Text("Acceptance of Terms")
+                    Text("1. Acceptance of Terms")
                         .font(.headline)
-                    Text("By using Teloscopy, you agree to these Terms of Service and our Privacy Policy. If you do not agree, you must discontinue use of the application.")
+                    Text("By accessing, downloading, installing, or using the Teloscopy application, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service. If you do not agree, you must discontinue use of the application immediately.")
                     
-                    Text("Service Description")
+                    Text("2. Eligibility")
                         .font(.headline)
-                    Text("Teloscopy provides genomic telomere analysis tools for research and informational purposes. The service is not a medical device and does not provide medical diagnoses.")
+                    Text("You must be at least 18 years of age to use Teloscopy. This restriction is mandated by the nature of the sensitive personal data processed, including health data and genetic information, which constitutes sensitive personal data under Section 9 of the Digital Personal Data Protection Act, 2023.")
                     
-                    Text("Limitation of Liability")
+                    Text("3. Service Description")
                         .font(.headline)
-                    Text("Teloscopy and its operators shall not be liable for any direct, indirect, incidental, or consequential damages arising from the use of this application or reliance on its results.")
+                    Text("Teloscopy is an open-source, multi-agent genomic intelligence platform that provides:\n\u{2022} Telomere analysis and biological age estimation from microscopy images\n\u{2022} Disease risk prediction using genetic variants and demographic data\n\u{2022} Personalised nutrition and diet recommendations\n\u{2022} Facial-genomic analysis (biological age, ancestry, pharmacogenomics)\n\u{2022} Health checkup analysis from uploaded blood/urine/scan reports\n\u{2022} Downloadable reports in HTML, JSON, and CSV formats")
+                }
+                .font(.subheadline)
+                .foregroundColor(TeloscopyTheme.textSecondary)
+                
+                // Medical Disclaimer - highlighted
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(TeloscopyTheme.warningOrange)
+                        Text("4. Medical Disclaimer")
+                            .font(.headline)
+                            .foregroundColor(TeloscopyTheme.warningOrange)
+                    }
                     
-                    Text("Governing Law")
+                    Text("Teloscopy is NOT a medical device as defined under the Medical Devices Rules, 2017. It is NOT registered with or approved by the Central Drugs Standard Control Organisation (CDSCO), the Drug Controller General of India (DCGI), or any other regulatory authority.\n\nResults are statistical correlations derived from published research and are NOT clinical diagnoses. Biological age estimations carry significant uncertainty. Nutritional recommendations are general wellness guidance, not medical prescriptions. Pharmacogenomic predictions are statistical estimates, not clinical testing.\n\nYou MUST NOT use results for self-diagnosis, self-medication, delaying medical treatment, insurance decisions, employment decisions, legal purposes, or reproductive planning without professional guidance.\n\nAlways consult a qualified registered medical practitioner for all health-related decisions.")
+                        .font(.subheadline)
+                        .foregroundColor(TeloscopyTheme.textSecondary)
+                }
+                .padding()
+                .background(TeloscopyTheme.warningOrange.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: TeloscopyTheme.smallCornerRadius)
+                        .stroke(TeloscopyTheme.warningOrange.opacity(0.3), lineWidth: 1)
+                )
+                .cornerRadius(TeloscopyTheme.smallCornerRadius)
+                
+                Group {
+                    Text("5. Genetic Information Notice")
                         .font(.headline)
-                    Text("These terms are governed by the laws of India, including the Digital Personal Data Protection Act, 2023 and the Information Technology Act, 2000.")
+                    Text("Self-reported genetic variants may be incomplete or based on consumer-grade testing. Facial-to-genetic predictions are statistical estimates with significant uncertainty. DNA sequence reconstructions are approximate computational outputs, NOT equivalent to actual DNA sequencing, and must not be submitted to clinical databases.")
+                    
+                    Text("6. Health Report Upload Terms")
+                        .font(.headline)
+                    Text("By uploading a health report, you represent that you are the Data Principal to whom the report pertains or have lawful authorisation. Reports are processed in server memory only and are not stored after analysis. Extracted values may contain OCR/parsing errors and must be verified against original reports.")
+                    
+                    Text("7. User Obligations")
+                        .font(.headline)
+                    Text("\u{2022} Provide accurate and truthful information\n\u{2022} Not misuse the platform for purposes prohibited in these Terms\n\u{2022} Not attempt to reverse-engineer, decompile, or circumvent security measures\n\u{2022} Acknowledge the research and educational nature of the platform\n\u{2022} Not upload health reports belonging to other individuals without authorisation")
+                    
+                    Text("8. Privacy and Data Protection")
+                        .font(.headline)
+                    Text("Your use of Teloscopy is governed by our Privacy Policy, which describes how we collect, process, and protect your Personal Data in compliance with the DPDP Act, 2023 and IT Act, 2000.")
+                    
+                    Text("9. Intellectual Property")
+                        .font(.headline)
+                    Text("Teloscopy is open-source software licensed under the MIT License. The source code is available at github.com/Mahesh2023/teloscopy. All analysis results generated for you belong to you.")
+                }
+                .font(.subheadline)
+                .foregroundColor(TeloscopyTheme.textSecondary)
+                
+                Group {
+                    Text("10. Limitation of Liability")
+                        .font(.headline)
+                    Text("TO THE MAXIMUM EXTENT PERMITTED BY LAW, Teloscopy and its contributors shall not be liable for any direct, indirect, incidental, special, consequential, or punitive damages arising from your use of or inability to use the platform, reliance on any results or recommendations, or any errors in data extraction or analysis.")
+                    
+                    Text("11. Governing Law & Jurisdiction")
+                        .font(.headline)
+                    Text("These Terms are governed by the laws of India, including the Digital Personal Data Protection Act (2023), Information Technology Act (2000), and Consumer Protection Act (2019). Disputes shall first be attempted through mediation; if unresolved, they are subject to the exclusive jurisdiction of courts in India.")
+                    
+                    Text("12. Contact Information")
+                        .font(.headline)
+                    Text("For questions about these Terms:\n\nEmail: animaticalpha123@gmail.com\nGitHub: github.com/Mahesh2023/teloscopy")
                 }
                 .font(.subheadline)
                 .foregroundColor(TeloscopyTheme.textSecondary)
@@ -751,22 +813,76 @@ struct SettingsView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 
+                Text("Last updated: July 1, 2025")
+                    .font(.caption)
+                    .foregroundColor(TeloscopyTheme.textSecondary)
+                
                 Group {
-                    Text("Data Collection")
+                    Text("1. Introduction")
                         .font(.headline)
-                    Text("Teloscopy collects microscope images and analysis metadata that you explicitly provide. No data is collected automatically without your consent.")
+                    Text("This Privacy Policy describes how Teloscopy (\"we\", \"us\", or \"the App\") collects, uses, processes, stores, and protects your Personal Data and Sensitive Personal Data or Information (SPDI). We act as the Data Fiduciary under the Digital Personal Data Protection Act, 2023 (DPDP Act) of India.")
                     
-                    Text("Data Storage")
+                    Text("2. Data We Collect")
                         .font(.headline)
-                    Text("Your data is stored locally on your device and optionally synchronized with your configured Teloscopy server. You maintain full control over your data.")
                     
-                    Text("Camera & Photos")
-                        .font(.headline)
-                    Text("Camera and photo library access is used exclusively for capturing or selecting microscope images for telomere analysis. Images are not shared with third parties.")
+                    Text("Sensitive Personal Data (SPDI):")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text("\u{2022} Facial photographs (biometric data) for age-related and genomic analysis\n\u{2022} Health reports (blood tests, urine tests, abdomen scans) uploaded for health checkup analysis\n\u{2022} Self-reported genetic variant data (SNP genotypes) for disease risk and pharmacogenomic analysis\n\u{2022} Telomere length measurements from microscopy images\n\u{2022} Health conditions and medical dietary restrictions")
                     
-                    Text("Network Communication")
+                    Text("Regular Personal Data:")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text("\u{2022} Demographic data: age, biological sex, geographic region\n\u{2022} Dietary preferences and restrictions\n\u{2022} App preferences (theme, server URL) stored locally on your device")
+                    
+                    Text("Data We Do NOT Collect:")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text("We do not collect device identifiers, location data, contacts, browsing history, financial data, or any data from other applications. No third-party analytics or advertising SDKs are used.")
+                }
+                .font(.subheadline)
+                .foregroundColor(TeloscopyTheme.textSecondary)
+                
+                Group {
+                    Text("3. How We Use Your Data")
                         .font(.headline)
-                    Text("The app communicates only with your configured Teloscopy server. No data is sent to any other service or analytics platform.")
+                    Text("Your data is used exclusively to:\n\u{2022} Perform telomere analysis and biological age estimation\n\u{2022} Compute disease risk assessments from genetic variants and health data\n\u{2022} Generate personalised nutrition and meal plan recommendations\n\u{2022} Analyse facial photographs for genomic and health insights\n\u{2022} Parse and interpret uploaded health checkup reports\n\u{2022} Display analysis results within the App\n\nWe do NOT use your data for advertising, profiling, marketing, training machine learning models on individual data, or sharing with third parties.")
+                    
+                    Text("4. Consent")
+                        .font(.headline)
+                    Text("In accordance with Section 6 of the DPDP Act, 2023, we obtain explicit, freely given, informed, specific, and unambiguous consent before processing any Personal Data. Separate consent is obtained for facial image processing, health report upload, and genetic data processing. You may withdraw consent at any time through the Settings screen or by contacting us at animaticalpha123@gmail.com.")
+                    
+                    Text("5. Data Processing & Storage")
+                        .font(.headline)
+                    Text("\u{2022} On-device: App preferences are stored locally. No health data is cached after you leave the results screen.\n\u{2022} Server-side: All Sensitive Personal Data (images, health reports, genetic data) is processed in server memory only and is NOT written to disk or any persistent storage.\n\u{2022} No cloud storage: We do not store your data on any external cloud service or database beyond the duration of a single analysis request.")
+                    
+                    Text("6. Data Security")
+                        .font(.headline)
+                    Text("All network communication uses HTTPS/TLS 1.2+ encryption. Sensitive data is processed entirely in server memory and never written to disk. Security practices are aligned with IS/ISO/IEC 27001 principles.")
+                }
+                .font(.subheadline)
+                .foregroundColor(TeloscopyTheme.textSecondary)
+                
+                Group {
+                    Text("7. Your Rights (DPDP Act, Sections 11-14)")
+                        .font(.headline)
+                    Text("As a Data Principal, you have the right to:\n\u{2022} Access: Obtain a summary of your Personal Data and processing activities (Section 11)\n\u{2022} Correction & Erasure: Correct inaccurate data or request erasure (Section 12)\n\u{2022} Grievance Redressal: Lodge a grievance with our Grievance Officer (Section 13)\n\u{2022} Nomination: Nominate an individual to exercise your rights (Section 14)\n\u{2022} Complain to the Data Protection Board of India if a grievance is not resolved")
+                    
+                    Text("8. Children's Privacy")
+                        .font(.headline)
+                    Text("Teloscopy is not intended for use by individuals under 18 years of age (as defined under Section 9, DPDP Act). We do not knowingly collect data from children.")
+                    
+                    Text("9. Medical Disclaimer")
+                        .font(.headline)
+                    Text("Teloscopy is NOT a medical device and is not registered under the Drugs & Cosmetics Act, 1940 or with CDSCO. Results are statistical estimates for research and educational purposes only. Always consult a qualified healthcare professional for medical decisions.")
+                    
+                    Text("10. Grievance Officer & Contact")
+                        .font(.headline)
+                    Text("For any concerns regarding your personal data or to exercise your rights:\n\nGrievance Officer: Mahesh (Project Maintainer)\nEmail: animaticalpha123@gmail.com\nGitHub: github.com/Mahesh2023/teloscopy\nResponse: Acknowledgement within 48 hours; resolution within 30 days\n\nEscalation: Data Protection Board of India (Section 18, DPDP Act)")
+                    
+                    Text("11. Governing Law")
+                        .font(.headline)
+                    Text("This Policy is governed by the laws of India, including the Digital Personal Data Protection Act (2023), Information Technology Act (2000), IT Rules (2011), and the Consumer Protection Act (2019). Disputes are subject to the exclusive jurisdiction of courts in India.")
                 }
                 .font(.subheadline)
                 .foregroundColor(TeloscopyTheme.textSecondary)

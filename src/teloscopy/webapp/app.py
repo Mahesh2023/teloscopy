@@ -1336,7 +1336,7 @@ async def get_privacy_policy_summary():
         "full_document_url": "/docs/privacy-policy",
         "governing_law": "Digital Personal Data Protection Act, 2023 (India)",
         "data_fiduciary": "Teloscopy Project",
-        "grievance_officer_email": "grievance@teloscopy.app",
+        "grievance_officer_email": "animaticalpha123@gmail.com",
         "data_protection_board": "Data Protection Board of India",
         "key_points": [
             "All data is processed ephemerally — nothing is stored on servers",
@@ -1505,7 +1505,7 @@ def _render_legal_doc(filename: str, title: str) -> HTMLResponse:
         <p style="margin-top:.4rem;">
             <a href="/docs/privacy-policy">Privacy Policy</a> &middot;
             <a href="/docs/terms-of-service">Terms of Service</a> &middot;
-            <a href="mailto:grievance@teloscopy.app">Grievance Officer</a>
+            <a href="mailto:animaticalpha123@gmail.com">Grievance Officer</a>
         </p>
     </div>
 </body>

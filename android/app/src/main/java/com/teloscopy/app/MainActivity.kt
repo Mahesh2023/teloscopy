@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Help
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Settings
@@ -105,6 +106,7 @@ class MainActivity : ComponentActivity() {
                             if (currentRoute != null && currentRoute != Screen.Consent.route && currentRoute in listOf(
                                     Screen.Home.route,
                                     Screen.Analysis.route,
+                                    Screen.HealthCheckup.route,
                                     Screen.ProfileAnalysis.route,
                                     Screen.Settings.route
                                 )
@@ -151,6 +153,29 @@ class MainActivity : ComponentActivity() {
                                             )
                                         },
                                         label = { Text("Analyze") },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                                            indicatorColor = MaterialTheme.colorScheme.primary.copy(
+                                                alpha = 0.12f
+                                            )
+                                        )
+                                    )
+                                    NavigationBarItem(
+                                        selected = currentRoute == Screen.HealthCheckup.route,
+                                        onClick = {
+                                            navController.navigate(Screen.HealthCheckup.route) {
+                                                popUpTo(Screen.Home.route)
+                                                launchSingleTop = true
+                                            }
+                                        },
+                                        icon = {
+                                            Icon(
+                                                Icons.Outlined.MedicalServices,
+                                                contentDescription = "Checkup"
+                                            )
+                                        },
+                                        label = { Text("Checkup") },
                                         colors = NavigationBarItemDefaults.colors(
                                             selectedIconColor = MaterialTheme.colorScheme.primary,
                                             selectedTextColor = MaterialTheme.colorScheme.primary,
@@ -224,6 +249,7 @@ private data class DrawerItem(
 private val primaryDrawerItems = listOf(
     DrawerItem(Screen.Home.route, "Home", Icons.Outlined.Home),
     DrawerItem(Screen.Analysis.route, "Analyze", Icons.Outlined.CameraAlt),
+    DrawerItem(Screen.HealthCheckup.route, "Health Checkup", Icons.Outlined.MedicalServices),
     DrawerItem(Screen.ProfileAnalysis.route, "Profile", Icons.Outlined.Person),
     DrawerItem(Screen.Settings.route, "Settings", Icons.Outlined.Settings)
 )

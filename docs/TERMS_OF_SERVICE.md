@@ -419,6 +419,7 @@
 For questions, concerns, complaints, or grievances regarding these Terms of Service, the Platform, or any related matter, please contact:
 
 - **Project:** Teloscopy — Multi-Agent Genomic Intelligence Platform
+- **Email:** animaticalpha123@gmail.com
 - **Repository:** [https://github.com/Mahesh2023/teloscopy](https://github.com/Mahesh2023/teloscopy)
 - **Issues:** [https://github.com/Mahesh2023/teloscopy/issues](https://github.com/Mahesh2023/teloscopy/issues)
 - **Licence:** MIT Licence (see `LICENSE` file)

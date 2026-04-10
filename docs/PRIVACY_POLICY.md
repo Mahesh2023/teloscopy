@@ -46,7 +46,7 @@ For the purposes of the Digital Personal Data Protection Act, 2023 ("DPDP Act"),
 **Teloscopy Project**  
 Open-Source Genomic Health Analysis Initiative  
 GitHub: [github.com/Mahesh2023/teloscopy](https://github.com/Mahesh2023/teloscopy)  
-Email: privacy@teloscopy.app
+Email: animaticalpha123@gmail.com
 
 ### 1.3 Scope
 
@@ -311,7 +311,7 @@ Before processing your demographic data and dietary information, you shall be in
 In accordance with **Section 6(6) of the DPDP Act**:
 
 - You have the **right to withdraw your consent** at any time;
-- Withdrawal of consent may be effected through the App's settings, by contacting our Grievance Officer, or by email to privacy@teloscopy.app;
+- Withdrawal of consent may be effected through the App's settings, by contacting our Grievance Officer, or by email to animaticalpha123@gmail.com;
 - Upon withdrawal, we shall **cease processing** your Personal Data for the purposes to which consent has been withdrawn, unless such processing is required under applicable law;
 - Withdrawal of consent shall **not affect the lawfulness** of processing that was carried out prior to such withdrawal;
 - We shall give effect to withdrawal of consent within a **reasonable period**, not exceeding such time as may be prescribed by the Central Government;
@@ -475,7 +475,7 @@ You have the right to obtain from us:
 - **(b)** The identities of all Data Fiduciaries and Data Processors with whom your Personal Data has been shared, along with a description of the Personal Data so shared;
 - **(c)** Any other information related to your Personal Data and its processing, as may be prescribed.
 
-**How to exercise this right**: Submit a written request to our Grievance Officer at privacy@teloscopy.app. Given that Teloscopy does not persist health data, a summary of our processing practices (as described in this Policy) constitutes the primary response. If specific processing logs are maintained, those shall be provided.
+**How to exercise this right**: Submit a written request to our Grievance Officer at animaticalpha123@gmail.com. Given that Teloscopy does not persist health data, a summary of our processing practices (as described in this Policy) constitutes the primary response. If specific processing logs are maintained, those shall be provided.
 
 ### 10.2 Right to Correction and Erasure (Section 12, DPDP Act)
 
@@ -486,7 +486,7 @@ You have the right to:
 - **(c)** **Updating** of Personal Data that is no longer current;
 - **(d)** **Erasure** of Personal Data that is no longer necessary for the purpose for which it was collected, unless retention is required by law.
 
-**How to exercise this right**: Given the ephemeral nature of data processing in Teloscopy (no persistent storage), correction and erasure are largely automatic. For any data that may be retained (consent records, server logs), submit a request to privacy@teloscopy.app. On-device data can be erased by clearing the App's data or uninstalling the App.
+**How to exercise this right**: Given the ephemeral nature of data processing in Teloscopy (no persistent storage), correction and erasure are largely automatic. For any data that may be retained (consent records, server logs), submit a request to animaticalpha123@gmail.com. On-device data can be erased by clearing the App's data or uninstalling the App.
 
 ### 10.3 Right to Grievance Redressal (Section 13, DPDP Act)
 
@@ -500,7 +500,7 @@ You have the right to:
 
 ### 10.4 Right to Nominate (Section 14, DPDP Act)
 
-You have the right to **nominate any other individual** who shall, in the event of your death or incapacity, exercise your rights under the DPDP Act. Such nomination may be made by providing written notice to our Grievance Officer at privacy@teloscopy.app.
+You have the right to **nominate any other individual** who shall, in the event of your death or incapacity, exercise your rights under the DPDP Act. Such nomination may be made by providing written notice to our Grievance Officer at animaticalpha123@gmail.com.
 
 ### 10.5 Duties of Data Principal (Section 15, DPDP Act)
 
@@ -607,7 +607,7 @@ In compliance with **Section 13 of the DPDP Act** and **Rule 5(9) of the IT (Rea
 
 **Grievance Officer**  
 **Name:** Mahesh (Project Maintainer)  
-**Email:** privacy@teloscopy.app  
+**Email:** animaticalpha123@gmail.com  
 **GitHub:** [github.com/Mahesh2023/teloscopy](https://github.com/Mahesh2023/teloscopy)  
 **Postal Address:** Available upon written request to the email above.
 
@@ -615,7 +615,7 @@ In compliance with **Section 13 of the DPDP Act** and **Rule 5(9) of the IT (Rea
 
 You may lodge a grievance by:
 
-1. **Email**: Sending a detailed written grievance to privacy@teloscopy.app;
+1. **Email**: Sending a detailed written grievance to animaticalpha123@gmail.com;
 2. **GitHub**: Opening a privacy-related issue on our GitHub repository (for non-confidential matters);
 3. **Post**: Sending a written grievance by registered post to the address provided upon request.
 
@@ -796,14 +796,14 @@ Before initiating any legal proceedings, the parties shall endeavour to resolve 
 **Teloscopy Project**  
 Open-Source Genomic Health Analysis Initiative  
 **GitHub:** [github.com/Mahesh2023/teloscopy](https://github.com/Mahesh2023/teloscopy)  
-**Email:** privacy@teloscopy.app  
+**Email:** animaticalpha123@gmail.com  
 **Website:** https://github.com/Mahesh2023/teloscopy
 
 ### 20.2 Grievance Officer
 
 **Name:** Mahesh (Project Maintainer)  
 **Designation:** Grievance Officer  
-**Email:** privacy@teloscopy.app  
+**Email:** animaticalpha123@gmail.com  
 **GitHub:** [github.com/Mahesh2023/teloscopy](https://github.com/Mahesh2023/teloscopy)  
 **Response Time:** Acknowledgement within 48 hours; substantive response within 30 days.
 

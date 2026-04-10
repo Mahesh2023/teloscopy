@@ -357,7 +357,7 @@ struct ConsentView: View {
                 Image(systemName: "envelope.fill")
                     .foregroundColor(TeloscopyTheme.primaryBlue)
                     .font(.caption)
-                Text("grievance@teloscopy.app")
+                Text("animaticalpha123@gmail.com")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundColor(TeloscopyTheme.primaryBlue)

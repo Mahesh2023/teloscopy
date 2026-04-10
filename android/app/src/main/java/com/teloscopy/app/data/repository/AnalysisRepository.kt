@@ -227,6 +227,7 @@ class AnalysisRepository @Inject constructor(
         "tif", "tiff" -> "image/tiff"
         "bmp" -> "image/bmp"
         "webp" -> "image/webp"
+        "pdf" -> "application/pdf"
         else -> "application/octet-stream"
     }
 }

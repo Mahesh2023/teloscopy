@@ -26,6 +26,7 @@
 		AA000012 /* SyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000012 /* SyncManager.swift */; };
 		AA000013 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013 /* ProfileView.swift */; };
 		AA000014 /* ConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014 /* ConsentView.swift */; };
+		AA000015 /* HealthCheckupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* HealthCheckupView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 		AB000012 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
 		AB000013 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		AB000014 /* ConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentView.swift; sourceTree = "<group>"; };
+		AB000015 /* HealthCheckupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthCheckupView.swift; sourceTree = "<group>"; };
 		AB000020 /* Teloscopy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Teloscopy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -115,6 +117,7 @@
 				AB00000A /* SettingsView.swift */,
 				AB000013 /* ProfileView.swift */,
 				AB000014 /* ConsentView.swift */,
+				AB000015 /* HealthCheckupView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -225,6 +228,7 @@
 				AA000012 /* SyncManager.swift in Sources */,
 				AA000013 /* ProfileView.swift in Sources */,
 				AA000014 /* ConsentView.swift in Sources */,
+				AA000015 /* HealthCheckupView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

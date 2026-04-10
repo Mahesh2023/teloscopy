@@ -51,7 +51,7 @@ We do **not** use your data for advertising, profiling, or any secondary purpose
 In accordance with Section 6 of the DPDP Act, 2023:
 - We obtain **explicit, informed consent** before processing any Personal Data.
 - **Separate consent** is obtained for facial image processing, health report upload, and genetic data processing.
-- You may **withdraw consent at any time** (Section 6(6), DPDP Act) by contacting privacy@teloscopy.app.
+- You may **withdraw consent at any time** (Section 6(6), DPDP Act) by contacting animaticalpha123@gmail.com.
 
 ## Data Processing and Storage
 
@@ -94,7 +94,7 @@ In accordance with Section 9 of the DPDP Act:
 ## Grievance Officer
 
 **Name:** Mahesh (Project Maintainer)  
-**Email:** privacy@teloscopy.app  
+**Email:** animaticalpha123@gmail.com  
 **GitHub:** [github.com/Mahesh2023/teloscopy](https://github.com/Mahesh2023/teloscopy)  
 **Response Time:** Acknowledgement within 48 hours; substantive response within 30 days.
 
@@ -109,7 +109,7 @@ This Policy is governed by the **laws of India**, including the DPDP Act 2023, I
 ## Contact
 
 For questions about this Privacy Policy:
-- **Email:** privacy@teloscopy.app
+- **Email:** animaticalpha123@gmail.com
 - **GitHub:** [github.com/Mahesh2023/teloscopy](https://github.com/Mahesh2023/teloscopy)
 
 ---

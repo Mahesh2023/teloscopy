@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Gavel
-import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Mail
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Science
@@ -826,7 +825,7 @@ private fun GrievanceOfficerCard() {
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "grievance@teloscopy.app",
+                    text = "animaticalpha123@gmail.com",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Primary,
                     fontWeight = FontWeight.Medium

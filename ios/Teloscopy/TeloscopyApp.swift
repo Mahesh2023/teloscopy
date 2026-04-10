@@ -127,12 +127,20 @@ struct MainTabView: View {
             .tag(1)
             
             NavigationStack {
+                HealthCheckupView()
+            }
+            .tabItem {
+                Label("Checkup", systemImage: "cross.case.fill")
+            }
+            .tag(2)
+            
+            NavigationStack {
                 ResultsView()
             }
             .tabItem {
                 Label("Results", systemImage: "chart.bar.xaxis")
             }
-            .tag(2)
+            .tag(3)
             
             NavigationStack {
                 ProfileView()
@@ -140,7 +148,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Profile", systemImage: "person.crop.circle")
             }
-            .tag(3)
+            .tag(4)
             
             NavigationStack {
                 SettingsView()
@@ -148,7 +156,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Settings", systemImage: "gearshape.fill")
             }
-            .tag(4)
+            .tag(5)
         }
         .tint(TeloscopyTheme.primaryBlue)
         .sheet(isPresented: $showLoginSheet) {

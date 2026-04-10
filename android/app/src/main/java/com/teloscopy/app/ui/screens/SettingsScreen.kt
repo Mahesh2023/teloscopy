@@ -614,7 +614,7 @@ fun SettingsScreen(
                                             "the app again.\n\n" +
                                             "Your previously processed data is not affected " +
                                             "by this action. To request data erasure, contact " +
-                                            "grievance@teloscopy.app.",
+                                            "animaticalpha123@gmail.com.",
                                     color = OnSurfaceVariant,
                                     lineHeight = 22.sp
                                 )

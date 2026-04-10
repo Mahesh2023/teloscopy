@@ -612,17 +612,119 @@ struct HealthCheckupRequest: Codable {
     }
 }
 
-struct HealthCheckupResponse: Codable, Equatable {
-    let summary: String?
-    let diseaseRisks: [DiseaseRisk]?
-    let dietRecommendations: DietRecommendation?
-    let warnings: [String]?
+// MARK: - Health Checkup Response Models
+
+struct LabResultItem: Codable, Identifiable, Equatable {
+    var id: String { parameter }
+    let parameter: String
+    let displayName: String
+    let value: Double
+    let unit: String
+    let status: String
+    let referenceLow: Double
+    let referenceHigh: Double
+    let category: String
 
     enum CodingKeys: String, CodingKey {
-        case summary
-        case diseaseRisks = "disease_risks"
-        case dietRecommendations = "diet_recommendations"
-        case warnings
+        case parameter
+        case displayName = "display_name"
+        case value, unit, status
+        case referenceLow = "reference_low"
+        case referenceHigh = "reference_high"
+        case category
+    }
+}
+
+struct HealthFindingItem: Codable, Identifiable, Equatable {
+    var id: String { condition }
+    let condition: String
+    let displayName: String
+    let severity: String
+    let evidence: [String]
+    let dietaryImpact: String
+    let nutrientsToIncrease: [String]?
+    let nutrientsToDecrease: [String]?
+    let foodsToIncrease: [String]?
+    let foodsToAvoid: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case condition
+        case displayName = "display_name"
+        case severity, evidence
+        case dietaryImpact = "dietary_impact"
+        case nutrientsToIncrease = "nutrients_to_increase"
+        case nutrientsToDecrease = "nutrients_to_decrease"
+        case foodsToIncrease = "foods_to_increase"
+        case foodsToAvoid = "foods_to_avoid"
+    }
+}
+
+struct AbdomenFindingItem: Codable, Identifiable, Equatable {
+    var id: String { "\(organ)-\(finding)" }
+    let organ: String
+    let finding: String
+    let severity: String
+    let dietaryImpact: String
+    let foodsToAvoid: [String]?
+    let foodsToIncrease: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case organ, finding, severity
+        case dietaryImpact = "dietary_impact"
+        case foodsToAvoid = "foods_to_avoid"
+        case foodsToIncrease = "foods_to_increase"
+    }
+}
+
+struct ReportParsePreview: Codable, Equatable {
+    let extractedBloodTests: [String: Double]?
+    let extractedUrineTests: [String: Double]?
+    let extractedAbdomenNotes: String?
+    let unrecognizedLines: [String]?
+    let confidence: Double?
+    let fileType: String?
+    let textLength: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case extractedBloodTests = "extracted_blood_tests"
+        case extractedUrineTests = "extracted_urine_tests"
+        case extractedAbdomenNotes = "extracted_abdomen_notes"
+        case unrecognizedLines = "unrecognized_lines"
+        case confidence
+        case fileType = "file_type"
+        case textLength = "text_length"
+    }
+}
+
+struct HealthCheckupResponse: Codable, Equatable {
+    let labResults: [LabResultItem]?
+    let abnormalCount: Int?
+    let totalTested: Int?
+    let findings: [HealthFindingItem]?
+    let abdomenFindings: [AbdomenFindingItem]?
+    let detectedConditions: [String]?
+    let overallHealthScore: Double?
+    let healthScoreBreakdown: [String: Double]?
+    let dietRecommendation: DietRecommendation?
+    let dietaryModifications: [String]?
+    let calorieAdjustment: Int?
+    let analyzedAt: String?
+    let disclaimer: String?
+
+    enum CodingKeys: String, CodingKey {
+        case labResults = "lab_results"
+        case abnormalCount = "abnormal_count"
+        case totalTested = "total_tested"
+        case findings
+        case abdomenFindings = "abdomen_findings"
+        case detectedConditions = "detected_conditions"
+        case overallHealthScore = "overall_health_score"
+        case healthScoreBreakdown = "health_score_breakdown"
+        case dietRecommendation = "diet_recommendation"
+        case dietaryModifications = "dietary_modifications"
+        case calorieAdjustment = "calorie_adjustment"
+        case analyzedAt = "analyzed_at"
+        case disclaimer
     }
 }
 

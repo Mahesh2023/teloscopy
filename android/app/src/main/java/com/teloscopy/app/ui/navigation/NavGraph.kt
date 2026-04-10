@@ -3,10 +3,12 @@ package com.teloscopy.app.ui.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.Composable
@@ -25,11 +27,13 @@ import androidx.navigation.navArgument
 import com.teloscopy.app.ui.screens.AnalysisScreen
 import com.teloscopy.app.ui.screens.CONSENT_ACCEPTED_KEY
 import com.teloscopy.app.ui.screens.ConsentScreen
+import com.teloscopy.app.ui.screens.HealthCheckupScreen
 import com.teloscopy.app.ui.screens.HomeScreen
 import com.teloscopy.app.ui.screens.ProfileAnalysisScreen
 import com.teloscopy.app.ui.screens.ResultsScreen
 import com.teloscopy.app.ui.screens.SettingsScreen
 import com.teloscopy.app.viewmodel.AnalysisViewModel
+import com.teloscopy.app.viewmodel.HealthCheckupViewModel
 import com.teloscopy.app.viewmodel.ProfileViewModel
 import kotlinx.coroutines.flow.map
 
@@ -65,6 +69,9 @@ sealed class Screen(val route: String) {
     /** Application settings. */
     data object Settings : Screen("settings")
 
+    /** Health checkup with lab report upload and analysis. */
+    data object HealthCheckup : Screen("health_checkup")
+
     /** Legal consent / DPDP compliance screen (shown before first use). */
     data object Consent : Screen("consent")
 }
@@ -88,7 +95,7 @@ data class BottomNavItem(
     val unselectedIcon: ImageVector
 )
 
-/** The four bottom navigation bar items shown throughout the app. */
+/** The five bottom navigation bar items shown throughout the app. */
 val bottomNavItems = listOf(
     BottomNavItem(
         route = Screen.Home.route,
@@ -101,6 +108,12 @@ val bottomNavItems = listOf(
         label = "Analyze",
         selectedIcon = Icons.Filled.CameraAlt,
         unselectedIcon = Icons.Outlined.CameraAlt
+    ),
+    BottomNavItem(
+        route = Screen.HealthCheckup.route,
+        label = "Checkup",
+        selectedIcon = Icons.Filled.MedicalServices,
+        unselectedIcon = Icons.Outlined.MedicalServices
     ),
     BottomNavItem(
         route = Screen.ProfileAnalysis.route,
@@ -223,6 +236,17 @@ fun TeloscopyNavHost(
         composable(Screen.ProfileAnalysis.route) {
             val viewModel: ProfileViewModel = hiltViewModel()
             ProfileAnalysisScreen(
+                viewModel = viewModel,
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // -- Health Checkup (lab report upload) ------------------------------
+        composable(Screen.HealthCheckup.route) {
+            val viewModel: HealthCheckupViewModel = hiltViewModel()
+            HealthCheckupScreen(
                 viewModel = viewModel,
                 onBack = {
                     navController.popBackStack()

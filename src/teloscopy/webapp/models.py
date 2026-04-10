@@ -1080,7 +1080,7 @@ class GrievanceResponse(BaseModel):
         "Digital Personal Data Protection Act, 2023."
     )
     grievance_officer: str = "Grievance Officer, Teloscopy"
-    contact_email: str = "grievance@teloscopy.app"
+    contact_email: str = "animaticalpha123@gmail.com"
     received_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -1126,7 +1126,7 @@ class LegalNotice(BaseModel):
         "if you believe your rights under the Digital Personal Data "
         "Protection Act, 2023 have been violated."
     )
-    grievance_officer_email: str = "grievance@teloscopy.app"
+    grievance_officer_email: str = "animaticalpha123@gmail.com"
     medical_disclaimer: str = (
         "IMPORTANT: Teloscopy is NOT a medical device, NOT registered under the "
         "Drugs & Cosmetics Act 1940, and NOT a substitute for professional medical "

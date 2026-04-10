@@ -338,17 +338,88 @@ data class ReportParsePreview(
 )
 
 // ---------------------------------------------------------------------------
+// Health Checkup – Lab Result
+// ---------------------------------------------------------------------------
+
+@JsonClass(generateAdapter = true)
+data class LabResultItem(
+    @Json(name = "parameter") val parameter: String = "",
+    @Json(name = "display_name") val displayName: String = "",
+    @Json(name = "value") val value: Double = 0.0,
+    @Json(name = "unit") val unit: String = "",
+    @Json(name = "status") val status: String = "normal",
+    @Json(name = "reference_low") val referenceLow: Double = 0.0,
+    @Json(name = "reference_high") val referenceHigh: Double = 0.0,
+    @Json(name = "category") val category: String = ""
+)
+
+// ---------------------------------------------------------------------------
+// Health Checkup – Health Finding
+// ---------------------------------------------------------------------------
+
+@JsonClass(generateAdapter = true)
+data class HealthFindingItem(
+    @Json(name = "condition") val condition: String = "",
+    @Json(name = "display_name") val displayName: String = "",
+    @Json(name = "severity") val severity: String = "mild",
+    @Json(name = "evidence") val evidence: List<String> = emptyList(),
+    @Json(name = "dietary_impact") val dietaryImpact: String = "",
+    @Json(name = "nutrients_to_increase") val nutrientsToIncrease: List<String> = emptyList(),
+    @Json(name = "nutrients_to_decrease") val nutrientsToDecrease: List<String> = emptyList(),
+    @Json(name = "foods_to_increase") val foodsToIncrease: List<String> = emptyList(),
+    @Json(name = "foods_to_avoid") val foodsToAvoid: List<String> = emptyList()
+)
+
+// ---------------------------------------------------------------------------
+// Health Checkup – Score Breakdown
+// ---------------------------------------------------------------------------
+
+@JsonClass(generateAdapter = true)
+data class HealthScoreBreakdown(
+    @Json(name = "CBC") val cbc: Double? = null,
+    @Json(name = "Lipid Panel") val lipidPanel: Double? = null,
+    @Json(name = "Liver Function") val liverFunction: Double? = null,
+    @Json(name = "Kidney Function") val kidneyFunction: Double? = null,
+    @Json(name = "Diabetes Panel") val diabetesPanel: Double? = null,
+    @Json(name = "Thyroid Panel") val thyroidPanel: Double? = null,
+    @Json(name = "Vitamins & Minerals") val vitamins: Double? = null,
+    @Json(name = "Electrolytes") val electrolytes: Double? = null,
+    @Json(name = "Inflammation") val inflammation: Double? = null,
+    @Json(name = "Urine Analysis") val urineAnalysis: Double? = null,
+    @Json(name = "Abdomen Scan") val abdomenScan: Double? = null
+)
+
+// ---------------------------------------------------------------------------
+// Health Checkup – Abdomen Finding
+// ---------------------------------------------------------------------------
+
+@JsonClass(generateAdapter = true)
+data class AbdomenFindingItem(
+    @Json(name = "organ") val organ: String = "",
+    @Json(name = "finding") val finding: String = "",
+    @Json(name = "severity") val severity: String = "mild",
+    @Json(name = "dietary_impact") val dietaryImpact: String = "",
+    @Json(name = "foods_to_avoid") val foodsToAvoid: List<String> = emptyList(),
+    @Json(name = "foods_to_increase") val foodsToIncrease: List<String> = emptyList()
+)
+
+// ---------------------------------------------------------------------------
 // Health Checkup – Upload Response
 // ---------------------------------------------------------------------------
 
 @JsonClass(generateAdapter = true)
 data class HealthCheckupResponse(
-    @Json(name = "lab_results") val labResults: List<Map<String, Any>> = emptyList(),
+    @Json(name = "lab_results") val labResults: List<LabResultItem> = emptyList(),
     @Json(name = "abnormal_count") val abnormalCount: Int = 0,
     @Json(name = "total_tested") val totalTested: Int = 0,
-    @Json(name = "findings") val findings: List<Map<String, Any>> = emptyList(),
+    @Json(name = "findings") val findings: List<HealthFindingItem> = emptyList(),
+    @Json(name = "abdomen_findings") val abdomenFindings: List<AbdomenFindingItem> = emptyList(),
     @Json(name = "detected_conditions") val detectedConditions: List<String> = emptyList(),
     @Json(name = "overall_health_score") val overallHealthScore: Double = 0.0,
+    @Json(name = "health_score_breakdown") val healthScoreBreakdown: Map<String, Double> = emptyMap(),
     @Json(name = "diet_recommendation") val dietRecommendation: DietRecommendation? = null,
+    @Json(name = "dietary_modifications") val dietaryModifications: List<String> = emptyList(),
+    @Json(name = "calorie_adjustment") val calorieAdjustment: Int = 0,
+    @Json(name = "analyzed_at") val analyzedAt: String = "",
     @Json(name = "disclaimer") val disclaimer: String = ""
 )

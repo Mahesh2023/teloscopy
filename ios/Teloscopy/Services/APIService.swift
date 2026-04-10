@@ -557,6 +557,131 @@ final class APIService: ObservableObject {
         )
     }
 
+    // MARK: - Health Checkup
+
+    /// Parse a health-checkup report (PDF/image) and return a preview of extracted lab values.
+    func parseHealthReport(fileData: Data, fileName: String) async throws -> ReportParsePreview {
+        let boundary = UUID().uuidString
+        let mimeType = guessMimeType(for: fileName)
+
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+
+        return try await performMultipartRequest(
+            path: "/health-checkup/parse-report",
+            boundary: boundary,
+            body: body,
+            responseType: ReportParsePreview.self
+        )
+    }
+
+    /// Upload a health-checkup report with demographic context and receive the full analysis.
+    func uploadHealthReport(
+        fileData: Data,
+        fileName: String,
+        age: Int,
+        sex: String,
+        region: String,
+        calorieTarget: Int = 2000,
+        mealPlanDays: Int = 7
+    ) async throws -> HealthCheckupResponse {
+        let boundary = UUID().uuidString
+        let mimeType = guessMimeType(for: fileName)
+
+        var body = Data()
+
+        // File part
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n".data(using: .utf8)!)
+
+        // Text fields
+        for (name, value) in [
+            ("age", "\(age)"),
+            ("sex", sex),
+            ("region", region),
+            ("calorie_target", "\(calorieTarget)"),
+            ("meal_plan_days", "\(mealPlanDays)")
+        ] {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
+        }
+
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+
+        return try await performMultipartRequest(
+            path: "/health-checkup/upload",
+            boundary: boundary,
+            body: body,
+            responseType: HealthCheckupResponse.self
+        )
+    }
+
+    private func performMultipartRequest<T: Decodable>(
+        path: String,
+        boundary: String,
+        body: Data,
+        responseType: T.Type
+    ) async throws -> T {
+        let urlString = "\(configuration.baseURL)/api\(path)"
+        guard let url = URL(string: urlString) else {
+            throw TeloscopyAPIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue("Teloscopy-iOS/1.0.0", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = APIConfiguration.uploadTimeout
+
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw TeloscopyAPIError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200...299:
+            return try jsonDecoder.decode(T.self, from: data)
+        case 401:
+            handleUnauthorized()
+            throw TeloscopyAPIError.unauthorized
+        case 400...499:
+            let message = String(data: data, encoding: .utf8) ?? "Client error"
+            throw TeloscopyAPIError.httpError(statusCode: httpResponse.statusCode, message: message)
+        case 500...599:
+            let message = String(data: data, encoding: .utf8) ?? "Server error"
+            throw TeloscopyAPIError.serverError(message)
+        default:
+            throw TeloscopyAPIError.httpError(statusCode: httpResponse.statusCode, message: "Unexpected status")
+        }
+    }
+
+    private func guessMimeType(for fileName: String) -> String {
+        let lower = fileName.lowercased()
+        if lower.hasSuffix(".pdf") { return "application/pdf" }
+        if lower.hasSuffix(".png") { return "image/png" }
+        if lower.hasSuffix(".jpg") || lower.hasSuffix(".jpeg") { return "image/jpeg" }
+        if lower.hasSuffix(".tif") || lower.hasSuffix(".tiff") { return "image/tiff" }
+        if lower.hasSuffix(".bmp") { return "image/bmp" }
+        if lower.hasSuffix(".webp") { return "image/webp" }
+        if lower.hasSuffix(".txt") || lower.hasSuffix(".text") { return "text/plain" }
+        return "application/octet-stream"
+    }
+
     private func performAsyncRequest<T: Decodable>(
         path: String,
         method: String,
