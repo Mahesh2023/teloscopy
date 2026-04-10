@@ -1,6 +1,8 @@
 package com.teloscopy.app.ui.screens
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,12 +26,14 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.Gavel
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -41,12 +45,14 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -63,8 +69,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
 import com.teloscopy.app.ui.theme.Background
 import com.teloscopy.app.ui.theme.OnBackground
 import com.teloscopy.app.ui.theme.OnSurfaceVariant
@@ -113,11 +123,17 @@ private sealed class ConnectionStatus {
  * (e.g. the Retrofit base-URL interceptor) without requiring DataStore's
  * coroutine machinery.
  *
- * @param onBack Called when the user taps the back navigation arrow.
+ * @param onBack              Called when the user taps the back navigation arrow.
+ * @param dataStore           The Hilt-provided [DataStore] for managing consent state.
+ * @param onWithdrawConsent   Called after consent is cleared to navigate back to the consent screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(
+    onBack: () -> Unit,
+    dataStore: DataStore<Preferences>,
+    onWithdrawConsent: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -453,6 +469,183 @@ fun SettingsScreen(onBack: () -> Unit) {
                             style = MaterialTheme.typography.bodySmall,
                             color = OnSurfaceVariant,
                             lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Legal Links & Withdraw Consent
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.elevatedCardColors(containerColor = Surface),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    // Legal Links
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Gavel,
+                            contentDescription = null,
+                            tint = Primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Legal Documents",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = OnBackground,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        TextButton(
+                            onClick = {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://teloscopy.app/privacy")
+                                )
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Privacy Policy",
+                                color = Primary,
+                                style = MaterialTheme.typography.labelLarge,
+                                textDecoration = TextDecoration.Underline
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://teloscopy.app/terms")
+                                )
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Terms of Service",
+                                color = Primary,
+                                style = MaterialTheme.typography.labelLarge,
+                                textDecoration = TextDecoration.Underline
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(
+                        color = Color(0xFF3A3F55).copy(alpha = 0.5f),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    // Withdraw Consent
+                    var showWithdrawDialog by remember { mutableStateOf(false) }
+
+                    Text(
+                        text = "Consent Management",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = OnBackground,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Under the DPDP Act 2023, you have the right to withdraw " +
+                                "your consent at any time. Withdrawing consent will " +
+                                "require you to re-accept the terms before using the app.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OnSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedButton(
+                        onClick = { showWithdrawDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFFFF5252)
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Warning,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Withdraw Consent",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    if (showWithdrawDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showWithdrawDialog = false },
+                            containerColor = Surface,
+                            title = {
+                                Text(
+                                    text = "Withdraw Consent",
+                                    color = OnBackground,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            text = {
+                                Text(
+                                    text = "Are you sure you want to withdraw your consent?\n\n" +
+                                            "This will clear your consent preferences and you " +
+                                            "will need to re-accept the terms before using " +
+                                            "the app again.\n\n" +
+                                            "Your previously processed data is not affected " +
+                                            "by this action. To request data erasure, contact " +
+                                            "grievance@teloscopy.app.",
+                                    color = OnSurfaceVariant,
+                                    lineHeight = 22.sp
+                                )
+                            },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        showWithdrawDialog = false
+                                        scope.launch {
+                                            dataStore.edit { prefs ->
+                                                prefs.remove(CONSENT_ACCEPTED_KEY)
+                                                prefs.remove(CONSENT_TIMESTAMP_KEY)
+                                                prefs.remove(CONSENT_VERSION_KEY)
+                                                prefs.remove(CONSENT_RESEARCH_KEY)
+                                            }
+                                            onWithdrawConsent()
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFFF5252),
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Text("Withdraw", fontWeight = FontWeight.SemiBold)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showWithdrawDialog = false }) {
+                                    Text("Cancel", color = Primary)
+                                }
+                            }
                         )
                     }
                 }

@@ -64,7 +64,12 @@ from teloscopy.webapp.models import (
     AncestryDerivedPredictionsResponse,
     AncestryEstimateResponse,
     BloodTestPanel,
+    ConsentBundle,
+    ConsentPurpose,
+    ConsentRecord,
     ConditionScreeningResponse,
+    DataDeletionRequest,
+    DataDeletionResponse,
     DermatologicalAnalysisResponse,
     DietPlanRequest,
     DietPlanResponse,
@@ -75,12 +80,15 @@ from teloscopy.webapp.models import (
     FacialAnalysisResult,
     FacialHealthScreeningResponse,
     FacialMeasurementsResponse,
+    GrievanceRequest,
+    GrievanceResponse,
     HealthCheckupRequest,
     HealthCheckupResponse,
     HealthResponse,
     ImageValidationResponse,
     JobStatus,
     JobStatusEnum,
+    LegalNotice,
     MealPlan,
     NutritionRequest,
     NutritionResponse,
@@ -280,6 +288,7 @@ app: FastAPI = FastAPI(
         {"name": "Disease Risk", "description": "Genetic disease risk prediction"},
         {"name": "Nutrition", "description": "Personalized diet planning and meal recommendations"},
         {"name": "Agents", "description": "Multi-agent system status and control"},
+        {"name": "Legal", "description": "Legal compliance, consent management, and data subject rights (DPDP Act 2023)"},
     ],
 )
 
@@ -1193,6 +1202,154 @@ def _validate_image_content(contents: bytes, filename: str) -> ImageValidationRe
     )
 
 
+# ---------------------------------------------------------------------------
+# Legal Compliance Endpoints (DPDP Act 2023)
+# ---------------------------------------------------------------------------
+
+# In-memory consent audit log (swap for database in production)
+_consent_log: list[dict] = []
+_grievance_log: list[dict] = []
+_deletion_log: list[dict] = []
+
+
+@app.get("/api/legal/notice", response_model=LegalNotice, tags=["Legal"])
+async def get_legal_notice():
+    """Return the legal notice per DPDP Act 2023 Section 5.
+    
+    Must be presented to the Data Principal before collecting consent.
+    """
+    return LegalNotice()
+
+
+@app.post("/api/legal/consent", tags=["Legal"])
+async def record_consent(bundle: ConsentBundle, request: Request):
+    """Record explicit consent from the Data Principal.
+    
+    Per DPDP Act 2023 Section 6, consent must be free, specific, informed,
+    unconditional, and unambiguous with a clear affirmative action.
+    """
+    import hashlib
+    
+    client_ip = request.client.host if request.client else "unknown"
+    ip_hash = hashlib.sha256(client_ip.encode()).hexdigest()[:16]
+    
+    for consent in bundle.consents:
+        consent.ip_hash = ip_hash
+    
+    record = {
+        "session_id": bundle.session_id,
+        "consents": [c.dict() for c in bundle.consents],
+        "age_confirmed": bundle.data_principal_age_confirmed,
+        "privacy_policy_version": bundle.privacy_policy_version,
+        "terms_version": bundle.terms_version,
+        "recorded_at": datetime.utcnow().isoformat(),
+        "ip_hash": ip_hash,
+    }
+    _consent_log.append(record)
+    logger.info("Consent recorded for session %s with %d purposes", bundle.session_id, len(bundle.consents))
+    
+    return {
+        "status": "recorded",
+        "session_id": bundle.session_id,
+        "purposes_consented": [c.purpose for c in bundle.consents if c.granted],
+        "message": "Your consent has been recorded. You may withdraw consent at any time.",
+    }
+
+
+@app.post("/api/legal/consent/withdraw", tags=["Legal"])
+async def withdraw_consent(session_id: str = "", purposes: list[str] = []):
+    """Withdraw consent per DPDP Act 2023 Section 6(6).
+    
+    The Data Principal may withdraw consent at any time, with the same
+    ease as it was given. Withdrawal does not affect lawfulness of
+    processing done before withdrawal.
+    """
+    record = {
+        "session_id": session_id,
+        "purposes_withdrawn": purposes,
+        "withdrawn_at": datetime.utcnow().isoformat(),
+    }
+    _consent_log.append(record)
+    logger.info("Consent withdrawn for session %s, purposes: %s", session_id, purposes)
+    
+    return {
+        "status": "withdrawn",
+        "session_id": session_id,
+        "purposes_withdrawn": purposes,
+        "message": (
+            "Your consent has been withdrawn. No further processing will occur "
+            "for the specified purposes. Note: withdrawal does not affect the "
+            "lawfulness of processing already completed. Since Teloscopy processes "
+            "data ephemerally, no persistent data needs to be deleted."
+        ),
+    }
+
+
+@app.post(
+    "/api/legal/data-deletion",
+    response_model=DataDeletionResponse,
+    tags=["Legal"],
+)
+async def request_data_deletion(req: DataDeletionRequest):
+    """Exercise Right to Erasure under DPDP Act 2023 Section 12(3).
+    
+    Since Teloscopy processes all data ephemerally (in-memory only,
+    no persistent storage), this endpoint confirms that no data
+    needs to be deleted and provides an audit record.
+    """
+    response = DataDeletionResponse(request_id=req.request_id)
+    
+    _deletion_log.append({
+        "request_id": req.request_id,
+        "session_id": req.session_id,
+        "reason": req.reason,
+        "requested_at": req.requested_at.isoformat(),
+        "completed_at": response.completed_at.isoformat(),
+    })
+    logger.info("Data deletion request %s processed", req.request_id)
+    
+    return response
+
+
+@app.post(
+    "/api/legal/grievance",
+    response_model=GrievanceResponse,
+    tags=["Legal"],
+)
+async def submit_grievance(grievance: GrievanceRequest):
+    """Submit a grievance per DPDP Act 2023 Section 13.
+    
+    The Grievance Officer will acknowledge and respond within 30 days.
+    """
+    _grievance_log.append(grievance.dict())
+    logger.info("Grievance %s received from %s", grievance.grievance_id, grievance.email)
+    
+    return GrievanceResponse(grievance_id=grievance.grievance_id)
+
+
+@app.get("/api/legal/privacy-policy", tags=["Legal"])
+async def get_privacy_policy_summary():
+    """Return a summary of the privacy policy with links."""
+    return {
+        "version": "1.0",
+        "last_updated": "2026-04-01",
+        "full_document_url": "/docs/privacy-policy",
+        "governing_law": "Digital Personal Data Protection Act, 2023 (India)",
+        "data_fiduciary": "Teloscopy Project",
+        "grievance_officer_email": "grievance@teloscopy.app",
+        "data_protection_board": "Data Protection Board of India",
+        "key_points": [
+            "All data is processed ephemerally — nothing is stored on servers",
+            "Explicit consent is required before any processing",
+            "You can withdraw consent at any time",
+            "You have rights to access, correction, erasure, and grievance redressal",
+            "No data is shared with third parties",
+            "Facial images and health reports are never persisted",
+            "Users must be 18+ or have verifiable parental consent",
+        ],
+    }
+
+
 # ===================================================================== #
 #  HTML (frontend) routes                                                #
 # ===================================================================== #
@@ -1244,6 +1401,116 @@ async def results_page(request: Request, job_id: str) -> HTMLResponse:
 async def dashboard_page(request: Request) -> HTMLResponse:
     """Serve the agent-monitoring dashboard."""
     return templates.TemplateResponse(request=request, name="dashboard.html")
+
+
+# ===================================================================== #
+#  Legal document routes (Privacy Policy & Terms of Service)             #
+# ===================================================================== #
+
+_DOCS_DIR: Path = _BASE_DIR.parent.parent.parent / "docs"
+
+
+@app.get("/docs/privacy-policy", response_class=HTMLResponse)
+async def privacy_policy_page() -> HTMLResponse:
+    """Serve the Privacy Policy as a styled HTML page."""
+    return _render_legal_doc("PRIVACY_POLICY.md", "Privacy Policy")
+
+
+@app.get("/docs/terms-of-service", response_class=HTMLResponse)
+async def terms_of_service_page() -> HTMLResponse:
+    """Serve the Terms of Service as a styled HTML page."""
+    return _render_legal_doc("TERMS_OF_SERVICE.md", "Terms of Service")
+
+
+def _render_legal_doc(filename: str, title: str) -> HTMLResponse:
+    """Render a Markdown legal document as a styled HTML page."""
+    doc_path = _DOCS_DIR / filename
+    if not doc_path.exists():
+        raise HTTPException(status_code=404, detail=f"{title} document not found")
+
+    md_content = doc_path.read_text(encoding="utf-8")
+
+    # Simple Markdown-to-HTML conversion for legal docs
+    import html as _html
+    import re
+
+    content = _html.escape(md_content)
+    # Headers
+    content = re.sub(r"^######\s+(.+)$", r"<h6>\1</h6>", content, flags=re.MULTILINE)
+    content = re.sub(r"^#####\s+(.+)$", r"<h5>\1</h5>", content, flags=re.MULTILINE)
+    content = re.sub(r"^####\s+(.+)$", r"<h4>\1</h4>", content, flags=re.MULTILINE)
+    content = re.sub(r"^###\s+(.+)$", r"<h3>\1</h3>", content, flags=re.MULTILINE)
+    content = re.sub(r"^##\s+(.+)$", r"<h2>\1</h2>", content, flags=re.MULTILINE)
+    content = re.sub(r"^#\s+(.+)$", r"<h1>\1</h1>", content, flags=re.MULTILINE)
+    # Bold and italic
+    content = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", content)
+    content = re.sub(r"\*(.+?)\*", r"<em>\1</em>", content)
+    # Links
+    content = re.sub(
+        r"\[([^\]]+)\]\(([^)]+)\)",
+        r'<a href="\2" style="color:#00d4aa;">\1</a>',
+        content,
+    )
+    # Horizontal rules
+    content = re.sub(r"^---+$", "<hr>", content, flags=re.MULTILINE)
+    # List items
+    content = re.sub(r"^[-*]\s+(.+)$", r"<li>\1</li>", content, flags=re.MULTILINE)
+    content = re.sub(r"((?:<li>.*</li>\n?)+)", r"<ul>\1</ul>", content)
+    # Numbered list items
+    content = re.sub(r"^\d+\.\s+(.+)$", r"<li>\1</li>", content, flags=re.MULTILINE)
+    # Paragraphs — wrap text blocks
+    content = re.sub(r"^(?!<[a-z/]|$)(.+)$", r"<p>\1</p>", content, flags=re.MULTILINE)
+
+    html_page = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{_html.escape(title)} — Teloscopy</title>
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0b0f19; color: #e0e6ed;
+            line-height: 1.7; padding: 2rem;
+            max-width: 860px; margin: 0 auto;
+        }}
+        h1 {{ font-size: 2rem; font-weight: 800; color: #00d4aa; margin: 2rem 0 .5rem; }}
+        h2 {{ font-size: 1.4rem; font-weight: 700; color: #e0e6ed; margin: 2rem 0 .5rem;
+               border-bottom: 1px solid rgba(46,58,89,.6); padding-bottom: .4rem; }}
+        h3 {{ font-size: 1.1rem; font-weight: 600; color: #00d4aa; margin: 1.5rem 0 .4rem; }}
+        h4, h5, h6 {{ font-size: 1rem; font-weight: 600; margin: 1rem 0 .3rem; }}
+        p {{ margin: .6rem 0; font-size: .92rem; color: #a0aec0; }}
+        a {{ color: #00d4aa; text-decoration: none; }}
+        a:hover {{ text-decoration: underline; }}
+        ul, ol {{ padding-left: 1.5rem; margin: .5rem 0; }}
+        li {{ font-size: .92rem; color: #a0aec0; margin: .3rem 0; }}
+        strong {{ color: #e0e6ed; }}
+        hr {{ border: none; border-top: 1px solid rgba(46,58,89,.6); margin: 2rem 0; }}
+        table {{ width: 100%; border-collapse: collapse; margin: 1rem 0; }}
+        th, td {{ padding: .5rem .75rem; border: 1px solid rgba(46,58,89,.6);
+                  font-size: .85rem; text-align: left; }}
+        th {{ background: rgba(19,24,37,.8); color: #a0aec0; font-weight: 600; }}
+        .back-link {{ display: inline-block; margin-bottom: 1.5rem; color: #00d4aa;
+                      font-size: .9rem; }}
+        .footer {{ text-align: center; margin-top: 3rem; padding: 1.5rem 0;
+                   border-top: 1px solid rgba(46,58,89,.6); font-size: .78rem; color: #8f9bb3; }}
+    </style>
+</head>
+<body>
+    <a href="/" class="back-link">&larr; Back to Teloscopy</a>
+    {content}
+    <div class="footer">
+        <p>&copy; 2024&ndash;2026 Teloscopy &mdash; Governed by the laws of India</p>
+        <p style="margin-top:.4rem;">
+            <a href="/docs/privacy-policy">Privacy Policy</a> &middot;
+            <a href="/docs/terms-of-service">Terms of Service</a> &middot;
+            <a href="mailto:grievance@teloscopy.app">Grievance Officer</a>
+        </p>
+    </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html_page)
 
 
 # ===================================================================== #

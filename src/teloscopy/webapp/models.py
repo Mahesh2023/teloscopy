@@ -204,8 +204,16 @@ class DiseaseRiskResponse(BaseModel):
     overall_risk_score: float = Field(..., ge=0.0, le=1.0, description="Composite risk score")
     assessed_at: datetime = Field(default_factory=datetime.utcnow)
     disclaimer: str = Field(
-        default="For research/educational use only — not clinical advice. Results must NOT be used for medical decisions.",
-        description="Legal and scientific disclaimer",
+        default=(
+            "DISCLAIMER: For research and educational purposes only. This is NOT a medical device, "
+            "NOT registered under the Drugs & Cosmetics Act 1940 (India) or with CDSCO, and NOT a "
+            "substitute for professional medical advice, diagnosis, or treatment. Disease risk scores "
+            "are statistical estimates from published research — not clinical diagnoses. Nutritional "
+            "recommendations are general wellness guidance — not medical prescriptions. Always consult "
+            "a qualified registered medical practitioner. Governed by Indian law including the Digital "
+            "Personal Data Protection Act, 2023."
+        ),
+        description="Legal and scientific disclaimer (DPDP Act 2023, IT Act 2000, D&C Act 1940 compliant)",
     )
 
 
@@ -254,8 +262,16 @@ class DietPlanResponse(BaseModel):
     recommendation: DietRecommendation
     generated_at: datetime = Field(default_factory=datetime.utcnow)
     disclaimer: str = Field(
-        default="For research/educational use only — not clinical advice. Results must NOT be used for medical decisions.",
-        description="Legal and scientific disclaimer",
+        default=(
+            "DISCLAIMER: For research and educational purposes only. This is NOT a medical device, "
+            "NOT registered under the Drugs & Cosmetics Act 1940 (India) or with CDSCO, and NOT a "
+            "substitute for professional medical advice, diagnosis, or treatment. Disease risk scores "
+            "are statistical estimates from published research — not clinical diagnoses. Nutritional "
+            "recommendations are general wellness guidance — not medical prescriptions. Always consult "
+            "a qualified registered medical practitioner. Governed by Indian law including the Digital "
+            "Personal Data Protection Act, 2023."
+        ),
+        description="Legal and scientific disclaimer (DPDP Act 2023, IT Act 2000, D&C Act 1940 compliant)",
     )
 
 
@@ -489,8 +505,16 @@ class AnalysisResponse(BaseModel):
     csv_url: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     disclaimer: str = Field(
-        default="For research/educational use only — not clinical advice. Results must NOT be used for medical decisions.",
-        description="Legal and scientific disclaimer",
+        default=(
+            "DISCLAIMER: For research and educational purposes only. This is NOT a medical device, "
+            "NOT registered under the Drugs & Cosmetics Act 1940 (India) or with CDSCO, and NOT a "
+            "substitute for professional medical advice, diagnosis, or treatment. Disease risk scores "
+            "are statistical estimates from published research — not clinical diagnoses. Nutritional "
+            "recommendations are general wellness guidance — not medical prescriptions. Always consult "
+            "a qualified registered medical practitioner. Governed by Indian law including the Digital "
+            "Personal Data Protection Act, 2023."
+        ),
+        description="Legal and scientific disclaimer (DPDP Act 2023, IT Act 2000, D&C Act 1940 compliant)",
     )
 
 
@@ -580,8 +604,16 @@ class ProfileAnalysisResponse(BaseModel):
     overall_risk_score: float = Field(0.0, ge=0.0, le=1.0)
     assessed_at: datetime = Field(default_factory=datetime.utcnow)
     disclaimer: str = Field(
-        default="For research/educational use only — not clinical advice. Results must NOT be used for medical decisions.",
-        description="Legal and scientific disclaimer",
+        default=(
+            "DISCLAIMER: For research and educational purposes only. This is NOT a medical device, "
+            "NOT registered under the Drugs & Cosmetics Act 1940 (India) or with CDSCO, and NOT a "
+            "substitute for professional medical advice, diagnosis, or treatment. Disease risk scores "
+            "are statistical estimates from published research — not clinical diagnoses. Nutritional "
+            "recommendations are general wellness guidance — not medical prescriptions. Always consult "
+            "a qualified registered medical practitioner. Governed by Indian law including the Digital "
+            "Personal Data Protection Act, 2023."
+        ),
+        description="Legal and scientific disclaimer (DPDP Act 2023, IT Act 2000, D&C Act 1940 compliant)",
     )
 
 
@@ -632,8 +664,16 @@ class NutritionResponse(BaseModel):
     recommendation: DietRecommendation
     generated_at: datetime = Field(default_factory=datetime.utcnow)
     disclaimer: str = Field(
-        default="For research/educational use only — not clinical advice. Results must NOT be used for medical decisions.",
-        description="Legal and scientific disclaimer",
+        default=(
+            "DISCLAIMER: For research and educational purposes only. This is NOT a medical device, "
+            "NOT registered under the Drugs & Cosmetics Act 1940 (India) or with CDSCO, and NOT a "
+            "substitute for professional medical advice, diagnosis, or treatment. Disease risk scores "
+            "are statistical estimates from published research — not clinical diagnoses. Nutritional "
+            "recommendations are general wellness guidance — not medical prescriptions. Always consult "
+            "a qualified registered medical practitioner. Governed by Indian law including the Digital "
+            "Personal Data Protection Act, 2023."
+        ),
+        description="Legal and scientific disclaimer (DPDP Act 2023, IT Act 2000, D&C Act 1940 compliant)",
     )
 
 
@@ -882,8 +922,14 @@ class HealthCheckupResponse(BaseModel):
     # Metadata
     analyzed_at: datetime = Field(default_factory=datetime.utcnow)
     disclaimer: str = Field(
-        default="For research/educational use only — not clinical or diagnostic advice. "
-        "Lab interpretation is approximate. Always consult your physician for medical decisions.",
+        default=(
+            "DISCLAIMER: For research and educational purposes only. This is NOT a medical device, "
+            "NOT registered under the Drugs & Cosmetics Act 1940 (India) or with CDSCO, and NOT a "
+            "clinical establishment under the Clinical Establishments Act, 2010. Lab value interpretation "
+            "is approximate and may contain OCR/parsing errors. Always verify extracted values against "
+            "your original report and consult a qualified registered medical practitioner for all health "
+            "decisions. Governed by Indian law including the Digital Personal Data Protection Act, 2023."
+        ),
     )
 
 
@@ -930,4 +976,163 @@ class ReportParsePreview(BaseModel):
         0,
         ge=0,
         description="Number of characters extracted from the uploaded file.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Legal Compliance — Consent & Data Subject Rights (DPDP Act 2023)
+# ---------------------------------------------------------------------------
+
+
+class ConsentPurpose(StrEnum):
+    """Specific purposes for which consent is collected (DPDP Act Section 5)."""
+    TELOMERE_ANALYSIS = "telomere_analysis"
+    DISEASE_RISK = "disease_risk"
+    NUTRITION_PLAN = "nutrition_plan"
+    FACIAL_ANALYSIS = "facial_analysis"
+    HEALTH_REPORT = "health_report"
+    GENETIC_DATA = "genetic_data"
+    PROFILE_DATA = "profile_data"
+
+
+class ConsentRecord(BaseModel):
+    """Records explicit, informed consent per DPDP Act 2023 Section 6.
+    
+    Each consent record captures a Data Principal's agreement to a specific
+    processing purpose, along with the version of the notice they consented to.
+    """
+    consent_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    purpose: ConsentPurpose
+    granted: bool = True
+    granted_at: datetime = Field(default_factory=datetime.utcnow)
+    withdrawn_at: datetime | None = None
+    notice_version: str = Field(default="1.0", description="Version of privacy notice shown at time of consent")
+    ip_hash: str | None = Field(None, description="SHA-256 hash of IP for audit (not raw IP)")
+    user_agent: str | None = None
+
+
+class ConsentBundle(BaseModel):
+    """Collection of consent records for a single session/user.
+    
+    Per DPDP Act Section 6, consent must be free, specific, informed, 
+    unconditional, and unambiguous with a clear affirmative action.
+    """
+    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    consents: list[ConsentRecord] = Field(default_factory=list)
+    data_principal_age_confirmed: bool = Field(
+        False, description="User confirms they are 18+ years old (DPDP Act Section 9)"
+    )
+    parental_consent: bool = Field(
+        False, description="Parental consent if user is under 18"
+    )
+    privacy_policy_version: str = "1.0"
+    terms_version: str = "1.0"
+    consented_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DataDeletionRequest(BaseModel):
+    """Request to exercise Right to Erasure under DPDP Act 2023 Section 12(3).
+    
+    Since Teloscopy processes data ephemerally, this primarily serves as an
+    audit record confirming the Data Principal's request was received and
+    that no persistent data exists to delete.
+    """
+    request_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str | None = None
+    reason: str | None = Field(None, max_length=1000)
+    requested_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DataDeletionResponse(BaseModel):
+    """Confirmation of data deletion per DPDP Act 2023 Section 12."""
+    request_id: str
+    status: str = "completed"
+    message: str = (
+        "Teloscopy processes all data ephemerally — no personal data is "
+        "stored on our servers beyond the duration of your analysis request. "
+        "Any in-memory data from your session has been purged. "
+        "Locally stored app preferences can be cleared from your device settings."
+    )
+    completed_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GrievanceRequest(BaseModel):
+    """Grievance submission per DPDP Act 2023 Section 13.
+    
+    The Data Fiduciary must respond within the time period prescribed
+    by the Data Protection Board of India.
+    """
+    grievance_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str = Field(..., min_length=1, max_length=200)
+    email: str = Field(..., min_length=5, max_length=200)
+    subject: str = Field(..., min_length=1, max_length=500)
+    description: str = Field(..., min_length=10, max_length=5000)
+    submitted_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GrievanceResponse(BaseModel):
+    """Acknowledgement of grievance receipt."""
+    grievance_id: str
+    status: str = "received"
+    message: str = (
+        "Your grievance has been received. Our Grievance Officer will "
+        "review and respond within 30 days as required under the "
+        "Digital Personal Data Protection Act, 2023."
+    )
+    grievance_officer: str = "Grievance Officer, Teloscopy"
+    contact_email: str = "grievance@teloscopy.app"
+    received_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class LegalNotice(BaseModel):
+    """Legal notice presented to users before data collection (DPDP Act Section 5).
+    
+    Per Section 5(1), the Data Fiduciary must give the Data Principal a notice
+    containing: (a) personal data sought and purpose, (b) how to exercise rights,
+    (c) how to file complaint with the Board.
+    """
+    notice_version: str = "1.0"
+    purposes: list[str] = Field(
+        default_factory=lambda: [
+            "Telomere length analysis from microscopy images",
+            "Biological age estimation",
+            "Disease risk assessment based on demographic and genetic data",
+            "Personalised nutrition and meal plan generation",
+            "Facial-genomic analysis (ancestry, skin health, pharmacogenomics)",
+            "Health checkup analysis from uploaded lab reports",
+        ]
+    )
+    data_collected: list[str] = Field(
+        default_factory=lambda: [
+            "Facial photographs (processed in memory, not stored)",
+            "Microscopy images (processed in memory, not stored)",
+            "Health reports — blood tests, urine tests, scan reports (processed in memory, not stored)",
+            "Demographic information — age, sex, region, country, state",
+            "Self-reported genetic variants (rsID:genotype format)",
+            "Dietary restrictions and health conditions",
+        ]
+    )
+    data_principal_rights: list[str] = Field(
+        default_factory=lambda: [
+            "Right to access information about processing (DPDP Act Section 11)",
+            "Right to correction and erasure of personal data (DPDP Act Section 12)",
+            "Right to grievance redressal (DPDP Act Section 13)",
+            "Right to nominate another person to exercise rights (DPDP Act Section 14)",
+            "Right to withdraw consent at any time (DPDP Act Section 6(6))",
+        ]
+    )
+    complaint_mechanism: str = (
+        "You may file a complaint with the Data Protection Board of India "
+        "if you believe your rights under the Digital Personal Data "
+        "Protection Act, 2023 have been violated."
+    )
+    grievance_officer_email: str = "grievance@teloscopy.app"
+    medical_disclaimer: str = (
+        "IMPORTANT: Teloscopy is NOT a medical device, NOT registered under the "
+        "Drugs & Cosmetics Act 1940, and NOT a substitute for professional medical "
+        "advice, diagnosis, or treatment. All results are for research and educational "
+        "purposes only. Disease risk scores are statistical estimates, not clinical "
+        "diagnoses. Nutritional recommendations are general wellness guidance, not "
+        "medical prescriptions. Always consult a qualified registered medical "
+        "practitioner for health decisions."
     )

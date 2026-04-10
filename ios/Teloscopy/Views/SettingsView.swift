@@ -36,6 +36,9 @@ struct SettingsView: View {
         case failure(String)
     }
     
+    @AppStorage("consent_accepted") private var consentAccepted = true
+    @State private var showWithdrawConsentConfirm = false
+    
     var body: some View {
         List {
             serverSection
@@ -44,6 +47,7 @@ struct SettingsView: View {
             notificationSection
             appearanceSection
             dataSection
+            privacyLegalSection
             aboutSection
         }
         .listStyle(.insetGrouped)
@@ -72,6 +76,17 @@ struct SettingsView: View {
             }
         } message: {
             Text("You'll need to sign in again to sync your data.")
+        }
+        .alert("Withdraw Consent?", isPresented: $showWithdrawConsentConfirm) {
+            Button("Cancel", role: .cancel) { }
+            Button("Withdraw", role: .destructive) {
+                consentAccepted = false
+                UserDefaults.standard.removeObject(forKey: "consent_timestamp")
+                UserDefaults.standard.removeObject(forKey: "research_consent")
+                UserDefaults.standard.removeObject(forKey: "consent_version")
+            }
+        } message: {
+            Text("Withdrawing consent will return you to the consent screen. You will need to re-accept the terms to continue using Teloscopy. As per the DPDP Act, 2023, this does not affect the lawfulness of processing done prior to withdrawal.")
         }
     }
     
@@ -439,6 +454,125 @@ struct SettingsView: View {
         } header: {
             Text("Data Management")
         }
+    }
+    
+    // MARK: - Privacy & Legal Section
+    
+    private var privacyLegalSection: some View {
+        Section {
+            // Consent status
+            HStack {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Consent Status")
+                            .font(.subheadline)
+                            .foregroundColor(TeloscopyTheme.textPrimary)
+                        if let timestamp = UserDefaults.standard.string(forKey: "consent_timestamp") {
+                            Text("Accepted: \(timestamp)")
+                                .font(.caption)
+                                .foregroundColor(TeloscopyTheme.textSecondary)
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "checkmark.shield.fill")
+                        .foregroundColor(TeloscopyTheme.successGreen)
+                }
+                
+                Spacer()
+                
+                Text("Active")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(TeloscopyTheme.successGreen)
+            }
+            
+            // Privacy Policy link
+            NavigationLink {
+                privacyPolicyView
+            } label: {
+                Label {
+                    Text("Privacy Policy")
+                        .font(.subheadline)
+                } icon: {
+                    Image(systemName: "hand.raised.fill")
+                        .foregroundColor(TeloscopyTheme.primaryBlue)
+                }
+            }
+            
+            // Terms of Service link
+            NavigationLink {
+                termsOfServiceView
+            } label: {
+                Label {
+                    Text("Terms of Service")
+                        .font(.subheadline)
+                } icon: {
+                    Image(systemName: "doc.plaintext.fill")
+                        .foregroundColor(TeloscopyTheme.primaryBlue)
+                }
+            }
+            
+            // Grievance officer contact
+            HStack {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Grievance Officer")
+                            .font(.subheadline)
+                            .foregroundColor(TeloscopyTheme.textPrimary)
+                        Text("grievance@teloscopy.app")
+                            .font(.caption)
+                            .foregroundColor(TeloscopyTheme.primaryBlue)
+                    }
+                } icon: {
+                    Image(systemName: "person.badge.shield.checkmark.fill")
+                        .foregroundColor(TeloscopyTheme.accentTeal)
+                }
+            }
+            
+            // Withdraw consent button
+            Button(action: { showWithdrawConsentConfirm = true }) {
+                Label("Withdraw Consent", systemImage: "xmark.shield.fill")
+                    .font(.subheadline)
+                    .foregroundColor(TeloscopyTheme.errorRed)
+            }
+        } header: {
+            Text("Privacy & Legal")
+        } footer: {
+            Text("Your data rights are protected under the Digital Personal Data Protection Act, 2023 (India). Contact the Grievance Officer for any concerns.")
+        }
+    }
+    
+    private var termsOfServiceView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Terms of Service")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                Group {
+                    Text("Acceptance of Terms")
+                        .font(.headline)
+                    Text("By using Teloscopy, you agree to these Terms of Service and our Privacy Policy. If you do not agree, you must discontinue use of the application.")
+                    
+                    Text("Service Description")
+                        .font(.headline)
+                    Text("Teloscopy provides genomic telomere analysis tools for research and informational purposes. The service is not a medical device and does not provide medical diagnoses.")
+                    
+                    Text("Limitation of Liability")
+                        .font(.headline)
+                    Text("Teloscopy and its operators shall not be liable for any direct, indirect, incidental, or consequential damages arising from the use of this application or reliance on its results.")
+                    
+                    Text("Governing Law")
+                        .font(.headline)
+                    Text("These terms are governed by the laws of India, including the Digital Personal Data Protection Act, 2023 and the Information Technology Act, 2000.")
+                }
+                .font(.subheadline)
+                .foregroundColor(TeloscopyTheme.textSecondary)
+            }
+            .padding()
+        }
+        .navigationTitle("Terms of Service")
+        .navigationBarTitleDisplayMode(.inline)
     }
     
     // MARK: - About Section

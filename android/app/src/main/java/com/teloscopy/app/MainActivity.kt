@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -54,9 +56,13 @@ import com.teloscopy.app.ui.theme.Primary
 import com.teloscopy.app.ui.theme.TeloscopyTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var dataStore: DataStore<Preferences>
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,7 +102,7 @@ class MainActivity : ComponentActivity() {
                     Scaffold(
                         containerColor = Background,
                         bottomBar = {
-                            if (currentRoute in listOf(
+                            if (currentRoute != null && currentRoute != Screen.Consent.route && currentRoute in listOf(
                                     Screen.Home.route,
                                     Screen.Analysis.route,
                                     Screen.ProfileAnalysis.route,
@@ -188,6 +194,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             TeloscopyNavHost(
                                 navController = navController,
+                                dataStore = dataStore,
                                 onOpenDrawer = {
                                     scope.launch { drawerState.open() }
                                 }

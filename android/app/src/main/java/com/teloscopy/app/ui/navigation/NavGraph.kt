@@ -10,8 +10,12 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -19,12 +23,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.teloscopy.app.ui.screens.AnalysisScreen
+import com.teloscopy.app.ui.screens.CONSENT_ACCEPTED_KEY
+import com.teloscopy.app.ui.screens.ConsentScreen
 import com.teloscopy.app.ui.screens.HomeScreen
 import com.teloscopy.app.ui.screens.ProfileAnalysisScreen
 import com.teloscopy.app.ui.screens.ResultsScreen
 import com.teloscopy.app.ui.screens.SettingsScreen
 import com.teloscopy.app.viewmodel.AnalysisViewModel
 import com.teloscopy.app.viewmodel.ProfileViewModel
+import kotlinx.coroutines.flow.map
 
 /**
  * Sealed class defining every navigable screen in the Teloscopy app.
@@ -57,6 +64,9 @@ sealed class Screen(val route: String) {
 
     /** Application settings. */
     data object Settings : Screen("settings")
+
+    /** Legal consent / DPDP compliance screen (shown before first use). */
+    data object Consent : Screen("consent")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -117,7 +127,11 @@ val bottomNavItems = listOf(
  * Hilt-scoped ViewModels where needed, and forwards navigation
  * callbacks so screens remain decoupled from the [NavHostController].
  *
+ * On first launch (or after consent withdrawal) the user is directed to
+ * the [ConsentScreen] before they can access any other feature.
+ *
  * @param navController The [NavHostController] that drives navigation.
+ * @param dataStore     The Hilt-provided [DataStore] for reading/writing consent state.
  * @param modifier      Optional [Modifier] applied to the [NavHost].
  * @param onOpenDrawer  Callback invoked when the user taps the hamburger
  *                      icon to open the navigation drawer.
@@ -125,14 +139,38 @@ val bottomNavItems = listOf(
 @Composable
 fun TeloscopyNavHost(
     navController: NavHostController,
+    dataStore: DataStore<Preferences>,
     modifier: Modifier = Modifier,
     onOpenDrawer: () -> Unit = {}
 ) {
+    // Observe consent state from DataStore
+    val consentAccepted by dataStore.data
+        .map { prefs -> prefs[CONSENT_ACCEPTED_KEY] ?: false }
+        .collectAsState(initial = false)
+
+    val startDestination = if (consentAccepted) {
+        Screen.Home.route
+    } else {
+        Screen.Consent.route
+    }
+
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route,
+        startDestination = startDestination,
         modifier = modifier
     ) {
+        // -- Consent (DPDP Act compliance) ----------------------------------
+        composable(Screen.Consent.route) {
+            ConsentScreen(
+                dataStore = dataStore,
+                onConsentGranted = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Consent.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // -- Home -----------------------------------------------------------
         composable(Screen.Home.route) {
             HomeScreen(
@@ -197,6 +235,12 @@ fun TeloscopyNavHost(
             SettingsScreen(
                 onBack = {
                     navController.popBackStack()
+                },
+                dataStore = dataStore,
+                onWithdrawConsent = {
+                    navController.navigate(Screen.Consent.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             )
         }

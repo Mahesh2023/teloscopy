@@ -44,6 +44,7 @@ struct TeloscopyApp: App {
     @ObservedObject private var apiService = APIService.shared
     @ObservedObject private var syncManager = SyncManager.shared
     @AppStorage("appearance_mode") private var appearanceMode: String = "system"
+    @AppStorage("consent_accepted") private var consentAccepted = false
     
     init() {
         configureAppearance()
@@ -51,15 +52,22 @@ struct TeloscopyApp: App {
     
     var body: some Scene {
         WindowGroup {
-            MainTabView()
-                .environmentObject(apiService)
-                .environmentObject(syncManager)
+            if consentAccepted {
+                MainTabView()
+                    .environmentObject(apiService)
+                    .environmentObject(syncManager)
+                    .preferredColorScheme(colorScheme)
+                    .onAppear {
+                        apiService.checkServerHealth()
+                            .sink(receiveValue: { _ in })
+                            .store(in: &AppCancellables.shared.cancellables)
+                    }
+            } else {
+                ConsentView(onAccept: {
+                    consentAccepted = true
+                })
                 .preferredColorScheme(colorScheme)
-                .onAppear {
-                    apiService.checkServerHealth()
-                        .sink(receiveValue: { _ in })
-                        .store(in: &AppCancellables.shared.cancellables)
-                }
+            }
         }
     }
     
