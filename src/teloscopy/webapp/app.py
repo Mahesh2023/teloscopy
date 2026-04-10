@@ -108,7 +108,7 @@ _STATIC_DIR: Path = _BASE_DIR / "static"
 _UPLOAD_DIR: Path = Path(os.getenv("TELOSCOPY_UPLOAD_DIR", "/tmp/teloscopy_uploads"))
 _UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-_ALLOWED_EXTENSIONS: set[str] = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
+_ALLOWED_EXTENSIONS: set[str] = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}
 _MAX_UPLOAD_BYTES: int = 50 * 1024 * 1024  # 50 MiB
 _MIN_IMAGE_DIMENSION: int = 32  # minimum width/height in pixels
 
@@ -118,6 +118,7 @@ _IMAGE_MAGIC_BYTES: dict[str, list[bytes]] = {
     "jpeg": [b"\xff\xd8\xff"],
     "tiff": [b"II\x2a\x00", b"MM\x00\x2a"],  # little-endian / big-endian
     "bmp": [b"BM"],
+    "webp": [b"RIFF"],
 }
 
 _TELOSCOPY_ENV: str = os.getenv("TELOSCOPY_ENV", "production")
@@ -731,11 +732,11 @@ async def _run_full_analysis(
                 profile.sex.value,
             )
             # Merge: if a condition already appears from variant analysis,
-            # keep the higher risk score; otherwise add the new entry.
+            # keep the higher lifetime risk; otherwise add the new entry.
             existing = {r.condition: r for r in risk_profile.risks}
             for tr in tl_risks:
                 if tr.condition in existing:
-                    if tr.risk_score > existing[tr.condition].risk_score:
+                    if tr.lifetime_risk_pct > existing[tr.condition].lifetime_risk_pct:
                         existing[tr.condition] = tr
                 else:
                     risk_profile.risks.append(tr)
@@ -833,7 +834,8 @@ def _validate_image_content(contents: bytes, filename: str) -> ImageValidationRe
     issues: list[str] = []
     file_size = len(contents)
 
-    # 1. Magic bytes check
+    # 1. Magic bytes check (informational — not a hard failure if cv2
+    #    can still decode the image)
     detected_format = _detect_image_format(contents)
     ext = Path(filename).suffix.lower()
     ext_to_format = {
@@ -843,13 +845,12 @@ def _validate_image_content(contents: bytes, filename: str) -> ImageValidationRe
         ".tif": "tiff",
         ".tiff": "tiff",
         ".bmp": "bmp",
+        ".webp": "webp",
     }
     expected_format = ext_to_format.get(ext, "unknown")
+    magic_mismatch = False
     if detected_format == "unknown":
-        issues.append(
-            f"File content does not match any known image format. "
-            f"Expected {expected_format} based on extension '{ext}'."
-        )
+        magic_mismatch = True
     elif expected_format != "unknown" and detected_format != expected_format:
         issues.append(
             f"Extension '{ext}' suggests {expected_format} but content is {detected_format}."
@@ -859,6 +860,7 @@ def _validate_image_content(contents: bytes, filename: str) -> ImageValidationRe
     width, height, channels = 0, 0, 0
     image_type = "unknown"
     face_detected = False
+    decoded_ok = False
     try:
         import cv2
         import numpy as np
@@ -868,6 +870,7 @@ def _validate_image_content(contents: bytes, filename: str) -> ImageValidationRe
         if img is None:
             issues.append("Image could not be decoded — file may be corrupted or truncated.")
         else:
+            decoded_ok = True
             if img.ndim == 2:
                 height, width = img.shape
                 channels = 1
@@ -903,6 +906,15 @@ def _validate_image_content(contents: bytes, filename: str) -> ImageValidationRe
                 image_type = "unknown"
     except ImportError:
         issues.append("OpenCV not available for image validation.")
+
+    # Only report magic-bytes mismatch as a hard failure when the image
+    # could not be decoded at all.  If cv2 decoded it successfully the
+    # file is usable regardless of unexpected header bytes.
+    if magic_mismatch and not decoded_ok:
+        issues.append(
+            f"File content does not match any known image format. "
+            f"Expected {expected_format} based on extension '{ext}'."
+        )
 
     return ImageValidationResponse(
         valid=len(issues) == 0,
