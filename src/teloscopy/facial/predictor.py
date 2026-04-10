@@ -93,6 +93,8 @@ class PredictedVariant:
     predicted_genotype: str
     confidence: float  # 0-1
     basis: str  # explanation of why this was predicted
+    risk_allele: str = ""  # e.g. "T", "A", etc.
+    ref_allele: str = ""  # reference allele
 
 
 @dataclass
@@ -127,6 +129,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.27, "APOE", "Alzheimer's / cardiovascular"),
         "south_asian": (0.12, "APOE", "Alzheimer's / cardiovascular"),
         "latin_american": (0.11, "APOE", "Alzheimer's / cardiovascular"),
+        "middle_eastern": (0.14, "APOE", "Alzheimer's / cardiovascular"),
     },
     "rs7903146": {  # TCF7L2
         "european": (0.30, "TCF7L2", "Type 2 diabetes"),
@@ -134,6 +137,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.28, "TCF7L2", "Type 2 diabetes"),
         "south_asian": (0.32, "TCF7L2", "Type 2 diabetes"),
         "latin_american": (0.24, "TCF7L2", "Type 2 diabetes"),
+        "middle_eastern": (0.29, "TCF7L2", "Type 2 diabetes"),
     },
     "rs1801133": {  # MTHFR C677T
         "european": (0.33, "MTHFR", "Folate metabolism"),
@@ -141,6 +145,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.10, "MTHFR", "Folate metabolism"),
         "south_asian": (0.15, "MTHFR", "Folate metabolism"),
         "latin_american": (0.42, "MTHFR", "Folate metabolism"),
+        "middle_eastern": (0.28, "MTHFR", "Folate metabolism"),
     },
     "rs4988235": {  # LCT — lactase persistence
         "european": (0.75, "LCT", "Lactose tolerance"),
@@ -148,6 +153,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.15, "LCT", "Lactose tolerance"),
         "south_asian": (0.30, "LCT", "Lactose tolerance"),
         "latin_american": (0.50, "LCT", "Lactose tolerance"),
+        "middle_eastern": (0.55, "LCT", "Lactose tolerance"),
     },
     "rs1229984": {  # ADH1B — alcohol metabolism
         "european": (0.05, "ADH1B", "Alcohol metabolism"),
@@ -155,6 +161,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.03, "ADH1B", "Alcohol metabolism"),
         "south_asian": (0.10, "ADH1B", "Alcohol metabolism"),
         "latin_american": (0.15, "ADH1B", "Alcohol metabolism"),
+        "middle_eastern": (0.08, "ADH1B", "Alcohol metabolism"),
     },
     "rs671": {  # ALDH2 — alcohol flush
         "european": (0.00, "ALDH2", "Alcohol flush / acetaldehyde"),
@@ -162,6 +169,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.00, "ALDH2", "Alcohol flush / acetaldehyde"),
         "south_asian": (0.02, "ALDH2", "Alcohol flush / acetaldehyde"),
         "latin_american": (0.02, "ALDH2", "Alcohol flush / acetaldehyde"),
+        "middle_eastern": (0.00, "ALDH2", "Alcohol flush / acetaldehyde"),
     },
     "rs762551": {  # CYP1A2 — caffeine
         "european": (0.33, "CYP1A2", "Slow caffeine metabolism"),
@@ -169,6 +177,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.24, "CYP1A2", "Slow caffeine metabolism"),
         "south_asian": (0.30, "CYP1A2", "Slow caffeine metabolism"),
         "latin_american": (0.36, "CYP1A2", "Slow caffeine metabolism"),
+        "middle_eastern": (0.30, "CYP1A2", "Slow caffeine metabolism"),
     },
     "rs1800562": {  # HFE C282Y — haemochromatosis
         "european": (0.06, "HFE", "Iron overload risk"),
@@ -176,6 +185,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.00, "HFE", "Iron overload risk"),
         "south_asian": (0.01, "HFE", "Iron overload risk"),
         "latin_american": (0.02, "HFE", "Iron overload risk"),
+        "middle_eastern": (0.02, "HFE", "Iron overload risk"),
     },
     "rs12913832": {  # HERC2/OCA2 — eye colour
         "european": (0.72, "HERC2", "Blue/green eye colour"),
@@ -183,6 +193,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.01, "HERC2", "Blue/green eye colour"),
         "south_asian": (0.05, "HERC2", "Blue/green eye colour"),
         "latin_american": (0.25, "HERC2", "Blue/green eye colour"),
+        "middle_eastern": (0.20, "HERC2", "Blue/green eye colour"),
     },
     "rs1426654": {  # SLC24A5 — skin pigmentation
         "european": (0.98, "SLC24A5", "Light skin pigmentation"),
@@ -190,6 +201,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.01, "SLC24A5", "Light skin pigmentation"),
         "south_asian": (0.50, "SLC24A5", "Light skin pigmentation"),
         "latin_american": (0.55, "SLC24A5", "Light skin pigmentation"),
+        "middle_eastern": (0.80, "SLC24A5", "Light skin pigmentation"),
     },
     "rs16891982": {  # SLC45A2 — pigmentation
         "european": (0.87, "SLC45A2", "Light pigmentation"),
@@ -197,6 +209,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.01, "SLC45A2", "Light pigmentation"),
         "south_asian": (0.20, "SLC45A2", "Light pigmentation"),
         "latin_american": (0.45, "SLC45A2", "Light pigmentation"),
+        "middle_eastern": (0.60, "SLC45A2", "Light pigmentation"),
     },
     "rs1805007": {  # MC1R — red hair / fair skin
         "european": (0.10, "MC1R", "Red hair / fair skin / freckling"),
@@ -204,6 +217,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.00, "MC1R", "Red hair / fair skin / freckling"),
         "south_asian": (0.01, "MC1R", "Red hair / fair skin / freckling"),
         "latin_american": (0.03, "MC1R", "Red hair / fair skin / freckling"),
+        "middle_eastern": (0.03, "MC1R", "Red hair / fair skin / freckling"),
     },
     "rs2476601": {  # PTPN22 — autoimmune
         "european": (0.10, "PTPN22", "Autoimmune disease susceptibility"),
@@ -211,6 +225,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.01, "PTPN22", "Autoimmune disease susceptibility"),
         "south_asian": (0.04, "PTPN22", "Autoimmune disease susceptibility"),
         "latin_american": (0.04, "PTPN22", "Autoimmune disease susceptibility"),
+        "middle_eastern": (0.06, "PTPN22", "Autoimmune disease susceptibility"),
     },
     "rs4880": {  # SOD2 — oxidative stress
         "european": (0.47, "SOD2", "Reduced antioxidant defence"),
@@ -218,6 +233,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.37, "SOD2", "Reduced antioxidant defence"),
         "south_asian": (0.40, "SOD2", "Reduced antioxidant defence"),
         "latin_american": (0.40, "SOD2", "Reduced antioxidant defence"),
+        "middle_eastern": (0.42, "SOD2", "Reduced antioxidant defence"),
     },
     "rs9939609": {  # FTO — obesity
         "european": (0.42, "FTO", "Obesity / appetite regulation"),
@@ -225,6 +241,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.45, "FTO", "Obesity / appetite regulation"),
         "south_asian": (0.32, "FTO", "Obesity / appetite regulation"),
         "latin_american": (0.34, "FTO", "Obesity / appetite regulation"),
+        "middle_eastern": (0.38, "FTO", "Obesity / appetite regulation"),
     },
     "rs10811661": {  # CDKN2A/B — diabetes
         "european": (0.83, "CDKN2A/B", "Type 2 diabetes"),
@@ -232,6 +249,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.90, "CDKN2A/B", "Type 2 diabetes"),
         "south_asian": (0.85, "CDKN2A/B", "Type 2 diabetes"),
         "latin_american": (0.78, "CDKN2A/B", "Type 2 diabetes"),
+        "middle_eastern": (0.82, "CDKN2A/B", "Type 2 diabetes"),
     },
     "rs1333049": {  # 9p21 — cardiovascular
         "european": (0.47, "CDKN2B-AS1", "Coronary artery disease"),
@@ -239,6 +257,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.26, "CDKN2B-AS1", "Coronary artery disease"),
         "south_asian": (0.55, "CDKN2B-AS1", "Coronary artery disease"),
         "latin_american": (0.40, "CDKN2B-AS1", "Coronary artery disease"),
+        "middle_eastern": (0.50, "CDKN2B-AS1", "Coronary artery disease"),
     },
     "rs4646994": {  # ACE I/D — hypertension
         "european": (0.45, "ACE", "Salt-sensitive hypertension"),
@@ -246,6 +265,7 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.60, "ACE", "Salt-sensitive hypertension"),
         "south_asian": (0.52, "ACE", "Salt-sensitive hypertension"),
         "latin_american": (0.48, "ACE", "Salt-sensitive hypertension"),
+        "middle_eastern": (0.48, "ACE", "Salt-sensitive hypertension"),
     },
     "rs174546": {  # FADS1 — omega-3 metabolism
         "european": (0.35, "FADS1", "Reduced omega-3 conversion"),
@@ -253,7 +273,33 @@ _POPULATION_SNP_FREQUENCIES: dict[str, dict[str, tuple[float, str, str]]] = {
         "african": (0.90, "FADS1", "Reduced omega-3 conversion"),
         "south_asian": (0.45, "FADS1", "Reduced omega-3 conversion"),
         "latin_american": (0.50, "FADS1", "Reduced omega-3 conversion"),
+        "middle_eastern": (0.40, "FADS1", "Reduced omega-3 conversion"),
     },
+}
+
+# Risk allele and reference allele for each SNP.
+# Sources: ClinVar, dbSNP, published GWAS.
+_SNP_ALLELES: dict[str, tuple[str, str]] = {
+    # rsid: (risk_allele, ref_allele)
+    "rs429358": ("C", "T"),      # APOE e4
+    "rs7903146": ("T", "C"),     # TCF7L2
+    "rs1801133": ("T", "C"),     # MTHFR C677T
+    "rs4988235": ("T", "C"),     # LCT
+    "rs1229984": ("A", "G"),     # ADH1B
+    "rs671": ("A", "G"),         # ALDH2
+    "rs762551": ("C", "A"),      # CYP1A2
+    "rs1800562": ("A", "G"),     # HFE C282Y
+    "rs12913832": ("G", "A"),    # HERC2 (G = blue eye)
+    "rs1426654": ("A", "G"),     # SLC24A5
+    "rs16891982": ("G", "C"),    # SLC45A2
+    "rs1805007": ("T", "C"),     # MC1R
+    "rs2476601": ("T", "C"),     # PTPN22
+    "rs4880": ("T", "C"),        # SOD2
+    "rs9939609": ("A", "T"),     # FTO
+    "rs10811661": ("T", "C"),    # CDKN2A/B
+    "rs1333049": ("C", "G"),     # CDKN2B-AS1
+    "rs4646994": ("D", "I"),     # ACE I/D
+    "rs174546": ("T", "C"),      # FADS1
 }
 
 # Fitzpatrick skin type classification by brightness
@@ -632,6 +678,9 @@ def _predict_variants_from_ancestry(
         p_het = 2 * p * (1 - p)
         p_homo_alt = p**2
 
+        # Look up actual risk/ref alleles for this SNP.
+        risk_al, ref_al = _SNP_ALLELES.get(rsid, ("T", "C"))
+
         if p_homo_ref > p_het and p_homo_ref > p_homo_alt:
             genotype = "homozygous reference (low risk)"
             conf = p_homo_ref
@@ -649,6 +698,8 @@ def _predict_variants_from_ancestry(
                 predicted_genotype=genotype,
                 confidence=round(conf, 3),
                 basis=f"Population frequency ({condition}); estimated risk allele freq={p:.2f}",
+                risk_allele=risk_al,
+                ref_allele=ref_al,
             )
         )
 
@@ -662,6 +713,8 @@ def _predict_variants_from_ancestry(
                 predicted_genotype="heterozygous (likely carrier)",
                 confidence=0.4,
                 basis="Very fair skin with redness suggests MC1R variant",
+                risk_allele="T",
+                ref_allele="C",
             )
         )
 
@@ -674,6 +727,8 @@ def _predict_variants_from_ancestry(
                 predicted_genotype="heterozygous (possible reduced antioxidant)",
                 confidence=0.35,
                 basis="Elevated UV damage markers suggest possible SOD2 variant",
+                risk_allele="T",
+                ref_allele="C",
             )
         )
 
@@ -724,10 +779,24 @@ def analyze_face(
             analysis_warnings=["Could not read image file."],
         )
 
-    # Detect face
+    # Detect face — try multiple cascades with progressively relaxed
+    # parameters for maximum recall on real-world photos.
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    faces = cascade.detectMultiScale(gray, 1.1, 5, minSize=(60, 60))
+    gray_eq = cv2.equalizeHist(gray)
+
+    faces = np.empty((0, 4), dtype=int)
+    _cascades = [
+        (cv2.data.haarcascades + "haarcascade_frontalface_default.xml", 1.1, 5, 60),
+        (cv2.data.haarcascades + "haarcascade_frontalface_default.xml", 1.05, 3, 40),
+        (cv2.data.haarcascades + "haarcascade_frontalface_alt.xml", 1.1, 3, 40),
+        (cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml", 1.1, 3, 40),
+        (cv2.data.haarcascades + "haarcascade_profileface.xml", 1.1, 3, 40),
+    ]
+    for cpath, sf, mn, ms in _cascades:
+        cc = cv2.CascadeClassifier(cpath)
+        faces = cc.detectMultiScale(gray_eq, scaleFactor=sf, minNeighbors=mn, minSize=(ms, ms))
+        if len(faces) > 0:
+            break
 
     if len(faces) == 0:
         warnings.append(

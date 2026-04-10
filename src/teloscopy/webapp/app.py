@@ -666,8 +666,15 @@ async def _run_full_analysis(
         # ------------------------------------------------------------------
         # Phase 1 — Telomere / Facial analysis
         # ------------------------------------------------------------------
-        if image_type == ImageType.FACE_PHOTO:
-            # Real facial-genomic prediction (CPU-bound → run in thread)
+        if image_type == ImageType.FISH_MICROSCOPY:
+            # FISH microscopy — use simulated telomere results
+            # (real qFISH pipeline requires calibrated multi-channel TIFF)
+            await asyncio.sleep(0.5)
+            telomere = _simulate_telomere_analysis()
+        else:
+            # Face photo OR unknown photo — attempt facial-genomic analysis.
+            # The predictor handles the case where no face is detected
+            # (falls back to centre-region analysis with a warning).
             facial_profile = await asyncio.to_thread(
                 analyze_face,
                 image_path,
@@ -682,11 +689,6 @@ async def _run_full_analysis(
                 facial_result.estimated_biological_age,
                 facial_result.estimated_telomere_length_kb,
             )
-        else:
-            # FISH microscopy — use simulated telomere results
-            # (real qFISH pipeline requires calibrated multi-channel TIFF)
-            await asyncio.sleep(0.5)
-            telomere = _simulate_telomere_analysis()
 
         job.progress_pct = 35.0
         job.message = "Telomere analysis complete. Assessing disease risk..."
@@ -701,13 +703,15 @@ async def _run_full_analysis(
         if facial_result and facial_result.predicted_variants:
             for pv in facial_result.predicted_variants:
                 if pv.rsid not in variant_dict and pv.confidence > 0.3:
-                    # Use predicted genotype as a proxy
+                    # Use actual risk/ref alleles from the predictor.
+                    risk_al = getattr(pv, "risk_allele", "") or "T"
+                    ref_al = getattr(pv, "ref_allele", "") or "C"
                     if "homozygous variant" in pv.predicted_genotype:
-                        variant_dict[pv.rsid] = "TT"
+                        variant_dict[pv.rsid] = f"{risk_al}{risk_al}"
                     elif "heterozygous" in pv.predicted_genotype:
-                        variant_dict[pv.rsid] = "CT"
+                        variant_dict[pv.rsid] = f"{ref_al}{risk_al}"
                     else:
-                        variant_dict[pv.rsid] = "CC"
+                        variant_dict[pv.rsid] = f"{ref_al}{ref_al}"
 
         risk_profile = await asyncio.to_thread(
             _disease_predictor.predict_from_variants,
@@ -715,6 +719,28 @@ async def _run_full_analysis(
             profile.age,
             profile.sex.value,
         )
+
+        # If facial analysis estimated telomere length, also compute
+        # telomere-based disease risks and merge them in.
+        if facial_result and facial_result.estimated_telomere_length_kb > 0:
+            tl_bp = facial_result.estimated_telomere_length_kb * 1000.0
+            tl_risks = await asyncio.to_thread(
+                _disease_predictor.predict_from_telomere_data,
+                tl_bp,
+                profile.age,
+                profile.sex.value,
+            )
+            # Merge: if a condition already appears from variant analysis,
+            # keep the higher risk score; otherwise add the new entry.
+            existing = {r.condition: r for r in risk_profile.risks}
+            for tr in tl_risks:
+                if tr.condition in existing:
+                    if tr.risk_score > existing[tr.condition].risk_score:
+                        existing[tr.condition] = tr
+                else:
+                    risk_profile.risks.append(tr)
+                    existing[tr.condition] = tr
+
         risks = _translate_disease_risks(risk_profile.top_risks(n=15))
 
         job.progress_pct = 65.0
@@ -1161,7 +1187,7 @@ async def full_analysis(
     if not file.filename or not _validate_extension(file.filename):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid file type.",
+            detail=f"Invalid file type. Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}",
         )
 
     job_id: str = str(uuid.uuid4())

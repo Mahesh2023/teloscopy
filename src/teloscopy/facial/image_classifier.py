@@ -94,7 +94,11 @@ def _is_fluorescence_like(img: np.ndarray) -> tuple[bool, float]:
 
 
 def _detect_face(img: np.ndarray) -> tuple[bool, list[tuple[int, int, int, int]]]:
-    """Detect faces using OpenCV's Haar cascade classifier.
+    """Detect faces using multiple OpenCV classifiers for robustness.
+
+    Tries frontal Haar cascade first, then profile cascade, then LBP
+    cascade, each with progressively relaxed parameters to maximise
+    recall on real-world photos (varying lighting, angles, occlusion).
 
     Returns (found, list_of_bounding_boxes).
     """
@@ -109,28 +113,85 @@ def _detect_face(img: np.ndarray) -> tuple[bool, list[tuple[int, int, int, int]]
         else:
             gray = (gray * 255).clip(0, 255).astype(np.uint8)
 
-    # Use OpenCV's built-in Haar cascade
+    # Histogram equalisation for improved detection under poor lighting.
+    gray_eq = cv2.equalizeHist(gray)
+
+    face_list: list[tuple[int, int, int, int]] = []
+
+    # Strategy 1: Frontal Haar cascade (default parameters)
     cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
     face_cascade = cv2.CascadeClassifier(cascade_path)
-
     faces = face_cascade.detectMultiScale(
-        gray,
+        gray_eq,
         scaleFactor=1.1,
         minNeighbors=5,
         minSize=(60, 60),
         flags=cv2.CASCADE_SCALE_IMAGE,
     )
+    if len(faces) > 0:
+        face_list = [(int(x), int(y), int(w), int(h)) for (x, y, w, h) in faces]
+        return True, face_list
 
-    if len(faces) == 0:
-        # Try with profile face detector
-        profile_path = cv2.data.haarcascades + "haarcascade_profileface.xml"
-        profile_cascade = cv2.CascadeClassifier(profile_path)
-        faces = profile_cascade.detectMultiScale(
-            gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60)
+    # Strategy 2: Frontal Haar cascade with relaxed parameters
+    faces = face_cascade.detectMultiScale(
+        gray_eq,
+        scaleFactor=1.05,
+        minNeighbors=3,
+        minSize=(40, 40),
+        flags=cv2.CASCADE_SCALE_IMAGE,
+    )
+    if len(faces) > 0:
+        face_list = [(int(x), int(y), int(w), int(h)) for (x, y, w, h) in faces]
+        return True, face_list
+
+    # Strategy 3: Frontal Haar alt cascade
+    alt_path = cv2.data.haarcascades + "haarcascade_frontalface_alt.xml"
+    alt_cascade = cv2.CascadeClassifier(alt_path)
+    faces = alt_cascade.detectMultiScale(
+        gray_eq,
+        scaleFactor=1.1,
+        minNeighbors=3,
+        minSize=(40, 40),
+    )
+    if len(faces) > 0:
+        face_list = [(int(x), int(y), int(w), int(h)) for (x, y, w, h) in faces]
+        return True, face_list
+
+    # Strategy 4: Alt2 cascade (tree-based)
+    alt2_path = cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml"
+    alt2_cascade = cv2.CascadeClassifier(alt2_path)
+    faces = alt2_cascade.detectMultiScale(
+        gray_eq,
+        scaleFactor=1.1,
+        minNeighbors=3,
+        minSize=(40, 40),
+    )
+    if len(faces) > 0:
+        face_list = [(int(x), int(y), int(w), int(h)) for (x, y, w, h) in faces]
+        return True, face_list
+
+    # Strategy 5: Profile face cascade
+    profile_path = cv2.data.haarcascades + "haarcascade_profileface.xml"
+    profile_cascade = cv2.CascadeClassifier(profile_path)
+    faces = profile_cascade.detectMultiScale(
+        gray_eq, scaleFactor=1.1, minNeighbors=3, minSize=(40, 40)
+    )
+    if len(faces) > 0:
+        face_list = [(int(x), int(y), int(w), int(h)) for (x, y, w, h) in faces]
+        return True, face_list
+
+    # Strategy 6: LBP frontal cascade (faster, different feature space)
+    lbp_path = cv2.data.lbpcascades + "lbpcascade_frontalface_improved.xml"
+    lbp_cascade = cv2.CascadeClassifier(lbp_path)
+    if not lbp_cascade.empty():
+        faces = lbp_cascade.detectMultiScale(
+            gray_eq, scaleFactor=1.1, minNeighbors=3, minSize=(40, 40)
         )
+        if len(faces) > 0:
+            face_list = [(int(x), int(y), int(w), int(h)) for (x, y, w, h) in faces]
+            return True, face_list
 
-    face_list = [(int(x), int(y), int(w), int(h)) for (x, y, w, h) in faces]
-    return len(face_list) > 0, face_list
+    return False, []
 
 
 def classify_image(image_path: str) -> ClassificationResult:
