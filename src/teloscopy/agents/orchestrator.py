@@ -177,7 +177,7 @@ class OrchestratorAgent(BaseAgent):
 
         try:
             return await asyncio.wait_for(future, timeout=timeout)
-        except TimeoutError:
+        except (asyncio.TimeoutError, TimeoutError):
             self._pending_responses.pop(cid, None)
             raise TimeoutError(f"Agent '{recipient}' did not respond within {timeout}s.")
 

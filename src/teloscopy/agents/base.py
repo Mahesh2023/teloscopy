@@ -139,7 +139,7 @@ class BaseAgent(ABC):
             while self._running:
                 try:
                     msg = await asyncio.wait_for(self.message_queue.get(), timeout=1.0)
-                except TimeoutError:
+                except (asyncio.TimeoutError, TimeoutError):
                     continue
 
                 logger.debug(
