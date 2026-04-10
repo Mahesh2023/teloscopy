@@ -71,32 +71,32 @@ _NUM_PATTERN = r"[-+]?\d+(?:\.\d+)?"
 
 # Pattern: "Parameter Name : 14.5 g/dL" or "Parameter Name: 14.5"
 _COLON_PATTERN = re.compile(
-    r"^[\s\-\*]*"                          # leading whitespace/bullets
-    r"(?P<name>[A-Za-z0-9\s\-/\(\)\.\,%&']+?)"  # parameter name
-    r"\s*[:=]\s*"                           # separator (colon or equals)
-    r"(?P<value>" + _NUM_PATTERN + r")"     # numeric value
-    r"(?:\s*(?P<unit>[A-Za-z/%µ\.\s\-\d]+))?"  # optional unit
-    r"\s*$",
+    r"^[ \t\-\*]*"                         # leading whitespace/bullets (no newline)
+    r"(?P<name>[A-Za-z0-9 \t\-/\(\)\.\,%&']+?)"  # parameter name (no newline)
+    r"[ \t]*[:=][ \t]*"                    # separator (colon or equals)
+    r"(?P<value>" + _NUM_PATTERN + r")"    # numeric value
+    r"(?:[ \t]*(?P<unit>[A-Za-z/%µ\.\ \t\-\d]+))?"  # optional unit
+    r"[ \t]*$",
     re.MULTILINE,
 )
 
 # Pattern: "Parameter Name   14.5  g/dL" (whitespace separated, no colon)
 _SPACE_PATTERN = re.compile(
-    r"^[\s\-\*]*"
-    r"(?P<name>[A-Za-z][A-Za-z0-9\s\-/\(\)\.\,%&']{2,40}?)"
-    r"\s{2,}"                               # at least 2 spaces separating
+    r"^[ \t\-\*]*"
+    r"(?P<name>[A-Za-z][A-Za-z0-9 \t\-/\(\)\.\,%&']{2,40}?)"
+    r"[ \t]{2,}"                            # at least 2 spaces/tabs separating
     r"(?P<value>" + _NUM_PATTERN + r")"
-    r"(?:\s+(?P<unit>[A-Za-z/%µ\.\-]+))?"
+    r"(?:[ \t]+(?P<unit>[A-Za-z/%µ\.\-]+))?"
     r"",
     re.MULTILINE,
 )
 
 # Pattern: table format "Parameter | 14.5 | 13-17 | g/dL"
 _TABLE_PATTERN = re.compile(
-    r"(?P<name>[A-Za-z][A-Za-z0-9\s\-/\(\)\.\,%&']+?)"
-    r"\s*\|\s*"
+    r"(?P<name>[A-Za-z][A-Za-z0-9 \t\-/\(\)\.\,%&']+?)"
+    r"[ \t]*\|[ \t]*"
     r"(?P<value>" + _NUM_PATTERN + r")"
-    r"(?:\s*\|[^|\n]*)*",                   # remaining columns (ref range, unit) — stop at newline
+    r"(?:[ \t]*\|[^|\n]*)*",               # remaining columns (ref range, unit) — stop at newline
     re.MULTILINE,
 )
 
