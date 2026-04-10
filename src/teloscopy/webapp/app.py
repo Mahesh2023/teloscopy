@@ -42,7 +42,7 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
@@ -1797,185 +1797,29 @@ def _render_legal_doc(filename: str, title: str) -> HTMLResponse:
 
 
 # ===================================================================== #
-#  Mobile app downloads (Android APK + iOS IPA)                          #
+#  Mobile app download links                                             #
 # ===================================================================== #
 
-_DOWNLOAD_DIR = _BASE_DIR / "static"
-_APK_FILENAME = "teloscopy.apk"
-_IPA_FILENAME = "teloscopy.ipa"
-
-
-def _ensure_placeholder_apk() -> None:
-    """Copy the Gradle-built APK into the static dir, or skip if already present.
-
-    A real APK from the Android build is typically 5-25 MB.  We only
-    regenerate when the file is missing or clearly a stale tiny placeholder.
-    """
-    apk_path = _DOWNLOAD_DIR / _APK_FILENAME
-    _MIN_REAL_APK_SIZE = 1_000_000  # 1 MB — anything smaller is a placeholder
-
-    # If a real APK already exists, nothing to do
-    if apk_path.exists() and apk_path.stat().st_size >= _MIN_REAL_APK_SIZE:
-        return
-
-    _DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Try to find the Gradle-built APK from the Android project
-    from pathlib import Path as _P
-    project_root = _P(__file__).resolve().parent.parent.parent.parent
-    gradle_apk_candidates = [
-        project_root / "android" / "app" / "build" / "outputs" / "apk" / "release" / "app-release.apk",
-        project_root / "android" / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk",
-    ]
-    for candidate in gradle_apk_candidates:
-        if candidate.exists() and candidate.stat().st_size >= _MIN_REAL_APK_SIZE:
-            import shutil
-            shutil.copy2(str(candidate), str(apk_path))
-            logger.info(
-                "Copied Gradle-built APK to %s (%d MB)",
-                apk_path,
-                apk_path.stat().st_size // (1024 * 1024),
-            )
-            return
-
-    # No real APK found — generate a structural placeholder so the download
-    # endpoint doesn't 404, but log a prominent warning.
-    logger.warning(
-        "No Gradle-built APK found.  Run `./gradlew assembleDebug` in the "
-        "android/ directory to build a real APK.  Generating a minimal placeholder."
-    )
-    try:
-        build_script = project_root / "scripts" / "build_apk.py"
-        if build_script.exists():
-            import importlib.util
-            spec = importlib.util.spec_from_file_location("build_apk", str(build_script))
-            mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
-            spec.loader.exec_module(mod)  # type: ignore[union-attr]
-            mod.build_apk(str(apk_path))
-            logger.info("Built placeholder APK at %s (%d KB)", apk_path, apk_path.stat().st_size // 1024)
-        else:
-            _build_fallback_apk(apk_path)
-    except Exception:
-        logger.warning("Could not generate placeholder APK", exc_info=True)
-
-
-def _build_fallback_apk(apk_path: Path) -> None:
-    """Inline fallback APK generator (used when scripts/build_apk.py is missing)."""
-    import zipfile
-    import zlib
-
-    # Minimal valid DEX header
-    dex_header = bytearray(b"dex\n035\x00" + b"\x00" * 104)
-    # Fix file size field at offset 32
-    file_size = len(dex_header)
-    struct_pack = __import__("struct").pack
-    dex_header[32:36] = struct_pack("<I", file_size)
-    dex_header[36:40] = struct_pack("<I", 0x70)  # header size
-    dex_header[40:44] = struct_pack("<I", 0x12345678)  # endian tag
-    # SHA-1 signature (bytes 12-31) over bytes 32..end
-    import hashlib as _hl
-    sha1 = _hl.sha1(bytes(dex_header[32:])).digest()
-    dex_header[12:32] = sha1
-    # Adler-32 checksum (bytes 8-11) over bytes 12..end
-    checksum = zlib.adler32(bytes(dex_header[12:])) & 0xFFFFFFFF
-    dex_header[8:12] = struct_pack("<I", checksum)
-
-    with zipfile.ZipFile(str(apk_path), "w", zipfile.ZIP_DEFLATED) as zf:
-        # Minimal AXML header for AndroidManifest.xml
-        axml = struct_pack("<II", 0x00080003, 8)  # minimal empty AXML
-        zf.writestr("AndroidManifest.xml", axml)
-        zf.writestr("classes.dex", bytes(dex_header))
-        zf.writestr("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\nCreated-By: Teloscopy\n")
-    logger.info("Generated fallback APK at %s", apk_path)
-
-
-def _ensure_placeholder_ipa() -> None:
-    """Generate a minimal placeholder IPA if one does not already exist."""
-    import zipfile
-
-    ipa_path = _DOWNLOAD_DIR / _IPA_FILENAME
-    if ipa_path.exists():
-        return
-    _DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    try:
-        with zipfile.ZipFile(str(ipa_path), "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr(
-                "Payload/Teloscopy.app/Info.plist",
-                '<?xml version="1.0" encoding="UTF-8"?>\n'
-                '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
-                '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
-                '<plist version="1.0"><dict>\n'
-                "  <key>CFBundleIdentifier</key><string>com.teloscopy.app</string>\n"
-                "  <key>CFBundleName</key><string>Teloscopy</string>\n"
-                "  <key>CFBundleVersion</key><string>1</string>\n"
-                "  <key>CFBundleShortVersionString</key><string>2.0.0</string>\n"
-                "  <key>MinimumOSVersion</key><string>16.0</string>\n"
-                "</dict></plist>",
-            )
-            zf.writestr("Payload/Teloscopy.app/PkgInfo", "APPL????")
-        logger.info("Generated placeholder IPA at %s", ipa_path)
-    except Exception:
-        logger.warning("Could not generate placeholder IPA", exc_info=True)
-
-
-# Ensure placeholder builds exist at import time so downloads always work
-_ensure_placeholder_apk()
-_ensure_placeholder_ipa()
+_GITHUB_RELEASES_URL = "https://github.com/Mahesh2023/teloscopy/releases"
 
 
 @app.get("/api/download/android")
-async def download_android_apk() -> FileResponse:
-    """Serve the Android APK for mobile users."""
-    apk_path = _DOWNLOAD_DIR / _APK_FILENAME
-    if not apk_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Android APK not available yet. Please check back later.",
-        )
-    return FileResponse(
-        path=str(apk_path),
-        filename=_APK_FILENAME,
-        media_type="application/vnd.android.package-archive",
-    )
-
-
-@app.get("/api/download/android/status")
-async def android_apk_status() -> dict[str, Any]:
-    """Check whether the Android APK is available for download."""
-    apk_path = _DOWNLOAD_DIR / _APK_FILENAME
-    exists = apk_path.exists()
+async def download_android_redirect() -> dict[str, str]:
+    """Return the GitHub Releases URL for the Android APK."""
     return {
-        "available": exists,
-        "filename": _APK_FILENAME,
-        "size_bytes": apk_path.stat().st_size if exists else None,
+        "url": f"{_GITHUB_RELEASES_URL}/latest",
+        "platform": "android",
+        "message": "Download the latest APK from the GitHub Releases page.",
     }
 
 
 @app.get("/api/download/ios")
-async def download_ios_ipa() -> FileResponse:
-    """Serve the iOS IPA for mobile users."""
-    ipa_path = _DOWNLOAD_DIR / _IPA_FILENAME
-    if not ipa_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="iOS IPA not available yet. Please check back later.",
-        )
-    return FileResponse(
-        path=str(ipa_path),
-        filename=_IPA_FILENAME,
-        media_type="application/octet-stream",
-    )
-
-
-@app.get("/api/download/ios/status")
-async def ios_ipa_status() -> dict[str, Any]:
-    """Check whether the iOS IPA is available for download."""
-    ipa_path = _DOWNLOAD_DIR / _IPA_FILENAME
-    exists = ipa_path.exists()
+async def download_ios_redirect() -> dict[str, str]:
+    """Return the GitHub Releases URL for the iOS build."""
     return {
-        "available": exists,
-        "filename": _IPA_FILENAME,
-        "size_bytes": ipa_path.stat().st_size if exists else None,
+        "url": f"{_GITHUB_RELEASES_URL}/latest",
+        "platform": "ios",
+        "message": "Download the latest iOS build from the GitHub Releases page.",
     }
 
 
@@ -2252,7 +2096,7 @@ async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
     tags=["Analysis"],
     summary="Get job status",
     description="Return the current status and progress of an analysis job by its job_id.",
-    dependencies=[Depends(rate_limit(60, 60))],
+    dependencies=[Depends(rate_limit(60, 60)), Depends(require_consent("telomere_analysis"))],
 )
 async def get_job_status(job_id: str) -> JobStatus:
     """Return the current status of an analysis job."""

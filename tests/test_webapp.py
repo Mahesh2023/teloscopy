@@ -153,9 +153,15 @@ class TestUploadEndpoint:
 class TestStatusEndpoint:
     """Tests for GET /api/status/{job_id}."""
 
+    def test_status_requires_consent(self, client):
+        """Querying status without consent should return 403."""
+        resp = client.get("/api/status/any-job-id")
+        assert resp.status_code == 403
+
     def test_nonexistent_job_returns_404(self, client):
         """Querying a random job_id should return 404."""
-        resp = client.get("/api/status/nonexistent-job-id-12345")
+        token = _obtain_consent(client)
+        resp = client.get("/api/status/nonexistent-job-id-12345", headers=_ch(token))
         assert resp.status_code == 404
 
     def test_existing_job_returns_200(self, client):
@@ -168,7 +174,7 @@ class TestStatusEndpoint:
         )
         job_id = upload_resp.json()["job_id"]
 
-        status_resp = client.get(f"/api/status/{job_id}")
+        status_resp = client.get(f"/api/status/{job_id}", headers=_ch(token))
         assert status_resp.status_code == 200
         data = status_resp.json()
         assert data["job_id"] == job_id
@@ -590,22 +596,25 @@ class TestHealthCheckupUpload:
 
 
 class TestAndroidDownload:
-    """Tests for Android APK download endpoint."""
+    """Tests for mobile download redirect endpoints (APK/IPA removed, redirects to GitHub Releases)."""
 
-    def test_apk_download_returns_file(self, client):
-        """GET /api/download/android should serve a file."""
+    def test_android_download_returns_github_link(self, client):
+        """GET /api/download/android should return GitHub Releases URL."""
         resp = client.get("/api/download/android")
         assert resp.status_code == 200
-        assert "application/vnd.android.package-archive" in resp.headers.get("content-type", "")
+        data = resp.json()
+        assert "url" in data
+        assert "github.com" in data["url"]
+        assert data["platform"] == "android"
 
-    def test_apk_status_shows_size(self, client):
-        """GET /api/download/android/status should show file info."""
-        resp = client.get("/api/download/android/status")
+    def test_ios_download_returns_github_link(self, client):
+        """GET /api/download/ios should return GitHub Releases URL."""
+        resp = client.get("/api/download/ios")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["available"] is True
-        assert data["size_bytes"] is not None
-        assert data["size_bytes"] > 0
+        assert "url" in data
+        assert "github.com" in data["url"]
+        assert data["platform"] == "ios"
 
 
 # ---------------------------------------------------------------------------
