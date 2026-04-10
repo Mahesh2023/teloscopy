@@ -897,6 +897,38 @@ class AbdomenFindingResponse(BaseModel):
     foods_to_increase: list[str] = Field(default_factory=list, max_length=100)
 
 
+class AyurvedicRemedyResponse(BaseModel):
+    """A single Ayurvedic remedy recommendation."""
+
+    name: str
+    ingredients: list[str] = Field(default_factory=list)
+    preparation: str = ""
+    dosage: str = ""
+    source: str = ""  # Charaka/Sushruta Samhita reference
+    mechanism: str = ""
+    for_conditions: list[str] = Field(default_factory=list)
+
+
+class AyurvedicAnalysisResponse(BaseModel):
+    """Complete Ayurvedic analysis based on Charaka & Sushruta Samhita."""
+
+    dosha_assessment: str = ""
+    remedies: list[AyurvedicRemedyResponse] = Field(default_factory=list)
+    lifestyle_recommendations: list[str] = Field(default_factory=list)
+    yoga_asanas: list[str] = Field(default_factory=list)
+    pranayama: list[str] = Field(default_factory=list)
+    dietary_principles: list[str] = Field(default_factory=list)
+    contraindications: list[str] = Field(default_factory=list)
+    disclaimer: str = Field(
+        default=(
+            "Ayurvedic remedies are based on traditional knowledge from Charaka Samhita and "
+            "Sushruta Samhita. These are for informational purposes only and should not replace "
+            "professional medical advice. Consult a qualified Ayurvedic practitioner (BAMS) "
+            "before starting any herbal regimen, especially if you are on allopathic medication."
+        ),
+    )
+
+
 class HealthCheckupResponse(BaseModel):
     """Complete health checkup analysis with personalised diet plan."""
 
@@ -918,6 +950,18 @@ class HealthCheckupResponse(BaseModel):
     diet_recommendation: DietRecommendation | None = None
     dietary_modifications: list[str] = Field(default_factory=list)
     calorie_adjustment: int = 0
+
+    # Ayurvedic remedies (Charaka & Sushruta Samhita)
+    ayurvedic_analysis: AyurvedicAnalysisResponse | None = None
+
+    # LLM-powered integrated analysis (modern + Ayurvedic)
+    llm_analysis: str | None = Field(
+        None,
+        description=(
+            "AI-generated integrated analysis combining modern clinical insights "
+            "with Ayurvedic wisdom from Charaka and Sushruta Samhita. Markdown format."
+        ),
+    )
 
     # Metadata
     analyzed_at: datetime = Field(default_factory=datetime.utcnow)

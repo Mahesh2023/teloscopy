@@ -46,7 +46,7 @@ from teloscopy.integrations.cds_hooks import (
     create_telomere_result_subscription,
     create_variant_classification_subscription,
     get_cds_discovery_response,
-    process_medication_prescribe_hook,
+    process_order_sign_hook,
     process_order_select_hook,
     process_patient_view_hook,
 )
@@ -67,7 +67,12 @@ __all__ = [
     "create_telomere_result_subscription",
     "create_variant_classification_subscription",
     "get_cds_discovery_response",
-    "process_medication_prescribe_hook",
+    "process_order_sign_hook",
     "process_order_select_hook",
     "process_patient_view_hook",
+    # ayurvedic advisor
+    "AyurvedicAdvisor",
+    # health llm
+    "HealthCheckupLLMAnalyzer",
+    "get_health_llm_analyzer",
 ]

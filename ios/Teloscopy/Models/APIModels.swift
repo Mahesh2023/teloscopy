@@ -696,6 +696,63 @@ struct ReportParsePreview: Codable, Equatable {
     }
 }
 
+struct AyurvedicRemedyItem: Codable, Equatable {
+    let name: String
+    let ingredients: [String]
+    let preparation: String
+    let dosage: String
+    let source: String
+    let mechanism: String
+    let forConditions: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case name, ingredients, preparation, dosage, source, mechanism
+        case forConditions = "for_conditions"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        ingredients = try container.decodeIfPresent([String].self, forKey: .ingredients) ?? []
+        preparation = try container.decodeIfPresent(String.self, forKey: .preparation) ?? ""
+        dosage = try container.decodeIfPresent(String.self, forKey: .dosage) ?? ""
+        source = try container.decodeIfPresent(String.self, forKey: .source) ?? ""
+        mechanism = try container.decodeIfPresent(String.self, forKey: .mechanism) ?? ""
+        forConditions = try container.decodeIfPresent([String].self, forKey: .forConditions) ?? []
+    }
+}
+
+struct AyurvedicAnalysis: Codable, Equatable {
+    let doshaAssessment: String
+    let remedies: [AyurvedicRemedyItem]
+    let lifestyleRecommendations: [String]
+    let yogaAsanas: [String]
+    let pranayama: [String]
+    let dietaryPrinciples: [String]
+    let contraindications: [String]
+    let disclaimer: String
+
+    enum CodingKeys: String, CodingKey {
+        case remedies, pranayama, contraindications, disclaimer
+        case doshaAssessment = "dosha_assessment"
+        case lifestyleRecommendations = "lifestyle_recommendations"
+        case yogaAsanas = "yoga_asanas"
+        case dietaryPrinciples = "dietary_principles"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        doshaAssessment = try container.decodeIfPresent(String.self, forKey: .doshaAssessment) ?? ""
+        remedies = try container.decodeIfPresent([AyurvedicRemedyItem].self, forKey: .remedies) ?? []
+        lifestyleRecommendations = try container.decodeIfPresent([String].self, forKey: .lifestyleRecommendations) ?? []
+        yogaAsanas = try container.decodeIfPresent([String].self, forKey: .yogaAsanas) ?? []
+        pranayama = try container.decodeIfPresent([String].self, forKey: .pranayama) ?? []
+        dietaryPrinciples = try container.decodeIfPresent([String].self, forKey: .dietaryPrinciples) ?? []
+        contraindications = try container.decodeIfPresent([String].self, forKey: .contraindications) ?? []
+        disclaimer = try container.decodeIfPresent(String.self, forKey: .disclaimer) ?? ""
+    }
+}
+
 struct HealthCheckupResponse: Codable, Equatable {
     let labResults: [LabResultItem]?
     let abnormalCount: Int?
@@ -710,6 +767,8 @@ struct HealthCheckupResponse: Codable, Equatable {
     let calorieAdjustment: Int?
     let analyzedAt: String?
     let disclaimer: String?
+    let ayurvedicAnalysis: AyurvedicAnalysis?
+    let llmAnalysis: String?
 
     enum CodingKeys: String, CodingKey {
         case labResults = "lab_results"
@@ -725,6 +784,8 @@ struct HealthCheckupResponse: Codable, Equatable {
         case calorieAdjustment = "calorie_adjustment"
         case analyzedAt = "analyzed_at"
         case disclaimer
+        case ayurvedicAnalysis = "ayurvedic_analysis"
+        case llmAnalysis = "llm_analysis"
     }
 }
 

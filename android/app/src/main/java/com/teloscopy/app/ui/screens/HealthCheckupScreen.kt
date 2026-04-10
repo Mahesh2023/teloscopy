@@ -97,6 +97,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -471,7 +473,259 @@ fun HealthCheckupScreen(
                     }
                 }
 
-                // (f) Disclaimer
+                // (f) Ayurvedic Remedies Section
+                item(key = "ayurvedic_section") {
+                    response.ayurvedicAnalysis?.let { ayurvedic ->
+                        if (ayurvedic.remedies.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7ED)),
+                                border = BorderStroke(1.dp, Color(0xFFD97706))
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        "Ayurvedic Home Remedies",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color(0xFFD97706),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "Based on Charaka Samhita & Sushruta Samhita",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    // Dosha Assessment
+                                    if (ayurvedic.doshaAssessment.isNotEmpty()) {
+                                        Surface(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            color = Color(0xFFFEF3C7),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Column(modifier = Modifier.padding(12.dp)) {
+                                                Text("Dosha Assessment", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFFD97706))
+                                                Text(ayurvedic.doshaAssessment, fontSize = 13.sp, color = Color(0xFF78350F))
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                    }
+
+                                    // Remedies
+                                    Text("Recommended Remedies", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    ayurvedic.remedies.forEachIndexed { idx, remedy ->
+                                        Surface(
+                                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                            color = Color(0xFFFFFBEB),
+                                            shape = RoundedCornerShape(8.dp),
+                                            border = BorderStroke(1.dp, Color(0xFFD97706).copy(alpha = 0.19f))
+                                        ) {
+                                            Column(modifier = Modifier.padding(12.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.Top
+                                                ) {
+                                                    Text(
+                                                        "${idx + 1}. ${remedy.name}",
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontSize = 14.sp,
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                    Surface(
+                                                        color = Color(0xFFFDE68A),
+                                                        shape = RoundedCornerShape(12.dp)
+                                                    ) {
+                                                        Text(
+                                                            remedy.source,
+                                                            fontSize = 10.sp,
+                                                            color = Color(0xFFD97706),
+                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        )
+                                                    }
+                                                }
+                                                if (remedy.ingredients.isNotEmpty()) {
+                                                    Text("Ingredients: ${remedy.ingredients.joinToString(", ")}", fontSize = 12.sp, color = Color.DarkGray)
+                                                }
+                                                if (remedy.preparation.isNotEmpty()) {
+                                                    Text("Preparation: ${remedy.preparation}", fontSize = 12.sp, color = Color.DarkGray)
+                                                }
+                                                if (remedy.dosage.isNotEmpty()) {
+                                                    Text("Dosage: ${remedy.dosage}", fontSize = 12.sp, color = Color.DarkGray)
+                                                }
+                                                if (remedy.mechanism.isNotEmpty()) {
+                                                    Text(remedy.mechanism, fontSize = 12.sp, color = Color.Gray, fontStyle = FontStyle.Italic)
+                                                }
+                                                if (remedy.forConditions.isNotEmpty()) {
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                        remedy.forConditions.forEach { cond ->
+                                                            Surface(color = Color(0xFFFDE68A), shape = RoundedCornerShape(10.dp)) {
+                                                                Text(
+                                                                    cond.replace("_", " "),
+                                                                    fontSize = 10.sp,
+                                                                    color = Color(0xFFB45309),
+                                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Yoga & Pranayama
+                                    if (ayurvedic.yogaAsanas.isNotEmpty() || ayurvedic.pranayama.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(modifier = Modifier.fillMaxWidth()) {
+                                            if (ayurvedic.yogaAsanas.isNotEmpty()) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text("Yoga Asanas", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                                    ayurvedic.yogaAsanas.forEach { asana ->
+                                                        Text("• $asana", fontSize = 12.sp, color = Color.DarkGray)
+                                                    }
+                                                }
+                                            }
+                                            if (ayurvedic.pranayama.isNotEmpty()) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text("Pranayama", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                                    ayurvedic.pranayama.forEach { p ->
+                                                        Text("• $p", fontSize = 12.sp, color = Color.DarkGray)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Lifestyle
+                                    if (ayurvedic.lifestyleRecommendations.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("Lifestyle (Dinacharya)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        ayurvedic.lifestyleRecommendations.forEach { l ->
+                                            Text("• $l", fontSize = 12.sp, color = Color.DarkGray)
+                                        }
+                                    }
+
+                                    // Dietary Principles
+                                    if (ayurvedic.dietaryPrinciples.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("Dietary Principles (Pathya-Apathya)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        ayurvedic.dietaryPrinciples.forEach { d ->
+                                            Text("• $d", fontSize = 12.sp, color = Color.DarkGray)
+                                        }
+                                    }
+
+                                    // Contraindications
+                                    if (ayurvedic.contraindications.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Surface(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            color = Color(0xFFFEE2E2),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Column(modifier = Modifier.padding(12.dp)) {
+                                                Text("Contraindications", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color(0xFFEF4444))
+                                                ayurvedic.contraindications.forEach { c ->
+                                                    Text("• $c", fontSize = 12.sp, color = Color(0xFF991B1B))
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Disclaimer
+                                    if (ayurvedic.disclaimer.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Surface(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            color = Color(0xFFFEF3C7),
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                ayurvedic.disclaimer,
+                                                fontSize = 11.sp,
+                                                color = Color(0xFF92400E),
+                                                modifier = Modifier.padding(8.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // (g) LLM-Powered Integrated Analysis
+                item(key = "llm_analysis_section") {
+                    response.llmAnalysis?.let { analysis ->
+                        if (analysis.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F3FF)),
+                                border = BorderStroke(1.dp, Color(0xFF8B5CF6))
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        "AI-Powered Integrated Analysis",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color(0xFF8B5CF6),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "Modern Medicine + Ayurvedic Wisdom",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    // Render markdown as simple text with basic formatting
+                                    val lines = analysis.split("\n")
+                                    lines.forEach { line ->
+                                        when {
+                                            line.startsWith("## ") -> {
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    line.removePrefix("## "),
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 16.sp,
+                                                    color = Color(0xFF8B5CF6)
+                                                )
+                                            }
+                                            line.startsWith("### ") -> {
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Text(
+                                                    line.removePrefix("### "),
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontSize = 14.sp
+                                                )
+                                            }
+                                            line.startsWith("- ") -> {
+                                                Text(
+                                                    "• ${line.removePrefix("- ")}",
+                                                    fontSize = 13.sp,
+                                                    color = Color.DarkGray,
+                                                    modifier = Modifier.padding(start = 8.dp)
+                                                )
+                                            }
+                                            line.isNotBlank() -> {
+                                                Text(
+                                                    line.replace("**", "").replace("*", ""),
+                                                    fontSize = 13.sp,
+                                                    color = Color.DarkGray
+                                                )
+                                            }
+                                            else -> Spacer(modifier = Modifier.height(4.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // (h) Disclaimer
                 if (response.disclaimer.isNotBlank()) {
                     item(key = "disclaimer") {
                         DisclaimerCard(text = response.disclaimer)

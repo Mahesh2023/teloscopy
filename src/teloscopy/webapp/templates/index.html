@@ -2064,6 +2064,26 @@
             <div id="checkup-diet"></div>
         </div>
 
+        <!-- Ayurvedic Remedies (Charaka & Sushruta Samhita) -->
+        <div class="result-card glass-card" id="checkup-ayurvedic-card" style="margin-top:1.5rem;display:none;border-color:#d97706;">
+            <h3 style="color:#d97706;">Ayurvedic Home Remedies</h3>
+            <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.75rem;">Based on Charaka Samhita &amp; Sushruta Samhita</p>
+            <div id="checkup-ayurvedic-dosha" style="margin-bottom:1rem;"></div>
+            <div id="checkup-ayurvedic-remedies"></div>
+            <div id="checkup-ayurvedic-yoga" style="margin-top:1rem;"></div>
+            <div id="checkup-ayurvedic-lifestyle" style="margin-top:1rem;"></div>
+            <div id="checkup-ayurvedic-diet-principles" style="margin-top:1rem;"></div>
+            <div id="checkup-ayurvedic-contraindications" style="margin-top:1rem;"></div>
+            <div id="checkup-ayurvedic-disclaimer" style="margin-top:.75rem;padding:.5rem .75rem;background:rgba(217,119,6,.06);border:1px solid rgba(217,119,6,.15);border-radius:6px;font-size:.8rem;color:var(--text-muted);"></div>
+        </div>
+
+        <!-- LLM-Powered Integrated Analysis -->
+        <div class="result-card glass-card" id="checkup-llm-card" style="margin-top:1.5rem;display:none;border-color:#8b5cf6;">
+            <h3 style="color:#8b5cf6;">AI-Powered Integrated Analysis</h3>
+            <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.75rem;">Modern Medicine + Ayurvedic Wisdom</p>
+            <div id="checkup-llm-analysis" class="markdown-content" style="font-size:.9rem;line-height:1.6;"></div>
+        </div>
+
         <!-- Disclaimer -->
         <div style="margin-top:1rem;padding:.75rem 1rem;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.2);border-radius:8px;font-size:.85rem;color:var(--text-muted);">
             <strong>Disclaimer:</strong> <span id="checkup-disclaimer"></span>
@@ -4836,6 +4856,126 @@ function escapeHtml(str) {
 
         /* Disclaimer */
         document.getElementById('checkup-disclaimer').textContent = data.disclaimer || '';
+
+        /* Ayurvedic Remedies (Charaka & Sushruta Samhita) */
+        var ayCard = document.getElementById('checkup-ayurvedic-card');
+        var ay = data.ayurvedic_analysis;
+        if (ay && ay.remedies && ay.remedies.length) {
+            ayCard.style.display = 'block';
+
+            /* Dosha Assessment */
+            var doshaEl = document.getElementById('checkup-ayurvedic-dosha');
+            if (ay.dosha_assessment) {
+                doshaEl.innerHTML = '<div style="padding:.75rem 1rem;background:rgba(217,119,6,.06);border:1px solid rgba(217,119,6,.15);border-radius:8px;">' +
+                    '<strong style="color:#d97706;">Dosha Assessment:</strong> ' +
+                    '<span style="color:var(--text);">' + ay.dosha_assessment + '</span></div>';
+            }
+
+            /* Remedies */
+            var remEl = document.getElementById('checkup-ayurvedic-remedies');
+            var rhtml = '<h4 style="margin-bottom:.75rem;color:var(--text-dim);font-size:.9rem;">Recommended Home Remedies</h4>';
+            ay.remedies.forEach(function(r, idx) {
+                rhtml += '<div style="border:1px solid rgba(217,119,6,.2);border-radius:8px;padding:1rem;margin-bottom:.75rem;background:rgba(217,119,6,.03);">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">' +
+                    '<strong style="color:var(--text);font-size:.95rem;">' + (idx + 1) + '. ' + r.name + '</strong>' +
+                    '<span style="padding:.15rem .5rem;border-radius:12px;font-size:.7rem;background:rgba(217,119,6,.12);color:#d97706;white-space:nowrap;">' + r.source + '</span>' +
+                    '</div>';
+                if (r.ingredients && r.ingredients.length) {
+                    rhtml += '<p style="font-size:.85rem;margin-bottom:.3rem;"><strong style="color:var(--text-dim);">Ingredients:</strong> ' + r.ingredients.join(', ') + '</p>';
+                }
+                if (r.preparation) {
+                    rhtml += '<p style="font-size:.85rem;margin-bottom:.3rem;"><strong style="color:var(--text-dim);">Preparation:</strong> ' + r.preparation + '</p>';
+                }
+                if (r.dosage) {
+                    rhtml += '<p style="font-size:.85rem;margin-bottom:.3rem;"><strong style="color:var(--text-dim);">Dosage:</strong> ' + r.dosage + '</p>';
+                }
+                if (r.mechanism) {
+                    rhtml += '<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:.3rem;font-style:italic;">' + r.mechanism + '</p>';
+                }
+                if (r.for_conditions && r.for_conditions.length) {
+                    rhtml += '<div style="margin-top:.4rem;">';
+                    r.for_conditions.forEach(function(c) {
+                        rhtml += '<span style="display:inline-block;padding:.1rem .4rem;margin:.1rem .2rem;border-radius:10px;font-size:.7rem;background:rgba(217,119,6,.1);color:#b45309;">' + c.replace(/_/g, ' ') + '</span>';
+                    });
+                    rhtml += '</div>';
+                }
+                rhtml += '</div>';
+            });
+            remEl.innerHTML = rhtml;
+
+            /* Yoga & Pranayama */
+            var yogaEl = document.getElementById('checkup-ayurvedic-yoga');
+            var yhtml = '';
+            if (ay.yoga_asanas && ay.yoga_asanas.length) {
+                yhtml += '<div style="display:inline-block;vertical-align:top;width:48%;margin-right:2%;">' +
+                    '<h4 style="margin-bottom:.5rem;color:var(--text-dim);font-size:.9rem;">Yoga Asanas</h4><ul style="font-size:.85rem;padding-left:1.2rem;margin:0;">';
+                ay.yoga_asanas.forEach(function(a) { yhtml += '<li>' + a + '</li>'; });
+                yhtml += '</ul></div>';
+            }
+            if (ay.pranayama && ay.pranayama.length) {
+                yhtml += '<div style="display:inline-block;vertical-align:top;width:48%;">' +
+                    '<h4 style="margin-bottom:.5rem;color:var(--text-dim);font-size:.9rem;">Pranayama</h4><ul style="font-size:.85rem;padding-left:1.2rem;margin:0;">';
+                ay.pranayama.forEach(function(p) { yhtml += '<li>' + p + '</li>'; });
+                yhtml += '</ul></div>';
+            }
+            yogaEl.innerHTML = yhtml;
+
+            /* Lifestyle */
+            var lifeEl = document.getElementById('checkup-ayurvedic-lifestyle');
+            if (ay.lifestyle_recommendations && ay.lifestyle_recommendations.length) {
+                var lhtml = '<h4 style="margin-bottom:.5rem;color:var(--text-dim);font-size:.9rem;">Lifestyle (Dinacharya)</h4><ul style="font-size:.85rem;padding-left:1.2rem;margin:0;">';
+                ay.lifestyle_recommendations.forEach(function(l) { lhtml += '<li>' + l + '</li>'; });
+                lhtml += '</ul>';
+                lifeEl.innerHTML = lhtml;
+            }
+
+            /* Dietary Principles */
+            var dpEl = document.getElementById('checkup-ayurvedic-diet-principles');
+            if (ay.dietary_principles && ay.dietary_principles.length) {
+                var dphtml = '<h4 style="margin-bottom:.5rem;color:var(--text-dim);font-size:.9rem;">Ayurvedic Dietary Principles (Pathya-Apathya)</h4><ul style="font-size:.85rem;padding-left:1.2rem;margin:0;">';
+                ay.dietary_principles.forEach(function(d) { dphtml += '<li>' + d + '</li>'; });
+                dphtml += '</ul>';
+                dpEl.innerHTML = dphtml;
+            }
+
+            /* Contraindications */
+            var ciEl = document.getElementById('checkup-ayurvedic-contraindications');
+            if (ay.contraindications && ay.contraindications.length) {
+                var cihtml = '<div style="padding:.5rem .75rem;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:6px;">' +
+                    '<h4 style="margin-bottom:.3rem;color:#ef4444;font-size:.85rem;">Contraindications</h4><ul style="font-size:.8rem;padding-left:1.2rem;margin:0;color:var(--text-muted);">';
+                ay.contraindications.forEach(function(c) { cihtml += '<li>' + c + '</li>'; });
+                cihtml += '</ul></div>';
+                ciEl.innerHTML = cihtml;
+            }
+
+            /* Ayurvedic Disclaimer */
+            var ayDiscEl = document.getElementById('checkup-ayurvedic-disclaimer');
+            if (ay.disclaimer) {
+                ayDiscEl.innerHTML = '<strong>Note:</strong> ' + ay.disclaimer;
+            }
+        } else {
+            ayCard.style.display = 'none';
+        }
+
+        /* LLM-Powered Integrated Analysis */
+        var llmCard = document.getElementById('checkup-llm-card');
+        var llmEl = document.getElementById('checkup-llm-analysis');
+        if (data.llm_analysis) {
+            llmCard.style.display = 'block';
+            /* Simple markdown-to-HTML: headings, bold, lists, paragraphs */
+            var md = data.llm_analysis;
+            md = md.replace(/^### (.+)$/gm, '<h4 style="margin:1rem 0 .5rem;color:var(--text);">$1</h4>');
+            md = md.replace(/^## (.+)$/gm, '<h3 style="margin:1.2rem 0 .5rem;color:#8b5cf6;">$1</h3>');
+            md = md.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            md = md.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            md = md.replace(/^- (.+)$/gm, '<li style="margin-left:1.2rem;font-size:.85rem;">$1</li>');
+            md = md.replace(/(<li[^>]*>.*<\/li>\n?)+/g, function(m) { return '<ul style="margin:.5rem 0;padding:0;">' + m + '</ul>'; });
+            md = md.replace(/\n{2,}/g, '</p><p style="margin:.5rem 0;">');
+            md = '<p style="margin:.5rem 0;">' + md + '</p>';
+            llmEl.innerHTML = md;
+        } else {
+            llmCard.style.display = 'none';
+        }
 
         container.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }

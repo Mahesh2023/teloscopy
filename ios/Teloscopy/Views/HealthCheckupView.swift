@@ -130,6 +130,14 @@ struct HealthCheckupView: View {
 
         dietaryModificationsSection(response: response)
 
+        if let ayurvedic = response.ayurvedicAnalysis {
+            ayurvedicAnalysisSection(ayurvedic: ayurvedic)
+        }
+
+        if let llmText = response.llmAnalysis, !llmText.isEmpty {
+            llmAnalysisSection(text: llmText)
+        }
+
         if let disclaimer = response.disclaimer, !disclaimer.isEmpty {
             disclaimerSection(text: disclaimer)
         }
@@ -1517,6 +1525,435 @@ struct HealthCheckupView: View {
                 .cardStyle()
             }
         }
+    }
+
+    // MARK: - Ayurvedic Analysis Section
+
+    private func ayurvedicAnalysisSection(ayurvedic: AyurvedicAnalysis) -> some View {
+        let amberColor = Color(hex: 0xD97706)
+
+        return VStack(alignment: .leading, spacing: 16) {
+            // Header
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(amberColor.opacity(0.15))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "leaf.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(amberColor)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ayurvedic Analysis")
+                        .font(.headline)
+                        .foregroundColor(TeloscopyTheme.textPrimary)
+                    Text("Traditional Indian Medicine Insights")
+                        .font(.caption)
+                        .foregroundColor(TeloscopyTheme.textSecondary)
+                }
+
+                Spacer()
+            }
+
+            // Dosha Assessment
+            if !ayurvedic.doshaAssessment.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Dosha Assessment", systemImage: "circle.hexagongrid.fill")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(amberColor)
+
+                    Text(ayurvedic.doshaAssessment)
+                        .font(.subheadline)
+                        .foregroundColor(TeloscopyTheme.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(amberColor.opacity(0.06))
+                .cornerRadius(TeloscopyTheme.smallCornerRadius)
+                .overlay(
+                    RoundedRectangle(cornerRadius: TeloscopyTheme.smallCornerRadius)
+                        .stroke(amberColor.opacity(0.2), lineWidth: 1)
+                )
+            }
+
+            // Remedies
+            if !ayurvedic.remedies.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Remedies", systemImage: "cross.vial.fill")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(amberColor)
+
+                    ForEach(Array(ayurvedic.remedies.enumerated()), id: \.offset) { _, remedy in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(remedy.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(TeloscopyTheme.textPrimary)
+
+                                Spacer()
+
+                                if !remedy.source.isEmpty {
+                                    Text(remedy.source)
+                                        .font(.caption2)
+                                        .fontWeight(.bold)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(amberColor.opacity(0.15))
+                                        .foregroundColor(amberColor)
+                                        .cornerRadius(6)
+                                }
+                            }
+
+                            if !remedy.ingredients.isEmpty {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Ingredients")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(TeloscopyTheme.textSecondary)
+                                    FlowLayout(spacing: 6) {
+                                        ForEach(remedy.ingredients, id: \.self) { ingredient in
+                                            Text(ingredient)
+                                                .font(.caption)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(amberColor.opacity(0.08))
+                                                .foregroundColor(amberColor)
+                                                .cornerRadius(10)
+                                        }
+                                    }
+                                }
+                            }
+
+                            if !remedy.preparation.isEmpty {
+                                ayurvedicDetailRow(label: "Preparation", value: remedy.preparation, color: amberColor)
+                            }
+
+                            if !remedy.dosage.isEmpty {
+                                ayurvedicDetailRow(label: "Dosage", value: remedy.dosage, color: amberColor)
+                            }
+
+                            if !remedy.mechanism.isEmpty {
+                                ayurvedicDetailRow(label: "Mechanism", value: remedy.mechanism, color: amberColor)
+                            }
+
+                            if !remedy.forConditions.isEmpty {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("For Conditions")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(TeloscopyTheme.textSecondary)
+                                    FlowLayout(spacing: 6) {
+                                        ForEach(remedy.forConditions, id: \.self) { condition in
+                                            Text(condition)
+                                                .font(.caption)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(TeloscopyTheme.primaryBlue.opacity(0.08))
+                                                .foregroundColor(TeloscopyTheme.primaryBlue)
+                                                .cornerRadius(10)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(TeloscopyTheme.surfaceBackground)
+                        .cornerRadius(TeloscopyTheme.smallCornerRadius)
+                    }
+                }
+            }
+
+            // Yoga Asanas & Pranayama
+            if !ayurvedic.yogaAsanas.isEmpty || !ayurvedic.pranayama.isEmpty {
+                HStack(alignment: .top, spacing: 12) {
+                    if !ayurvedic.yogaAsanas.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Yoga Asanas", systemImage: "figure.mind.and.body")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(amberColor)
+
+                            ForEach(ayurvedic.yogaAsanas, id: \.self) { asana in
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(amberColor)
+                                        .frame(width: 5, height: 5)
+                                    Text(asana)
+                                        .font(.caption)
+                                        .foregroundColor(TeloscopyTheme.textPrimary)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if !ayurvedic.pranayama.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Pranayama", systemImage: "wind")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(amberColor)
+
+                            ForEach(ayurvedic.pranayama, id: \.self) { technique in
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(amberColor)
+                                        .frame(width: 5, height: 5)
+                                    Text(technique)
+                                        .font(.caption)
+                                        .foregroundColor(TeloscopyTheme.textPrimary)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding()
+                .background(amberColor.opacity(0.04))
+                .cornerRadius(TeloscopyTheme.smallCornerRadius)
+            }
+
+            // Lifestyle Recommendations
+            if !ayurvedic.lifestyleRecommendations.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Lifestyle Recommendations", systemImage: "heart.text.square.fill")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(amberColor)
+
+                    ForEach(Array(ayurvedic.lifestyleRecommendations.enumerated()), id: \.offset) { index, rec in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("\(index + 1)")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .frame(width: 20, height: 20)
+                                .background(amberColor)
+                                .clipShape(Circle())
+                            Text(rec)
+                                .font(.caption)
+                                .foregroundColor(TeloscopyTheme.textPrimary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+
+            // Dietary Principles
+            if !ayurvedic.dietaryPrinciples.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Dietary Principles", systemImage: "fork.knife.circle.fill")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(amberColor)
+
+                    FlowLayout(spacing: 6) {
+                        ForEach(ayurvedic.dietaryPrinciples, id: \.self) { principle in
+                            Text(principle)
+                                .font(.caption)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(amberColor.opacity(0.1))
+                                .foregroundColor(amberColor)
+                                .cornerRadius(12)
+                        }
+                    }
+                }
+            }
+
+            // Contraindications
+            if !ayurvedic.contraindications.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Contraindications", systemImage: "exclamationmark.triangle.fill")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(TeloscopyTheme.errorRed)
+
+                    ForEach(ayurvedic.contraindications, id: \.self) { item in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.caption)
+                                .foregroundColor(TeloscopyTheme.errorRed)
+                            Text(item)
+                                .font(.caption)
+                                .foregroundColor(TeloscopyTheme.textPrimary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding()
+                .background(TeloscopyTheme.errorRed.opacity(0.06))
+                .cornerRadius(TeloscopyTheme.smallCornerRadius)
+                .overlay(
+                    RoundedRectangle(cornerRadius: TeloscopyTheme.smallCornerRadius)
+                        .stroke(TeloscopyTheme.errorRed.opacity(0.2), lineWidth: 1)
+                )
+            }
+
+            // Ayurvedic Disclaimer
+            if !ayurvedic.disclaimer.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.caption)
+                        .foregroundColor(amberColor)
+                    Text(ayurvedic.disclaimer)
+                        .font(.caption2)
+                        .foregroundColor(TeloscopyTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(10)
+                .background(amberColor.opacity(0.04))
+                .cornerRadius(TeloscopyTheme.smallCornerRadius)
+            }
+        }
+        .padding()
+        .cardStyle()
+    }
+
+    private func ayurvedicDetailRow(label: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(TeloscopyTheme.textSecondary)
+            Text(value)
+                .font(.caption)
+                .foregroundColor(TeloscopyTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - LLM Analysis Section
+
+    private func llmAnalysisSection(text: String) -> some View {
+        let purpleColor = Color(hex: 0x8B5CF6)
+
+        return VStack(alignment: .leading, spacing: 14) {
+            // Header
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(purpleColor.opacity(0.15))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 20))
+                        .foregroundColor(purpleColor)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("AI-Powered Integrated Analysis")
+                        .font(.headline)
+                        .foregroundColor(TeloscopyTheme.textPrimary)
+                    Text("Modern Medicine + Ayurvedic Wisdom")
+                        .font(.caption)
+                        .foregroundColor(TeloscopyTheme.textSecondary)
+                }
+
+                Spacer()
+            }
+
+            // Rendered markdown-like content
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(text.components(separatedBy: "\n").enumerated()), id: \.offset) { _, line in
+                    parsedMarkdownLine(line, accentColor: purpleColor)
+                }
+            }
+        }
+        .padding()
+        .cardStyle()
+    }
+
+    @ViewBuilder
+    private func parsedMarkdownLine(_ line: String, accentColor: Color) -> some View {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty {
+            Spacer().frame(height: 4)
+        } else if trimmed.hasPrefix("## ") {
+            Text(trimmed.replacingOccurrences(of: "## ", with: ""))
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundColor(accentColor)
+                .padding(.top, 6)
+        } else if trimmed.hasPrefix("### ") {
+            Text(trimmed.replacingOccurrences(of: "### ", with: ""))
+                .font(.subheadline)
+                .fontWeight(.bold)
+                .foregroundColor(TeloscopyTheme.textPrimary)
+                .padding(.top, 4)
+        } else if trimmed.hasPrefix("- ") {
+            HStack(alignment: .top, spacing: 8) {
+                Circle()
+                    .fill(accentColor)
+                    .frame(width: 5, height: 5)
+                    .padding(.top, 6)
+                styledInlineText(String(trimmed.dropFirst(2)))
+                    .font(.subheadline)
+                    .foregroundColor(TeloscopyTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } else {
+            styledInlineText(trimmed)
+                .font(.subheadline)
+                .foregroundColor(TeloscopyTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func styledInlineText(_ input: String) -> Text {
+        var result = Text("")
+        var remaining = input[input.startIndex...]
+
+        while !remaining.isEmpty {
+            if let boldRange = remaining.range(of: "**") {
+                // Text before the bold marker
+                let before = remaining[remaining.startIndex..<boldRange.lowerBound]
+                if !before.isEmpty {
+                    result = result + Text(parseItalic(String(before)))
+                }
+                let afterOpen = remaining[boldRange.upperBound...]
+                if let closeRange = afterOpen.range(of: "**") {
+                    let boldText = afterOpen[afterOpen.startIndex..<closeRange.lowerBound]
+                    result = result + Text(String(boldText)).bold()
+                    remaining = afterOpen[closeRange.upperBound...]
+                } else {
+                    // No closing **, just output the rest
+                    result = result + Text(parseItalic(String(remaining)))
+                    break
+                }
+            } else {
+                result = result + Text(parseItalic(String(remaining)))
+                break
+            }
+        }
+        return result
+    }
+
+    private func parseItalic(_ input: String) -> AttributedString {
+        var attrStr = AttributedString(input)
+        // Simple italic handling: replace *text* with italic
+        guard let startIdx = input.firstIndex(of: "*") else {
+            return attrStr
+        }
+        let afterStart = input.index(after: startIdx)
+        guard afterStart < input.endIndex,
+              let endIdx = input[afterStart...].firstIndex(of: "*") else {
+            return attrStr
+        }
+        // Reconstruct with italic attribute
+        let prefix = String(input[input.startIndex..<startIdx])
+        let italicPart = String(input[afterStart..<endIdx])
+        let suffix = String(input[input.index(after: endIdx)...])
+        var result = AttributedString(prefix)
+        var italicAttr = AttributedString(italicPart)
+        italicAttr.font = .subheadline.italic()
+        result.append(italicAttr)
+        result.append(AttributedString(suffix))
+        return result
     }
 
     // MARK: - Disclaimer Section

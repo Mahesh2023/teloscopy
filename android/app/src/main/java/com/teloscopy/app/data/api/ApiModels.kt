@@ -404,6 +404,37 @@ data class AbdomenFindingItem(
 )
 
 // ---------------------------------------------------------------------------
+// Health Checkup – Ayurvedic Remedy
+// ---------------------------------------------------------------------------
+
+@JsonClass(generateAdapter = true)
+data class AyurvedicRemedyItem(
+    @Json(name = "name") val name: String = "",
+    @Json(name = "ingredients") val ingredients: List<String> = emptyList(),
+    @Json(name = "preparation") val preparation: String = "",
+    @Json(name = "dosage") val dosage: String = "",
+    @Json(name = "source") val source: String = "",
+    @Json(name = "mechanism") val mechanism: String = "",
+    @Json(name = "for_conditions") val forConditions: List<String> = emptyList()
+)
+
+// ---------------------------------------------------------------------------
+// Health Checkup – Ayurvedic Analysis
+// ---------------------------------------------------------------------------
+
+@JsonClass(generateAdapter = true)
+data class AyurvedicAnalysis(
+    @Json(name = "dosha_assessment") val doshaAssessment: String = "",
+    @Json(name = "remedies") val remedies: List<AyurvedicRemedyItem> = emptyList(),
+    @Json(name = "lifestyle_recommendations") val lifestyleRecommendations: List<String> = emptyList(),
+    @Json(name = "yoga_asanas") val yogaAsanas: List<String> = emptyList(),
+    @Json(name = "pranayama") val pranayama: List<String> = emptyList(),
+    @Json(name = "dietary_principles") val dietaryPrinciples: List<String> = emptyList(),
+    @Json(name = "contraindications") val contraindications: List<String> = emptyList(),
+    @Json(name = "disclaimer") val disclaimer: String = ""
+)
+
+// ---------------------------------------------------------------------------
 // Health Checkup – Upload Response
 // ---------------------------------------------------------------------------
 
@@ -420,6 +451,8 @@ data class HealthCheckupResponse(
     @Json(name = "diet_recommendation") val dietRecommendation: DietRecommendation? = null,
     @Json(name = "dietary_modifications") val dietaryModifications: List<String> = emptyList(),
     @Json(name = "calorie_adjustment") val calorieAdjustment: Int = 0,
+    @Json(name = "ayurvedic_analysis") val ayurvedicAnalysis: AyurvedicAnalysis? = null,
+    @Json(name = "llm_analysis") val llmAnalysis: String? = null,
     @Json(name = "analyzed_at") val analyzedAt: String = "",
     @Json(name = "disclaimer") val disclaimer: String = ""
 )

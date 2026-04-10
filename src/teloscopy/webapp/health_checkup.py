@@ -20,8 +20,12 @@ from typing import Any
 
 from ..nutrition.diet_advisor import DietAdvisor, DietaryRecommendation
 from ..nutrition.regional_diets import resolve_region
+from ..integrations.ayurvedic_advisor import AyurvedicAdvisor
+from ..integrations.health_llm import HealthCheckupLLMAnalyzer, get_health_llm_analyzer
 from .models import (
     AbdomenFindingResponse,
+    AyurvedicAnalysisResponse,
+    AyurvedicRemedyResponse,
     BloodTestPanel,
     DietRecommendation,
     HealthCheckupRequest,
@@ -184,10 +188,35 @@ class HealthCheckupAnalyzer:
     ----------
     diet_advisor : DietAdvisor
         Existing DietAdvisor instance for meal plan generation.
+    enable_ayurvedic : bool
+        Whether to include Ayurvedic remedy analysis (Charaka & Sushruta Samhita).
+    enable_llm : bool
+        Whether to call an LLM for integrated analysis.
     """
 
-    def __init__(self, diet_advisor: DietAdvisor) -> None:
+    def __init__(
+        self,
+        diet_advisor: DietAdvisor,
+        enable_ayurvedic: bool = True,
+        enable_llm: bool = True,
+    ) -> None:
         self._advisor = diet_advisor
+        self._enable_ayurvedic = enable_ayurvedic
+        self._enable_llm = enable_llm
+        self._ayurvedic: AyurvedicAdvisor | None = None
+        self._llm: HealthCheckupLLMAnalyzer | None = None
+
+        if enable_ayurvedic:
+            try:
+                self._ayurvedic = AyurvedicAdvisor()
+            except Exception:
+                logger.warning("AyurvedicAdvisor initialisation failed; Ayurvedic analysis disabled")
+
+        if enable_llm:
+            try:
+                self._llm = get_health_llm_analyzer()
+            except Exception:
+                logger.warning("HealthCheckupLLMAnalyzer initialisation failed; LLM analysis disabled")
 
     # -- public API ----------------------------------------------------------
 
@@ -236,6 +265,23 @@ class HealthCheckupAnalyzer:
             meal_plan_days=request.meal_plan_days,
         )
 
+        # 7. Ayurvedic analysis (Charaka & Sushruta Samhita)
+        ayurvedic_resp = self._get_ayurvedic_analysis(
+            detected_conditions, abdomen_findings,
+        )
+
+        # 8. LLM-powered integrated analysis
+        llm_text = self._get_llm_analysis(
+            age=age,
+            sex=sex,
+            region=region_id,
+            detected_conditions=detected_conditions,
+            findings=findings,
+            abdomen_findings=abdomen_findings,
+            score=score,
+            ayurvedic_resp=ayurvedic_resp,
+        )
+
         return HealthCheckupResponse(
             lab_results=lab_results,
             abnormal_count=len(abnormal),
@@ -248,6 +294,8 @@ class HealthCheckupAnalyzer:
             diet_recommendation=diet_rec,
             dietary_modifications=modifications,
             calorie_adjustment=calorie_adj,
+            ayurvedic_analysis=ayurvedic_resp,
+            llm_analysis=llm_text,
         )
 
     # -- lab interpretation --------------------------------------------------
@@ -1036,3 +1084,96 @@ class HealthCheckupAnalyzer:
                 if cond not in risks:
                     risks.append(cond)
         return risks
+
+    # -- Ayurvedic analysis (Charaka & Sushruta Samhita) ---------------------
+
+    def _get_ayurvedic_analysis(
+        self,
+        detected_conditions: list[str],
+        abdomen_findings: list[AbdomenFindingResponse],
+    ) -> AyurvedicAnalysisResponse | None:
+        """Generate Ayurvedic remedy recommendations from detected conditions."""
+        if self._ayurvedic is None:
+            return None
+        try:
+            abdomen_dicts = [
+                {"organ": af.organ, "finding": af.finding, "severity": af.severity}
+                for af in abdomen_findings
+            ]
+            analysis = self._ayurvedic.get_remedies(detected_conditions, abdomen_dicts)
+
+            # Convert dataclass output to Pydantic response model
+            remedy_responses = [
+                AyurvedicRemedyResponse(
+                    name=r.name,
+                    ingredients=r.ingredients,
+                    preparation=r.preparation,
+                    dosage=r.dosage,
+                    source=r.source,
+                    mechanism=r.mechanism,
+                    for_conditions=r.for_conditions,
+                )
+                for r in analysis.remedies
+            ]
+
+            return AyurvedicAnalysisResponse(
+                dosha_assessment=analysis.dosha_assessment,
+                remedies=remedy_responses,
+                lifestyle_recommendations=analysis.lifestyle_recommendations,
+                yoga_asanas=analysis.yoga_asanas,
+                pranayama=analysis.pranayama,
+                dietary_principles=analysis.dietary_principles,
+                contraindications=analysis.contraindications,
+                disclaimer=analysis.general_disclaimer,
+            )
+        except Exception:
+            logger.exception("Ayurvedic analysis failed")
+            return None
+
+    # -- LLM-powered integrated analysis -------------------------------------
+
+    def _get_llm_analysis(
+        self,
+        age: int,
+        sex: str,
+        region: str,
+        detected_conditions: list[str],
+        findings: list[HealthFindingResponse],
+        abdomen_findings: list[AbdomenFindingResponse],
+        score: float,
+        ayurvedic_resp: AyurvedicAnalysisResponse | None,
+    ) -> str | None:
+        """Call an LLM for an integrated modern + Ayurvedic analysis."""
+        if self._llm is None:
+            return None
+        try:
+            abnormal_labs = [
+                {"display_name": f.display_name, "severity": f.severity, "evidence": f.evidence}
+                for f in findings
+            ]
+            abdomen_dicts = [
+                {"organ": af.organ, "finding": af.finding, "severity": af.severity}
+                for af in abdomen_findings
+            ]
+            ayurvedic_ctx: dict[str, Any] | None = None
+            if ayurvedic_resp is not None:
+                ayurvedic_ctx = {
+                    "dosha_assessment": ayurvedic_resp.dosha_assessment,
+                    "remedies": [r.name for r in ayurvedic_resp.remedies],
+                    "yoga_asanas": ayurvedic_resp.yoga_asanas,
+                    "dietary_principles": ayurvedic_resp.dietary_principles,
+                }
+
+            patient_data = {
+                "age": age,
+                "sex": sex,
+                "region": region,
+                "conditions": detected_conditions,
+                "abnormal_labs": abnormal_labs,
+                "abdomen_findings": abdomen_dicts,
+                "health_score": score,
+            }
+            return self._llm.analyze(patient_data, ayurvedic_context=ayurvedic_ctx)
+        except Exception:
+            logger.exception("LLM analysis failed")
+            return None
