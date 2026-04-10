@@ -1509,12 +1509,16 @@ class HIPAACompliance:
             padder = sym_padding.PKCS7(128).padder()
             padded = padder.update(plaintext) + padder.finalize()
 
-            cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+            # Derive separate keys for encryption and MAC to avoid key reuse
+            enc_key = hashlib.sha256(key + b"encrypt").digest()
+            mac_key = hashlib.sha256(key + b"hmac").digest()
+
+            cipher = Cipher(algorithms.AES(enc_key), modes.CBC(iv), backend=default_backend())
             encryptor = cipher.encryptor()
             ciphertext = encryptor.update(padded) + encryptor.finalize()
 
             # HMAC for integrity (Encrypt-then-MAC)
-            mac = hmac.new(key, iv + ciphertext, hashlib.sha256).digest()
+            mac = hmac.new(mac_key, iv + ciphertext, hashlib.sha256).digest()
 
             payload = iv + mac + ciphertext
             logger.info(
@@ -1525,11 +1529,10 @@ class HIPAACompliance:
             return payload
 
         except ImportError:
-            logger.warning(
-                "cryptography library not available; "
-                "falling back to XOR-based obfuscation (NOT production-safe)."
+            raise ImportError(
+                "The 'cryptography' package is required for FHIR bundle encryption. "
+                "Install it with: pip install cryptography>=41.0"
             )
-            return self._fallback_encrypt(plaintext, key)
 
     def decrypt_bundle(self, data: bytes, key: bytes) -> dict:
         """
@@ -1573,14 +1576,18 @@ class HIPAACompliance:
             stored_mac = data[16:48]
             ciphertext = data[48:]
 
+            # Derive separate keys for encryption and MAC (must match encrypt_bundle)
+            enc_key = hashlib.sha256(key + b"encrypt").digest()
+            mac_key = hashlib.sha256(key + b"hmac").digest()
+
             # Verify HMAC
-            computed_mac = hmac.new(key, iv + ciphertext, hashlib.sha256).digest()
+            computed_mac = hmac.new(mac_key, iv + ciphertext, hashlib.sha256).digest()
             if not hmac.compare_digest(stored_mac, computed_mac):
                 raise ValueError(
                     "HMAC verification failed — data may be corrupted or the key is incorrect."
                 )
 
-            cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+            cipher = Cipher(algorithms.AES(enc_key), modes.CBC(iv), backend=default_backend())
             decryptor = cipher.decryptor()
             padded = decryptor.update(ciphertext) + decryptor.finalize()
 
@@ -1593,9 +1600,10 @@ class HIPAACompliance:
             return bundle
 
         except ImportError:
-            logger.warning("cryptography library not available; using fallback XOR decryption.")
-            plaintext = self._fallback_decrypt(data, key)
-            return json.loads(plaintext.decode("utf-8"))
+            raise ImportError(
+                "The 'cryptography' package is required for FHIR bundle decryption. "
+                "Install it with: pip install cryptography>=41.0"
+            )
 
     def check_minimum_necessary(self, resource: dict, role: str) -> dict:
         """

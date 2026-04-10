@@ -2295,8 +2295,14 @@ document.addEventListener('keydown', function (e) {
 });
 
 function loadResearchContent() {
-    fetch('/api/research')
+    /* AbortController gives us a 15-second timeout so the spinner never hangs forever */
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timeoutId = controller ? setTimeout(function () { controller.abort(); }, 15000) : null;
+    var opts = controller ? { signal: controller.signal } : {};
+
+    fetch('/api/research', opts)
         .then(function (r) {
+            if (timeoutId) clearTimeout(timeoutId);
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();
         })
@@ -2310,6 +2316,8 @@ function loadResearchContent() {
                     content.innerHTML = '<div class="research-loading" style="color:var(--text-secondary);">' +
                         '<span>No research documents found.</span></div>';
                 }
+                var toc = document.getElementById('research-toc');
+                if (toc) toc.innerHTML = '';
                 return;
             }
             renderResearchToc(docs);
@@ -2317,12 +2325,16 @@ function loadResearchContent() {
             setupResearchScrollSpy();
         })
         .catch(function (err) {
+            if (timeoutId) clearTimeout(timeoutId);
             console.error('[Research] Failed to load:', err);
             _researchLoaded = false;
+            var msg = (err && err.name === 'AbortError')
+                ? 'Request timed out. Please try again.'
+                : 'Failed to load research content. Please try again.';
             var content = document.getElementById('research-content');
             if (content) {
                 content.innerHTML = '<div class="research-loading" style="color:var(--danger);">' +
-                    '<span>Failed to load research content. Please try again.</span></div>';
+                    '<span>' + msg + '</span></div>';
             }
             var toc = document.getElementById('research-toc');
             if (toc) {
@@ -2496,6 +2508,15 @@ function markdownToHtml(md) {
     html = html.replace(/^(?!<[a-z]|$)(.+)$/gm, '<p>$1</p>');
     /* Clean up empty paragraphs */
     html = html.replace(/<p>\s*<\/p>/g, '');
+
+    /* Sanitize: remove any remaining dangerous tags/attributes */
+    html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    html = html.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+    html = html.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
+    html = html.replace(/<embed[^>]*>/gi, '');
+    html = html.replace(/<link[^>]*>/gi, '');
+    html = html.replace(/\bon\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+    html = html.replace(/javascript\s*:/gi, '');
 
     return html;
 }
@@ -2945,7 +2966,8 @@ function escapeHtml(str) {
         if (chartJSLoading) return;
         chartJSLoading = true;
         var script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js';
+        script.crossOrigin = 'anonymous';
         script.onload = function () {
             chartJSLoaded = true;
             Chart.defaults.color = '#e0e6ed';
@@ -4653,7 +4675,7 @@ function escapeHtml(str) {
     setInterval(loadAgents, 10000);
 
     /* ---- Auto-load results if job_id in URL ---- */
-    var pathMatch = window.location.pathname.match(/^\/results\/(.+)/);
+    var pathMatch = window.location.pathname.match(/^\/results\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
     if (pathMatch) {
         currentJobId = pathMatch[1];
         progressWrapper.classList.add('visible');

@@ -11,7 +11,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1: Builder – compile wheels & install Python packages
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim-bookworm AS builder
 
 # Prevent Python from writing .pyc files and enable unbuffered stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -43,8 +43,7 @@ RUN pip install --upgrade pip setuptools wheel && \
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime – lean image with only what is needed to run the app
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim
-
+FROM python:3.12-slim-bookworm
 LABEL maintainer="Teloscopy Contributors" \
       description="Teloscopy gene-sequencing analysis platform" \
       version="2.0.0"
@@ -93,10 +92,10 @@ EXPOSE 8000
 
 # Health check – fail if the HTTP server is unreachable for 30 s
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8000/api/health || exit 1
 
 # Use tini as PID 1 to handle signals properly
 ENTRYPOINT ["tini", "--"]
 
 # Launch the ASGI server
-CMD ["uvicorn", "teloscopy.webapp.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "teloscopy.webapp.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

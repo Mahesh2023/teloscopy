@@ -1,3 +1,4 @@
+# SECURITY: Pin all actions to full commit SHA for supply-chain safety
 # =============================================================================
 # Teloscopy – Android CI / APK Build Pipeline
 # =============================================================================

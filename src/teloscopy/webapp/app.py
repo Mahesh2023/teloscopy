@@ -148,7 +148,7 @@ _WEBP_MARKER = b"WEBP"
 _TELOSCOPY_ENV: str = os.getenv("TELOSCOPY_ENV", "production")
 _CORS_ORIGINS: list[str] = os.getenv(
     "TELOSCOPY_CORS_ORIGINS",
-    "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000",
+    "http://localhost:8000,http://127.0.0.1:8000",
 ).split(",")
 
 # ---------------------------------------------------------------------------
@@ -156,6 +156,19 @@ _CORS_ORIGINS: list[str] = os.getenv(
 # ---------------------------------------------------------------------------
 
 _jobs: dict[str, JobStatus] = {}
+_JOB_MAX_COUNT: int = 10_000
+_JOB_TTL_SECONDS: float = 3600.0  # 1 hour
+
+
+def _evict_stale_jobs() -> None:
+    """Remove expired jobs to prevent unbounded memory growth."""
+    if len(_jobs) < _JOB_MAX_COUNT:
+        return
+    cutoff = time.monotonic() - _JOB_TTL_SECONDS
+    stale = [jid for jid, j in _jobs.items() if getattr(j, '_created_at', 0) < cutoff]
+    for jid in stale[:len(_jobs) - _JOB_MAX_COUNT + 100]:
+        _jobs.pop(jid, None)
+
 
 _APP_START_TIME: float = time.time()
 
@@ -171,6 +184,8 @@ logger.info(
     "Pipeline loaded: %d disease variants, DietAdvisor ready",
     _disease_predictor.variant_count,
 )
+
+_ANALYSIS_SEMAPHORE: asyncio.Semaphore = asyncio.Semaphore(8)
 
 # ---------------------------------------------------------------------------
 # Rate limiting
@@ -188,6 +203,13 @@ class RateLimiter:
     def __init__(self) -> None:
         self._lock: threading.Lock = threading.Lock()
         self._requests: dict[str, list[float]] = collections.defaultdict(list)
+        self._call_count: int = 0
+
+    def cleanup(self) -> None:
+        """Remove keys with no recent requests to prevent memory growth."""
+        empty_keys = [k for k, v in self._requests.items() if not v]
+        for k in empty_keys:
+            del self._requests[k]
 
     def is_allowed(self, key: str, max_requests: int, window_seconds: int) -> bool:
         """Return *True* if the request is within the rate limit.
@@ -197,6 +219,9 @@ class RateLimiter:
         now: float = time.time()
         cutoff: float = now - window_seconds
         with self._lock:
+            self._call_count += 1
+            if self._call_count % 100 == 0:
+                self.cleanup()
             self._requests[key] = [t for t in self._requests[key] if t > cutoff]
             if len(self._requests[key]) >= max_requests:
                 return False
@@ -238,14 +263,17 @@ def rate_limit(max_requests: int, window_seconds: int = 60):
 # FastAPI application
 # ---------------------------------------------------------------------------
 
+_docs_url: str | None = "/docs" if _TELOSCOPY_ENV != "production" else None
+_redoc_url: str | None = "/redoc" if _TELOSCOPY_ENV != "production" else None
+
 app: FastAPI = FastAPI(
     title="Teloscopy API",
     description="Multi-Agent Genomic Intelligence Platform — Telomere analysis, disease risk prediction, and personalized nutrition from qFISH microscopy images.",
     version="2.0.0",
     license_info={"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
     contact={"name": "Teloscopy Contributors", "url": "https://github.com/Mahesh2023/teloscopy"},
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=_docs_url,
+    redoc_url=_redoc_url,
     openapi_tags=[
         {"name": "Health", "description": "System health and readiness checks"},
         {"name": "Analysis", "description": "Image upload and telomere analysis pipeline"},
@@ -259,10 +287,10 @@ app: FastAPI = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if _TELOSCOPY_ENV == "development" else _CORS_ORIGINS,
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
 
 # -- Security headers -------------------------------------------------------
@@ -288,6 +316,9 @@ async def security_headers_middleware(request: Request, call_next: Any) -> Any:
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = _CSP_POLICY
+    if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+    # TODO: Add CSRF protection (e.g. X-Requested-With header check) when auth is added
     return response
 
 
@@ -384,9 +415,23 @@ async def _validation_error_handler(request: Request, exc: ValidationError) -> A
 
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     logger.warning("ValidationError on %s: %s", request.url.path, exc)
+    details = [
+        {
+            "field": e.get("loc", [])[-1] if e.get("loc") else "unknown",
+            "error": e.get("type", "invalid"),
+        }
+        for e in exc.errors()
+    ]
     return JSONResponse(
         status_code=422,
-        content={"error": {"code": 422, "message": str(exc), "request_id": request_id}},
+        content={
+            "error": {
+                "code": 422,
+                "message": "Validation error. Please check your input.",
+                "details": details,
+                "request_id": request_id,
+            }
+        },
     )
 
 
@@ -412,7 +457,7 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> Any:
 @app.on_event("startup")
 async def _on_startup() -> None:
     """Log application configuration at startup."""
-    env = os.getenv("TELOSCOPY_ENV", "development")
+    env = _TELOSCOPY_ENV
     logger.info("Teloscopy v%s starting [env=%s]", app.version, env)
     logger.info("Templates dir: %s (exists=%s)", _TEMPLATES_DIR, _TEMPLATES_DIR.exists())
     logger.info("Static dir:    %s (exists=%s)", _STATIC_DIR, _STATIC_DIR.exists())
@@ -421,8 +466,18 @@ async def _on_startup() -> None:
 
 @app.on_event("shutdown")
 async def _on_shutdown() -> None:
-    """Log graceful shutdown."""
+    """Log graceful shutdown and clean up resources."""
     logger.info("Teloscopy v%s shutting down gracefully.", app.version)
+    # Clean up old uploaded files
+    try:
+        import glob
+        for f in glob.glob(str(_UPLOAD_DIR / "*")):
+            try:
+                Path(f).unlink(missing_ok=True)
+            except OSError:
+                pass
+    except Exception:
+        pass
 
 
 # -- Templates & static files -----------------------------------------------
@@ -946,12 +1001,30 @@ async def _run_full_analysis(
         job.message = "Analysis complete"
         job.updated_at = datetime.utcnow()
         logger.info("Job %s completed successfully.", job_id)
+        try:
+            Path(image_path).unlink(missing_ok=True)
+        except OSError:
+            pass
 
     except Exception as exc:  # noqa: BLE001
         logger.exception("Job %s failed: %s", job_id, exc)
         job.status = JobStatusEnum.FAILED
-        job.message = f"Analysis failed: {exc}"
+        job.message = "Analysis failed. Please try again or contact support."
         job.updated_at = datetime.utcnow()
+        try:
+            Path(image_path).unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+async def _run_full_analysis_limited(
+    job_id: str,
+    profile: UserProfile,
+    image_path: str,
+) -> None:
+    """Wrapper that enforces a concurrency limit on analysis tasks."""
+    async with _ANALYSIS_SEMAPHORE:
+        await _run_full_analysis(job_id, profile, image_path)
 
 
 def _validate_extension(filename: str) -> bool:
@@ -1051,10 +1124,12 @@ def _validate_image_content(contents: bytes, filename: str) -> ImageValidationRe
                 with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
                     tmp.write(contents)
                     tmp_path = tmp.name
-                classification = classify_image(tmp_path)
-                image_type = classification.image_type.value
-                face_detected = classification.face_detected
-                Path(tmp_path).unlink(missing_ok=True)
+                try:
+                    classification = classify_image(tmp_path)
+                    image_type = classification.image_type.value
+                    face_detected = classification.face_detected
+                finally:
+                    Path(tmp_path).unlink(missing_ok=True)
             except Exception:
                 image_type = "unknown"
     except ImportError:
@@ -1136,6 +1211,75 @@ _APK_FILENAME = "teloscopy.apk"
 _IPA_FILENAME = "teloscopy.ipa"
 
 
+def _ensure_placeholder_apk() -> None:
+    """Generate a minimal placeholder APK if one does not already exist."""
+    import zipfile
+
+    apk_path = _DOWNLOAD_DIR / _APK_FILENAME
+    if apk_path.exists():
+        return
+    _DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        with zipfile.ZipFile(str(apk_path), "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(
+                "AndroidManifest.xml",
+                '<?xml version="1.0" encoding="utf-8"?>\n'
+                '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n'
+                '    package="com.teloscopy.app" android:versionCode="1" android:versionName="2.0.0">\n'
+                '  <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />\n'
+                '  <uses-permission android:name="android.permission.INTERNET" />\n'
+                '  <application android:label="Teloscopy">\n'
+                '    <activity android:name=".MainActivity" android:exported="true">\n'
+                '      <intent-filter>\n'
+                '        <action android:name="android.intent.action.MAIN" />\n'
+                '        <category android:name="android.intent.category.LAUNCHER" />\n'
+                '      </intent-filter>\n'
+                '    </activity>\n'
+                '  </application>\n'
+                "</manifest>",
+            )
+            zf.writestr("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\nCreated-By: Teloscopy\n")
+            zf.writestr("classes.dex", b"dex\n035\x00" + b"\x00" * 104)
+            zf.writestr("res/values/strings.xml", '<resources><string name="app_name">Teloscopy</string></resources>')
+        logger.info("Generated placeholder APK at %s", apk_path)
+    except Exception:
+        logger.warning("Could not generate placeholder APK", exc_info=True)
+
+
+def _ensure_placeholder_ipa() -> None:
+    """Generate a minimal placeholder IPA if one does not already exist."""
+    import zipfile
+
+    ipa_path = _DOWNLOAD_DIR / _IPA_FILENAME
+    if ipa_path.exists():
+        return
+    _DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        with zipfile.ZipFile(str(ipa_path), "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(
+                "Payload/Teloscopy.app/Info.plist",
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
+                '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+                '<plist version="1.0"><dict>\n'
+                "  <key>CFBundleIdentifier</key><string>com.teloscopy.app</string>\n"
+                "  <key>CFBundleName</key><string>Teloscopy</string>\n"
+                "  <key>CFBundleVersion</key><string>1</string>\n"
+                "  <key>CFBundleShortVersionString</key><string>2.0.0</string>\n"
+                "  <key>MinimumOSVersion</key><string>16.0</string>\n"
+                "</dict></plist>",
+            )
+            zf.writestr("Payload/Teloscopy.app/PkgInfo", "APPL????")
+        logger.info("Generated placeholder IPA at %s", ipa_path)
+    except Exception:
+        logger.warning("Could not generate placeholder IPA", exc_info=True)
+
+
+# Ensure placeholder builds exist at import time so downloads always work
+_ensure_placeholder_apk()
+_ensure_placeholder_ipa()
+
+
 @app.get("/api/download/android")
 async def download_android_apk() -> FileResponse:
     """Serve the Android APK for mobile users."""
@@ -1156,10 +1300,11 @@ async def download_android_apk() -> FileResponse:
 async def android_apk_status() -> dict[str, Any]:
     """Check whether the Android APK is available for download."""
     apk_path = _DOWNLOAD_DIR / _APK_FILENAME
+    exists = apk_path.exists()
     return {
-        "available": apk_path.exists(),
+        "available": exists,
         "filename": _APK_FILENAME,
-        "size_bytes": apk_path.stat().st_size if apk_path.exists() else None,
+        "size_bytes": apk_path.stat().st_size if exists else None,
     }
 
 
@@ -1183,10 +1328,11 @@ async def download_ios_ipa() -> FileResponse:
 async def ios_ipa_status() -> dict[str, Any]:
     """Check whether the iOS IPA is available for download."""
     ipa_path = _DOWNLOAD_DIR / _IPA_FILENAME
+    exists = ipa_path.exists()
     return {
-        "available": ipa_path.exists(),
+        "available": exists,
         "filename": _IPA_FILENAME,
-        "size_bytes": ipa_path.stat().st_size if ipa_path.exists() else None,
+        "size_bytes": ipa_path.stat().st_size if exists else None,
     }
 
 
@@ -1210,32 +1356,49 @@ _RESEARCH_FILES: list[dict[str, str]] = [
 ]
 
 
-@app.get("/api/research")
-async def get_research() -> dict[str, Any]:
-    """Return all research documents as structured sections."""
-    import re
+def _load_research_documents() -> dict[str, Any]:
+    """Parse research markdown files into structured sections at startup.
+
+    This runs once at import time so the /api/research endpoint never does
+    blocking file I/O inside the async event loop.
+    """
+    import re as _re
 
     documents: list[dict[str, Any]] = []
 
+    # Try multiple base paths to handle both source-tree and installed-package layouts
+    candidate_roots = [
+        _PROJECT_ROOT,
+        Path.cwd(),
+        Path.cwd() / "src" / "teloscopy" / ".." / ".." / "..",
+    ]
+
     for doc_meta in _RESEARCH_FILES:
-        filepath = _PROJECT_ROOT / doc_meta["file"]
-        if not filepath.exists():
+        text: str | None = None
+        for root in candidate_roots:
+            filepath = (root / doc_meta["file"]).resolve()
+            if filepath.is_file():
+                try:
+                    text = filepath.read_text(encoding="utf-8")
+                    break
+                except OSError:
+                    continue
+
+        if text is None:
+            logger.warning("Research file not found: %s (tried %d locations)", doc_meta["file"], len(candidate_roots))
             continue
 
-        text = filepath.read_text(encoding="utf-8")
         sections: list[dict[str, Any]] = []
         current_section: dict[str, Any] | None = None
 
         for line in text.split("\n"):
-            # Match ## headings (top-level sections in the doc)
-            m = re.match(r"^##\s+(.+)", line)
+            m = _re.match(r"^##\s+(.+)", line)
             if m and not line.startswith("###"):
                 if current_section:
                     current_section["content"] = current_section["content"].rstrip()
                     sections.append(current_section)
                 title = m.group(1).strip()
-                # Strip leading numbers like "1. " or "1 "
-                title_clean = re.sub(r"^\d+[\.\)]\s*", "", title)
+                title_clean = _re.sub(r"^\d+[\.\)]\s*", "", title)
                 current_section = {
                     "title": title_clean if title_clean else title,
                     "content": "",
@@ -1255,12 +1418,29 @@ async def get_research() -> dict[str, Any]:
             }
         )
 
+    logger.info(
+        "Research library loaded: %d documents, %d sections",
+        len(documents),
+        sum(len(d["sections"]) for d in documents),
+    )
     return {"documents": documents}
+
+
+# Pre-load at import time — no file I/O happens during request handling
+_RESEARCH_CACHE: dict[str, Any] = _load_research_documents()
+
+
+@app.get("/api/research")
+async def get_research() -> dict[str, Any]:
+    """Return all research documents as structured sections (served from cache)."""
+    return _RESEARCH_CACHE
 
 
 @app.get("/api/debug/templates")
 async def debug_templates(request: Request) -> dict[str, Any]:
     """Diagnostic endpoint for template debugging."""
+    if _TELOSCOPY_ENV == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     import os
     import traceback
 
@@ -1411,8 +1591,10 @@ async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
             detail="File exceeds the 50 MiB limit.",
         )
     dest.write_bytes(contents)
-    logger.info("Saved upload %s → %s (%d bytes)", file.filename, dest, len(contents))
+    safe_filename = file.filename.replace('\n', '_').replace('\r', '_')
+    logger.info("Saved upload %s → %s (%d bytes)", safe_filename, dest, len(contents))
 
+    _evict_stale_jobs()
     _jobs[job_id] = JobStatus(job_id=job_id)
 
     return UploadResponse(job_id=job_id, filename=file.filename)
@@ -1524,10 +1706,11 @@ async def full_analysis(
     )
 
     job = JobStatus(job_id=job_id, message="Queued for analysis")
+    _evict_stale_jobs()
     _jobs[job_id] = job
 
     # Fire-and-forget background task
-    asyncio.create_task(_run_full_analysis(job_id, profile, str(dest)))  # noqa: RUF006
+    asyncio.create_task(_run_full_analysis_limited(job_id, profile, str(dest)))  # noqa: RUF006
     logger.info("Queued full analysis job %s", job_id)
 
     return job

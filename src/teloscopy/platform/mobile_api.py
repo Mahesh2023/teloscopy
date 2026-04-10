@@ -29,6 +29,7 @@ import json
 import logging
 import math
 import os
+import secrets as _secrets
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -208,7 +209,7 @@ class TokenManager:
         access_ttl: int = _DEFAULT_ACCESS_TTL,
         refresh_ttl: int = _DEFAULT_REFRESH_TTL,
     ) -> None:
-        self._secret: bytes = (secret or uuid.uuid4().hex).encode()
+        self._secret: bytes = (secret or os.getenv("TELOSCOPY_SECRET_KEY") or _secrets.token_hex(32)).encode()
         self._access_ttl = access_ttl
         self._refresh_ttl = refresh_ttl
         # Revocation set (token IDs that have been revoked)
@@ -687,7 +688,7 @@ class MobileAPIController:
     def login(self, email: str, password_hash: str) -> TokenPair | APIError:
         """Authenticate and return tokens."""
         user = self._users.get(email)
-        if not user or user["password_hash"] != password_hash:
+        if not user or not hmac.compare_digest(user["password_hash"], password_hash):
             return APIError(
                 type="urn:teloscopy:error:unauthorized",
                 title="Unauthorized",

@@ -51,6 +51,7 @@ import hmac
 import json
 import logging
 import math
+import secrets
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -594,7 +595,7 @@ class FederatedLearningCoordinator:
         self._registered_nodes[node_info.node_id] = node_info
         self._bus.register(node_info.node_id)
 
-        token = uuid.uuid4().hex
+        token = secrets.token_hex(16)
         logger.info(
             "Node registered: id=%s institution=%s data_size=%d",
             node_info.node_id,

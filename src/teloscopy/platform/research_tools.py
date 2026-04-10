@@ -18,6 +18,7 @@ import json
 import math
 import os
 import random
+import secrets
 import string
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -204,7 +205,7 @@ def _p_value_from_r(r: float, n: int) -> float:
 
 def _random_id(length: int = 8) -> str:
     """Generate a random alphanumeric identifier."""
-    return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
+    return secrets.token_hex(length // 2 + 1)[:length].upper()
 
 def _matches_criteria(record: dict, criteria: dict[str, dict]) -> bool:
     """Check if *record* satisfies all constraints (min/max/equals/in/contains)."""

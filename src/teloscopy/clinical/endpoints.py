@@ -30,11 +30,13 @@ Usage::
 
 from __future__ import annotations
 
+import collections
 import logging
+import time
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field, field_validator
 
 from teloscopy.clinical.trials import TrialManager
 
@@ -42,8 +44,31 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
+_clinical_requests: dict[str, list[float]] = collections.defaultdict(list)
+
+
+def _clinical_rate_limit(max_req: int = 30, window: int = 60):
+    """Simple rate limiter for clinical endpoints."""
+    async def _check(request: Request):
+        client_ip = request.client.host if request.client else "unknown"
+        key = f"{client_ip}:{request.url.path}"
+        now = time.monotonic()
+        cutoff = now - window
+        _clinical_requests[key] = [t for t in _clinical_requests[key] if t > cutoff]
+        if len(_clinical_requests[key]) >= max_req:
+            raise HTTPException(status_code=429, detail="Too many requests")
+        _clinical_requests[key].append(now)
+    return Depends(_check)
+
+
+# ---------------------------------------------------------------------------
 # In-memory trial registry (swap for DB in production)
 # ---------------------------------------------------------------------------
+
+_MAX_TRIALS = 1000
 
 _trials: dict[str, TrialManager] = {}
 
@@ -81,10 +106,11 @@ def _get_trial(trial_id: str) -> TrialManager:
 class CreateTrialRequest(BaseModel):
     """Request body for creating a new clinical trial."""
 
-    trial_id: str = Field(..., description="Unique trial identifier.")
-    title: str = Field(..., description="Full title of the trial.")
+    trial_id: str = Field(..., max_length=100, description="Unique trial identifier.")
+    title: str = Field(..., max_length=500, description="Full title of the trial.")
     phase: str = Field(
         ...,
+        max_length=50,
         description="Trial phase: pilot, phase_1, phase_2, phase_3, phase_4.",
     )
     target_enrollment: int = Field(
@@ -105,11 +131,11 @@ class CreateTrialResponse(BaseModel):
 class AddSiteRequest(BaseModel):
     """Request body for adding an institution to a trial."""
 
-    name: str = Field(..., description="Institution display name.")
-    pi: str = Field(..., description="Principal investigator name.")
-    irb_number: str = Field(..., description="IRB approval reference number.")
-    location: str = Field("", description="City and state / region.")
-    contact_email: str = Field("", description="Primary contact e-mail.")
+    name: str = Field(..., max_length=200, description="Institution display name.")
+    pi: str = Field(..., max_length=200, description="Principal investigator name.")
+    irb_number: str = Field(..., max_length=100, description="IRB approval reference number.")
+    location: str = Field("", max_length=200, description="City and state / region.")
+    contact_email: str = Field("", max_length=254, description="Primary contact e-mail.")
     target_enrollment: int = Field(50, ge=1, description="Site enrollment target.")
 
 
@@ -124,14 +150,21 @@ class AddSiteResponse(BaseModel):
 class EnrollPatientRequest(BaseModel):
     """Request body for enrolling a patient."""
 
-    site_id: str = Field(..., description="Institution / site identifier.")
+    site_id: str = Field(..., max_length=100, description="Institution / site identifier.")
     demographics: dict[str, Any] = Field(
         ..., description="Anonymised demographic data (must include age, sex)."
     )
-    consent_version: str = Field("1.0", description="Consent form version.")
+    consent_version: str = Field("1.0", max_length=50, description="Consent form version.")
     witnessed_by: str = Field(
-        "site_coordinator", description="Consent witness."
+        "site_coordinator", max_length=200, description="Consent witness."
     )
+
+    @field_validator("demographics")
+    @classmethod
+    def _limit_demographics_size(cls, v: dict[str, Any]) -> dict[str, Any]:
+        if len(v) > 50:
+            raise ValueError("demographics must not contain more than 50 keys")
+        return v
 
 
 class EnrollPatientResponse(BaseModel):
@@ -145,12 +178,12 @@ class EnrollPatientResponse(BaseModel):
 class SubmitDataRequest(BaseModel):
     """Request body for submitting a telomere-length measurement."""
 
-    site_id: str = Field(..., description="Collecting site identifier.")
-    participant_id: str = Field(..., description="Participant identifier.")
+    site_id: str = Field(..., max_length=100, description="Collecting site identifier.")
+    participant_id: str = Field(..., max_length=100, description="Participant identifier.")
     telomere_length_bp: float = Field(
         ..., description="Measured telomere length in base pairs."
     )
-    measurement_method: str = Field("qfish", description="Measurement method.")
+    measurement_method: str = Field("qfish", max_length=100, description="Measurement method.")
     visit_number: int = Field(1, ge=1, description="Visit number (1-based).")
     quality_score: float = Field(
         0.95, ge=0.0, le=1.0, description="Quality score [0, 1]."
@@ -158,6 +191,13 @@ class SubmitDataRequest(BaseModel):
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata."
     )
+
+    @field_validator("metadata")
+    @classmethod
+    def _limit_metadata_size(cls, v: dict[str, Any]) -> dict[str, Any]:
+        if len(v) > 50:
+            raise ValueError("metadata must not contain more than 50 keys")
+        return v
 
 
 class SubmitDataResponse(BaseModel):
@@ -186,9 +226,11 @@ class TrialSummary(BaseModel):
 trial_router = APIRouter(
     prefix="/api/trials",
     tags=["Clinical Trials"],
+    dependencies=[_clinical_rate_limit()],
     responses={
         404: {"description": "Trial not found"},
         422: {"description": "Validation error"},
+        429: {"description": "Too many requests"},
     },
 )
 
@@ -226,6 +268,12 @@ async def create_trial(body: CreateTrialRequest) -> CreateTrialResponse:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Trial already exists: {body.trial_id}",
+        )
+
+    if len(_trials) >= _MAX_TRIALS:
+        raise HTTPException(
+            status_code=429,
+            detail="Maximum trial limit reached",
         )
 
     try:

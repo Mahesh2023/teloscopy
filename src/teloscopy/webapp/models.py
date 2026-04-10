@@ -87,10 +87,12 @@ class UserProfile(BaseModel):
     )
     dietary_restrictions: list[str] = Field(
         default_factory=list,
+        max_length=100,
         description="Dietary restrictions such as 'vegetarian', 'gluten-free'",
     )
     known_variants: list[str] = Field(
         default_factory=list,
+        max_length=100,
         description="Known genetic variants (rsIDs or gene names)",
     )
 
@@ -149,9 +151,9 @@ class DietRecommendation(BaseModel):
     """Dietary recommendations tied to genomic / telomere findings."""
 
     summary: str
-    key_nutrients: list[str] = Field(default_factory=list)
-    foods_to_increase: list[str] = Field(default_factory=list)
-    foods_to_avoid: list[str] = Field(default_factory=list)
+    key_nutrients: list[str] = Field(default_factory=list, max_length=100)
+    foods_to_increase: list[str] = Field(default_factory=list, max_length=100)
+    foods_to_avoid: list[str] = Field(default_factory=list, max_length=100)
     meal_plans: list[MealPlan] = Field(default_factory=list)
     calorie_target: int | None = None
 
@@ -172,6 +174,7 @@ class DiseaseRiskRequest(BaseModel):
 
     known_variants: list[str] = Field(
         default_factory=list,
+        max_length=100,
         description="Genetic variants (rsIDs or gene names)",
     )
     telomere_length: float | None = Field(None, description="Mean telomere length in kb")
@@ -219,10 +222,10 @@ class DietPlanRequest(BaseModel):
     region: str = Field(..., min_length=1, max_length=128)
     country: str | None = Field(None, max_length=128, description="Country for regional diet")
     state: str | None = Field(None, max_length=128, description="State/province for local diet")
-    dietary_restrictions: list[str] = Field(default_factory=list)
-    known_variants: list[str] = Field(default_factory=list)
+    dietary_restrictions: list[str] = Field(default_factory=list, max_length=100)
+    known_variants: list[str] = Field(default_factory=list, max_length=100)
     telomere_length: float | None = Field(None, description="Mean telomere length in kb")
-    disease_risks: list[DiseaseRisk] = Field(default_factory=list)
+    disease_risks: list[DiseaseRisk] = Field(default_factory=list, max_length=100)
     meal_plan_days: int = Field(7, ge=1, le=30)
     calorie_target: int = Field(2000, ge=800, le=5000)
 
@@ -472,7 +475,7 @@ class AnalysisResponse(BaseModel):
     job_id: str
     image_type: str = Field(default="fish_microscopy", description="fish_microscopy or face_photo")
     telomere_results: TelomereResult
-    disease_risks: list[DiseaseRisk] = Field(default_factory=list)
+    disease_risks: list[DiseaseRisk] = Field(default_factory=list, max_length=100)
     diet_recommendations: DietRecommendation
     facial_analysis: FacialAnalysisResult | None = None
     report_url: str | None = None
@@ -536,8 +539,8 @@ class ProfileAnalysisRequest(BaseModel):
     region: str = Field(..., min_length=1, max_length=128)
     country: str | None = Field(None, max_length=128, description="Country for regional diet")
     state: str | None = Field(None, max_length=128, description="State/province for local diet")
-    dietary_restrictions: list[str] = Field(default_factory=list)
-    known_variants: list[str] = Field(default_factory=list)
+    dietary_restrictions: list[str] = Field(default_factory=list, max_length=100)
+    known_variants: list[str] = Field(default_factory=list, max_length=100)
     telomere_length_kb: float | None = Field(
         None, description="Self-reported telomere length in kb (optional)"
     )
@@ -565,7 +568,7 @@ class ProfileAnalysisRequest(BaseModel):
 class ProfileAnalysisResponse(BaseModel):
     """Response for profile-only analysis."""
 
-    disease_risks: list[DiseaseRisk] = Field(default_factory=list)
+    disease_risks: list[DiseaseRisk] = Field(default_factory=list, max_length=100)
     diet_recommendations: DietRecommendation | None = None
     overall_risk_score: float = Field(0.0, ge=0.0, le=1.0)
     assessed_at: datetime = Field(default_factory=datetime.utcnow)
@@ -588,10 +591,11 @@ class NutritionRequest(BaseModel):
     region: str = Field(..., min_length=1, max_length=128)
     country: str | None = Field(None, max_length=128, description="Country for regional diet")
     state: str | None = Field(None, max_length=128, description="State/province for local diet")
-    dietary_restrictions: list[str] = Field(default_factory=list)
-    known_variants: list[str] = Field(default_factory=list)
+    dietary_restrictions: list[str] = Field(default_factory=list, max_length=100)
+    known_variants: list[str] = Field(default_factory=list, max_length=100)
     health_conditions: list[str] = Field(
         default_factory=list,
+        max_length=100,
         description="Known health conditions (e.g. 'diabetes', 'hypertension')",
     )
     calorie_target: int = Field(2000, ge=800, le=5000)
@@ -748,8 +752,8 @@ class HealthCheckupRequest(BaseModel):
     region: str = Field(..., min_length=1, max_length=128)
     country: str | None = Field(None, max_length=128)
     state: str | None = Field(None, max_length=128)
-    dietary_restrictions: list[str] = Field(default_factory=list)
-    known_variants: list[str] = Field(default_factory=list)
+    dietary_restrictions: list[str] = Field(default_factory=list, max_length=100)
+    known_variants: list[str] = Field(default_factory=list, max_length=100)
 
     # Lab data
     blood_tests: BloodTestPanel | None = None
@@ -765,6 +769,7 @@ class HealthCheckupRequest(BaseModel):
     meal_plan_days: int = Field(7, ge=1, le=30)
     health_conditions: list[str] = Field(
         default_factory=list,
+        max_length=100,
         description="User-reported health conditions (in addition to auto-detected from labs)",
     )
 
@@ -828,10 +833,10 @@ class HealthFindingResponse(BaseModel):
     severity: str
     evidence: list[str]
     dietary_impact: str
-    nutrients_to_increase: list[str] = Field(default_factory=list)
-    nutrients_to_decrease: list[str] = Field(default_factory=list)
-    foods_to_increase: list[str] = Field(default_factory=list)
-    foods_to_avoid: list[str] = Field(default_factory=list)
+    nutrients_to_increase: list[str] = Field(default_factory=list, max_length=100)
+    nutrients_to_decrease: list[str] = Field(default_factory=list, max_length=100)
+    foods_to_increase: list[str] = Field(default_factory=list, max_length=100)
+    foods_to_avoid: list[str] = Field(default_factory=list, max_length=100)
 
 
 class AbdomenFindingResponse(BaseModel):
@@ -841,8 +846,8 @@ class AbdomenFindingResponse(BaseModel):
     finding: str
     severity: str
     dietary_impact: str
-    foods_to_avoid: list[str] = Field(default_factory=list)
-    foods_to_increase: list[str] = Field(default_factory=list)
+    foods_to_avoid: list[str] = Field(default_factory=list, max_length=100)
+    foods_to_increase: list[str] = Field(default_factory=list, max_length=100)
 
 
 class HealthCheckupResponse(BaseModel):

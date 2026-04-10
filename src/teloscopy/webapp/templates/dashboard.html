@@ -1220,6 +1220,8 @@
         return d.toLocaleTimeString('en-US', { hour12: false });
     }
 
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
     function formatDuration(ms) {
         if (ms < 1000) return ms + 'ms';
         if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
@@ -1336,8 +1338,8 @@
             var ts = formatTime(t);
             return '<div class="log-entry">' +
                 '<span class="log-time">[' + ts + ']</span> ' +
-                '<span class="log-level-' + log.level + '">' + log.level.toUpperCase() + '</span> ' +
-                log.message +
+                '<span class="log-level-' + escapeHtml(log.level) + '">' + escapeHtml(log.level).toUpperCase() + '</span> ' +
+                escapeHtml(log.message) +
                 '</div>';
         }).join('');
         container.scrollTop = container.scrollHeight;
@@ -1441,19 +1443,19 @@
             data.agents.forEach(a => {
                 const icon = AGENT_ICONS[a.name] || '&#x2699;';
                 const taskHtml = a.current_task
-                    ? `<div class="agent-task">${a.current_task}</div>`
+                    ? `<div class="agent-task">${escapeHtml(a.current_task)}</div>`
                     : '';
                 grid.innerHTML += `
                     <div class="agent-card glass-card">
                         <div class="agent-header">
-                            <span class="agent-name">${a.name}</span>
+                            <span class="agent-name">${escapeHtml(a.name)}</span>
                             <span class="agent-icon">${icon}</span>
                         </div>
-                        <span class="status-badge ${a.status}">
-                            <span class="dot"></span> ${a.status}
+                        <span class="status-badge ${escapeHtml(a.status)}">
+                            <span class="dot"></span> ${escapeHtml(a.status)}
                         </span>
                         ${generateActivityBars(a.status)}
-                        <div class="agent-stat">Tasks completed: <strong>${a.tasks_completed}</strong></div>
+                        <div class="agent-stat">Tasks completed: <strong>${escapeHtml(String(a.tasks_completed))}</strong></div>
                         ${a.last_active ? '<div class="agent-stat">Last active: <strong>' + new Date(a.last_active).toLocaleTimeString() + '</strong></div>' : ''}
                         ${taskHtml}
                     </div>`;
