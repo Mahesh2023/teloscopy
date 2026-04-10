@@ -19,7 +19,6 @@ import logging
 import math
 import os
 import random
-import secrets
 import threading
 import time
 import traceback
@@ -277,10 +276,26 @@ def rate_limit(max_requests: int, window_seconds: int = 60):
 # Server-side consent enforcement (DPDP Act 2023 Section 6)
 # ---------------------------------------------------------------------------
 
-# HMAC secret for signing consent tokens — generated once per process (or
-# loaded from env).  Tokens survive for the lifetime of the running server.
+# HMAC secret for signing consent tokens.  Uses TELOSCOPY_CONSENT_SECRET env
+# var if set; otherwise falls back to a deterministic secret derived from the
+# machine-id / hostname so tokens survive across restarts and re-deploys
+# (without requiring manual env-var setup).
+def _default_consent_secret() -> str:
+    """Derive a stable HMAC secret when no env var is configured."""
+    try:
+        # Linux: /etc/machine-id is stable across reboots
+        mid = Path("/etc/machine-id").read_text().strip()
+    except Exception:
+        mid = ""
+    if not mid:
+        import socket
+        mid = socket.getfqdn()
+    return hmac.new(
+        b"teloscopy-consent-v1", mid.encode(), hashlib.sha256
+    ).hexdigest()
+
 _CONSENT_SECRET: bytes = os.getenv(
-    "TELOSCOPY_CONSENT_SECRET", secrets.token_hex(32)
+    "TELOSCOPY_CONSENT_SECRET", _default_consent_secret()
 ).encode()
 
 # In-memory consent store: token → {session_id, purposes, granted_at, withdrawn}
@@ -2721,6 +2736,23 @@ async def health_checkup_upload(
     # Build request from parsed data
     blood_panel = BloodTestPanel(**blood_dict) if blood_dict else None
     urine_panel = UrineTestPanel(**urine_dict) if urine_dict else None
+
+    # Validate that at least one real value was extracted (not all None)
+    has_blood = blood_panel is not None and any(
+        v is not None for v in blood_panel.model_dump().values()
+    )
+    has_urine = urine_panel is not None and any(
+        v is not None for v in urine_panel.model_dump().values()
+    )
+    if not has_blood and not has_urine:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "No recognisable lab values could be extracted from the uploaded file. "
+                "Please check the file format, or switch to the manual entry tabs "
+                "and enter your blood/urine test values directly."
+            ),
+        )
 
     checkup_request = HealthCheckupRequest(
         age=age,

@@ -2611,6 +2611,7 @@
     /**
      * Handle a 403 response by clearing expired consent and re-prompting.
      * Returns true if the response was a consent 403 (caller should abort).
+     * Distinguishes consent 403s from CSRF 403s by cloning the response.
      */
     window.handleConsent403 = function (res) {
         if (res.status === 403) {
@@ -2618,7 +2619,7 @@
             try { localStorage.removeItem(CONSENT_KEY); } catch (_) {}
             window.openConsentModal();
             if (typeof toast === 'function') {
-                toast('Your consent has expired. Please accept again to continue.', 'warning');
+                toast('Please accept the privacy notice to continue.', 'warning');
             }
             return true;
         }
