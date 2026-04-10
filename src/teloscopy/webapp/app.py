@@ -49,6 +49,7 @@ from teloscopy.facial.predictor import analyze_face
 from teloscopy.genomics.disease_risk import DiseasePredictor
 from teloscopy.nutrition.diet_advisor import DietAdvisor
 from teloscopy.nutrition.regional_diets import resolve_region
+from teloscopy.webapp.health_checkup import HealthCheckupAnalyzer
 from teloscopy.webapp.models import (
     AgentInfo,
     AgentStatusEnum,
@@ -63,6 +64,8 @@ from teloscopy.webapp.models import (
     DiseaseRiskResponse,
     FacialAnalysisResult,
     FacialMeasurementsResponse,
+    HealthCheckupRequest,
+    HealthCheckupResponse,
     HealthResponse,
     ImageValidationResponse,
     JobStatus,
@@ -143,6 +146,7 @@ _APP_START_TIME: float = time.time()
 
 _disease_predictor: DiseasePredictor = DiseasePredictor()
 _diet_advisor: DietAdvisor = DietAdvisor()
+_health_analyzer: HealthCheckupAnalyzer = HealthCheckupAnalyzer(_diet_advisor)
 
 logger.info(
     "Pipeline loaded: %d disease variants, DietAdvisor ready",
@@ -1522,3 +1526,31 @@ async def nutrition_plan(request: NutritionRequest) -> NutritionResponse:
             calorie_target=request.calorie_target,
         )
     return NutritionResponse(recommendation=rec)
+
+
+# -- Health checkup ----------------------------------------------------------
+
+
+@app.post(
+    "/api/health-checkup",
+    response_model=HealthCheckupResponse,
+    tags=["Health Checkup"],
+    summary="Analyse annual health checkup",
+    description=(
+        "Upload blood test, urine test, and abdomen scan results to "
+        "get a personalised health analysis with condition detection, "
+        "health scoring, and a diet plan tailored to your findings."
+    ),
+    dependencies=[Depends(rate_limit(10, 60))],
+)
+async def health_checkup(request: HealthCheckupRequest) -> HealthCheckupResponse:
+    """Analyse health checkup data and return personalised diet plan."""
+    try:
+        response = await asyncio.to_thread(_health_analyzer.analyze, request)
+    except Exception:
+        logger.exception("health-checkup analysis failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Health checkup analysis failed. Please try again.",
+        )
+    return response

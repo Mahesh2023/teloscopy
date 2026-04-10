@@ -841,6 +841,10 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75-1.5.75a3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0L3 16.5m15-3.379a48.474 48.474 0 0 0-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 0 1 6 13.12"/></svg>
             <span class="nav-item-label">Nutrition</span>
         </a>
+        <a href="#checkup-section" class="nav-item" data-section="checkup-section">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
+            <span class="nav-item-label">Health Checkup</span>
+        </a>
         <a href="#results-section" class="nav-item" data-section="results-section">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
             <span class="nav-item-label">Results</span>
@@ -1120,6 +1124,275 @@
         <div class="result-card glass-card" style="border-color:var(--accent);">
             <h3><span class="icon">&#x1F957;</span> Your Personalised Nutrition Plan</h3>
             <div id="nutrition-content"></div>
+        </div>
+    </div>
+</section>
+
+<!-- ================================================================
+     HEALTH CHECKUP
+     ================================================================ -->
+<section class="section" id="checkup-section" style="scroll-margin-top:20px;">
+    <h2 class="section-title reveal">Health Checkup Analysis</h2>
+    <p class="section-subtitle reveal">
+        Upload your annual health checkup data &mdash; blood tests, urine tests, and abdomen scan report &mdash; to get a personalised health analysis with condition detection, health scoring, and a tailored diet plan.
+    </p>
+
+    <!-- Checkup form with tabs for each test type -->
+    <div class="reveal" style="margin-bottom:1.5rem;">
+        <div class="result-tabs" role="tablist" id="checkup-tabs">
+            <button class="result-tab active" data-chtab="chk-profile" role="tab" aria-selected="true">Profile</button>
+            <button class="result-tab" data-chtab="chk-blood" role="tab" aria-selected="false">Blood Tests</button>
+            <button class="result-tab" data-chtab="chk-urine" role="tab" aria-selected="false">Urine Tests</button>
+            <button class="result-tab" data-chtab="chk-abdomen" role="tab" aria-selected="false">Abdomen Scan</button>
+        </div>
+    </div>
+
+    <form id="checkup-form" class="profile-form reveal" onsubmit="return false;" aria-label="Health checkup data">
+
+        <!-- Profile tab -->
+        <div id="chk-profile" class="chk-tab-panel" style="display:contents;">
+            <div class="form-group">
+                <label for="chk-age">Age</label>
+                <input type="number" id="chk-age" min="1" max="150" placeholder="e.g. 42" required>
+            </div>
+            <div class="form-group">
+                <label for="chk-sex">Biological Sex</label>
+                <select id="chk-sex" required>
+                    <option value="">Select&hellip;</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="chk-region">Region</label>
+                <select id="chk-region" required>
+                    <option value="">Select&hellip;</option>
+                    <option value="East Asia">East Asia</option>
+                    <option value="South Asia">South Asia</option>
+                    <option value="Southeast Asia">Southeast Asia</option>
+                    <option value="Central Asia">Central Asia</option>
+                    <option value="Western Asia">Western Asia</option>
+                    <option value="Northern Europe">Northern Europe</option>
+                    <option value="Western Europe">Western Europe</option>
+                    <option value="Eastern Europe">Eastern Europe</option>
+                    <option value="Southern Europe">Southern Europe</option>
+                    <option value="North Africa">North Africa</option>
+                    <option value="Sub-Saharan Africa">Sub-Saharan Africa</option>
+                    <option value="North America">North America</option>
+                    <option value="Central America">Central America</option>
+                    <option value="South America">South America</option>
+                    <option value="Oceania">Oceania</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="chk-country">Country</label>
+                <select id="chk-country"><option value="">Select country&hellip;</option></select>
+            </div>
+            <div class="form-group">
+                <label for="chk-state">State / Province</label>
+                <select id="chk-state"><option value="">Select state&hellip;</option></select>
+            </div>
+            <div class="form-group">
+                <label for="chk-calories">Calorie Target</label>
+                <input type="number" id="chk-calories" min="800" max="5000" value="2000">
+            </div>
+            <div class="form-group">
+                <label for="chk-days">Meal Plan Days</label>
+                <select id="chk-days">
+                    <option value="3">3 days</option>
+                    <option value="7" selected>7 days</option>
+                    <option value="14">14 days</option>
+                    <option value="30">30 days</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="chk-conditions">Known Health Conditions</label>
+                <input type="text" id="chk-conditions" placeholder="e.g. diabetes, hypertension" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="chk-variants">Known Genetic Variants</label>
+                <input type="text" id="chk-variants" placeholder="e.g. MTHFR, APOE-e4" autocomplete="off">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label id="chk-diet-restrictions-label">Dietary Restrictions</label>
+                <div class="checkbox-group" role="group" aria-labelledby="chk-diet-restrictions-label">
+                    <label><input type="checkbox" name="chk-diet" value="vegetarian"> Vegetarian</label>
+                    <label><input type="checkbox" name="chk-diet" value="vegan"> Vegan</label>
+                    <label><input type="checkbox" name="chk-diet" value="gluten-free"> Gluten-free</label>
+                    <label><input type="checkbox" name="chk-diet" value="dairy-free"> Dairy-free</label>
+                    <label><input type="checkbox" name="chk-diet" value="halal"> Halal</label>
+                    <label><input type="checkbox" name="chk-diet" value="kosher"> Kosher</label>
+                    <label><input type="checkbox" name="chk-diet" value="low-sodium"> Low-sodium</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Blood tests tab -->
+        <div id="chk-blood" class="chk-tab-panel" style="display:none;">
+            <fieldset style="grid-column:1/-1;border:1px solid var(--border-solid);border-radius:8px;padding:1rem;">
+                <legend style="font-weight:600;color:var(--accent);">CBC (Complete Blood Count)</legend>
+                <div class="profile-form" style="margin:0;">
+                    <div class="form-group"><label for="chk-hemoglobin">Hemoglobin (g/dL)</label><input type="number" step="0.1" id="chk-hemoglobin" placeholder="e.g. 14.5"></div>
+                    <div class="form-group"><label for="chk-rbc_count">RBC Count (M cells/mcL)</label><input type="number" step="0.1" id="chk-rbc_count" placeholder="e.g. 5.0"></div>
+                    <div class="form-group"><label for="chk-wbc_count">WBC Count (K cells/mcL)</label><input type="number" step="0.1" id="chk-wbc_count" placeholder="e.g. 7.5"></div>
+                    <div class="form-group"><label for="chk-platelet_count">Platelets (K/mcL)</label><input type="number" step="1" id="chk-platelet_count" placeholder="e.g. 250"></div>
+                    <div class="form-group"><label for="chk-hematocrit">Hematocrit (%)</label><input type="number" step="0.1" id="chk-hematocrit" placeholder="e.g. 42"></div>
+                    <div class="form-group"><label for="chk-mcv">MCV (fL)</label><input type="number" step="0.1" id="chk-mcv" placeholder="e.g. 88"></div>
+                    <div class="form-group"><label for="chk-mch">MCH (pg)</label><input type="number" step="0.1" id="chk-mch" placeholder="e.g. 30"></div>
+                    <div class="form-group"><label for="chk-mchc">MCHC (g/dL)</label><input type="number" step="0.1" id="chk-mchc" placeholder="e.g. 33"></div>
+                    <div class="form-group"><label for="chk-rdw">RDW (%)</label><input type="number" step="0.1" id="chk-rdw" placeholder="e.g. 13"></div>
+                </div>
+            </fieldset>
+            <fieldset style="grid-column:1/-1;border:1px solid var(--border-solid);border-radius:8px;padding:1rem;">
+                <legend style="font-weight:600;color:var(--accent);">Lipid Panel</legend>
+                <div class="profile-form" style="margin:0;">
+                    <div class="form-group"><label for="chk-total_cholesterol">Total Cholesterol (mg/dL)</label><input type="number" step="1" id="chk-total_cholesterol" placeholder="e.g. 195"></div>
+                    <div class="form-group"><label for="chk-ldl_cholesterol">LDL Cholesterol (mg/dL)</label><input type="number" step="1" id="chk-ldl_cholesterol" placeholder="e.g. 110"></div>
+                    <div class="form-group"><label for="chk-hdl_cholesterol">HDL Cholesterol (mg/dL)</label><input type="number" step="1" id="chk-hdl_cholesterol" placeholder="e.g. 55"></div>
+                    <div class="form-group"><label for="chk-triglycerides">Triglycerides (mg/dL)</label><input type="number" step="1" id="chk-triglycerides" placeholder="e.g. 140"></div>
+                    <div class="form-group"><label for="chk-vldl">VLDL (mg/dL)</label><input type="number" step="1" id="chk-vldl" placeholder="e.g. 28"></div>
+                </div>
+            </fieldset>
+            <fieldset style="grid-column:1/-1;border:1px solid var(--border-solid);border-radius:8px;padding:1rem;">
+                <legend style="font-weight:600;color:var(--accent);">Liver Function (LFT)</legend>
+                <div class="profile-form" style="margin:0;">
+                    <div class="form-group"><label for="chk-sgot_ast">SGOT / AST (U/L)</label><input type="number" step="1" id="chk-sgot_ast" placeholder="e.g. 28"></div>
+                    <div class="form-group"><label for="chk-sgpt_alt">SGPT / ALT (U/L)</label><input type="number" step="1" id="chk-sgpt_alt" placeholder="e.g. 32"></div>
+                    <div class="form-group"><label for="chk-alkaline_phosphatase">ALP (U/L)</label><input type="number" step="1" id="chk-alkaline_phosphatase" placeholder="e.g. 85"></div>
+                    <div class="form-group"><label for="chk-total_bilirubin">Total Bilirubin (mg/dL)</label><input type="number" step="0.1" id="chk-total_bilirubin" placeholder="e.g. 0.8"></div>
+                    <div class="form-group"><label for="chk-direct_bilirubin">Direct Bilirubin (mg/dL)</label><input type="number" step="0.1" id="chk-direct_bilirubin" placeholder="e.g. 0.2"></div>
+                    <div class="form-group"><label for="chk-ggt">GGT (U/L)</label><input type="number" step="1" id="chk-ggt" placeholder="e.g. 25"></div>
+                    <div class="form-group"><label for="chk-total_protein">Total Protein (g/dL)</label><input type="number" step="0.1" id="chk-total_protein" placeholder="e.g. 7.2"></div>
+                    <div class="form-group"><label for="chk-albumin">Albumin (g/dL)</label><input type="number" step="0.1" id="chk-albumin" placeholder="e.g. 4.2"></div>
+                </div>
+            </fieldset>
+            <fieldset style="grid-column:1/-1;border:1px solid var(--border-solid);border-radius:8px;padding:1rem;">
+                <legend style="font-weight:600;color:var(--accent);">Kidney Function (KFT)</legend>
+                <div class="profile-form" style="margin:0;">
+                    <div class="form-group"><label for="chk-blood_urea">Blood Urea (mg/dL)</label><input type="number" step="0.1" id="chk-blood_urea" placeholder="e.g. 15"></div>
+                    <div class="form-group"><label for="chk-serum_creatinine">Serum Creatinine (mg/dL)</label><input type="number" step="0.1" id="chk-serum_creatinine" placeholder="e.g. 0.9"></div>
+                    <div class="form-group"><label for="chk-uric_acid">Uric Acid (mg/dL)</label><input type="number" step="0.1" id="chk-uric_acid" placeholder="e.g. 5.5"></div>
+                    <div class="form-group"><label for="chk-bun">BUN (mg/dL)</label><input type="number" step="0.1" id="chk-bun" placeholder="e.g. 14"></div>
+                    <div class="form-group"><label for="chk-egfr">eGFR (mL/min/1.73m2)</label><input type="number" step="1" id="chk-egfr" placeholder="e.g. 95"></div>
+                </div>
+            </fieldset>
+            <fieldset style="grid-column:1/-1;border:1px solid var(--border-solid);border-radius:8px;padding:1rem;">
+                <legend style="font-weight:600;color:var(--accent);">Diabetes Panel</legend>
+                <div class="profile-form" style="margin:0;">
+                    <div class="form-group"><label for="chk-fasting_glucose">Fasting Glucose (mg/dL)</label><input type="number" step="1" id="chk-fasting_glucose" placeholder="e.g. 95"></div>
+                    <div class="form-group"><label for="chk-hba1c">HbA1c (%)</label><input type="number" step="0.1" id="chk-hba1c" placeholder="e.g. 5.4"></div>
+                    <div class="form-group"><label for="chk-postprandial_glucose">Postprandial Glucose (mg/dL)</label><input type="number" step="1" id="chk-postprandial_glucose" placeholder="e.g. 130"></div>
+                    <div class="form-group"><label for="chk-fasting_insulin">Fasting Insulin (uIU/mL)</label><input type="number" step="0.1" id="chk-fasting_insulin" placeholder="e.g. 8.5"></div>
+                </div>
+            </fieldset>
+            <fieldset style="grid-column:1/-1;border:1px solid var(--border-solid);border-radius:8px;padding:1rem;">
+                <legend style="font-weight:600;color:var(--accent);">Thyroid</legend>
+                <div class="profile-form" style="margin:0;">
+                    <div class="form-group"><label for="chk-tsh">TSH (uIU/mL)</label><input type="number" step="0.1" id="chk-tsh" placeholder="e.g. 2.5"></div>
+                    <div class="form-group"><label for="chk-t3">T3 (ng/dL)</label><input type="number" step="1" id="chk-t3" placeholder="e.g. 120"></div>
+                    <div class="form-group"><label for="chk-t4">T4 (ug/dL)</label><input type="number" step="0.1" id="chk-t4" placeholder="e.g. 8.0"></div>
+                    <div class="form-group"><label for="chk-free_t3">Free T3 (pg/mL)</label><input type="number" step="0.1" id="chk-free_t3" placeholder="e.g. 3.2"></div>
+                    <div class="form-group"><label for="chk-free_t4">Free T4 (ng/dL)</label><input type="number" step="0.01" id="chk-free_t4" placeholder="e.g. 1.2"></div>
+                </div>
+            </fieldset>
+            <fieldset style="grid-column:1/-1;border:1px solid var(--border-solid);border-radius:8px;padding:1rem;">
+                <legend style="font-weight:600;color:var(--accent);">Vitamins &amp; Minerals</legend>
+                <div class="profile-form" style="margin:0;">
+                    <div class="form-group"><label for="chk-vitamin_d">Vitamin D (ng/mL)</label><input type="number" step="0.1" id="chk-vitamin_d" placeholder="e.g. 35"></div>
+                    <div class="form-group"><label for="chk-vitamin_b12">Vitamin B12 (pg/mL)</label><input type="number" step="1" id="chk-vitamin_b12" placeholder="e.g. 450"></div>
+                    <div class="form-group"><label for="chk-folate">Folate (ng/mL)</label><input type="number" step="0.1" id="chk-folate" placeholder="e.g. 8.0"></div>
+                    <div class="form-group"><label for="chk-iron">Iron (ug/dL)</label><input type="number" step="1" id="chk-iron" placeholder="e.g. 90"></div>
+                    <div class="form-group"><label for="chk-ferritin">Ferritin (ng/mL)</label><input type="number" step="1" id="chk-ferritin" placeholder="e.g. 80"></div>
+                    <div class="form-group"><label for="chk-calcium">Calcium (mg/dL)</label><input type="number" step="0.1" id="chk-calcium" placeholder="e.g. 9.5"></div>
+                    <div class="form-group"><label for="chk-magnesium">Magnesium (mg/dL)</label><input type="number" step="0.1" id="chk-magnesium" placeholder="e.g. 2.0"></div>
+                </div>
+            </fieldset>
+            <fieldset style="grid-column:1/-1;border:1px solid var(--border-solid);border-radius:8px;padding:1rem;">
+                <legend style="font-weight:600;color:var(--accent);">Inflammation &amp; Electrolytes</legend>
+                <div class="profile-form" style="margin:0;">
+                    <div class="form-group"><label for="chk-crp">CRP (mg/L)</label><input type="number" step="0.1" id="chk-crp" placeholder="e.g. 1.5"></div>
+                    <div class="form-group"><label for="chk-esr">ESR (mm/hr)</label><input type="number" step="1" id="chk-esr" placeholder="e.g. 10"></div>
+                    <div class="form-group"><label for="chk-homocysteine">Homocysteine (umol/L)</label><input type="number" step="0.1" id="chk-homocysteine" placeholder="e.g. 10"></div>
+                    <div class="form-group"><label for="chk-sodium">Sodium (mEq/L)</label><input type="number" step="1" id="chk-sodium" placeholder="e.g. 140"></div>
+                    <div class="form-group"><label for="chk-potassium">Potassium (mEq/L)</label><input type="number" step="0.1" id="chk-potassium" placeholder="e.g. 4.2"></div>
+                    <div class="form-group"><label for="chk-chloride">Chloride (mEq/L)</label><input type="number" step="1" id="chk-chloride" placeholder="e.g. 102"></div>
+                </div>
+            </fieldset>
+        </div>
+
+        <!-- Urine tests tab -->
+        <div id="chk-urine" class="chk-tab-panel" style="display:none;">
+            <fieldset style="grid-column:1/-1;border:1px solid var(--border-solid);border-radius:8px;padding:1rem;">
+                <legend style="font-weight:600;color:var(--accent);">Urine Routine &amp; Microscopy</legend>
+                <div class="profile-form" style="margin:0;">
+                    <div class="form-group"><label for="chk-u-ph">pH</label><input type="number" step="0.1" id="chk-u-ph" placeholder="e.g. 6.0"></div>
+                    <div class="form-group"><label for="chk-u-specific_gravity">Specific Gravity</label><input type="number" step="0.001" id="chk-u-specific_gravity" placeholder="e.g. 1.020"></div>
+                    <div class="form-group"><label for="chk-u-protein">Protein (mg/dL)</label><input type="number" step="1" id="chk-u-protein" placeholder="0 = negative"></div>
+                    <div class="form-group"><label for="chk-u-glucose">Glucose (mg/dL)</label><input type="number" step="1" id="chk-u-glucose" placeholder="0 = negative"></div>
+                    <div class="form-group"><label for="chk-u-ketones">Ketones (mg/dL)</label><input type="number" step="1" id="chk-u-ketones" placeholder="0 = negative"></div>
+                    <div class="form-group"><label for="chk-u-bilirubin">Bilirubin (mg/dL)</label><input type="number" step="1" id="chk-u-bilirubin" placeholder="0 = negative"></div>
+                    <div class="form-group"><label for="chk-u-blood">Blood (RBC/HPF)</label><input type="number" step="1" id="chk-u-blood" placeholder="0 = negative"></div>
+                    <div class="form-group"><label for="chk-u-rbc_urine">RBC (cells/HPF)</label><input type="number" step="1" id="chk-u-rbc_urine" placeholder="e.g. 1"></div>
+                    <div class="form-group"><label for="chk-u-wbc_urine">WBC (cells/HPF)</label><input type="number" step="1" id="chk-u-wbc_urine" placeholder="e.g. 2"></div>
+                    <div class="form-group"><label for="chk-u-epithelial_cells">Epithelial Cells (cells/HPF)</label><input type="number" step="1" id="chk-u-epithelial_cells" placeholder="e.g. 2"></div>
+                </div>
+            </fieldset>
+        </div>
+
+        <!-- Abdomen scan tab -->
+        <div id="chk-abdomen" class="chk-tab-panel" style="display:none;">
+            <div class="form-group" style="grid-column:1/-1;">
+                <label for="chk-abdomen-notes">Abdomen Scan / Ultrasound Findings</label>
+                <textarea id="chk-abdomen-notes" rows="6" style="width:100%;border:1px solid var(--border-solid);border-radius:8px;padding:.75rem;background:var(--card-bg);color:var(--text);font-family:inherit;resize:vertical;" placeholder="Paste your doctor's abdomen scan report here, e.g.: Liver: Mild hepatomegaly with grade 1 fatty liver. Both kidneys: Normal size, no calculi. Gallbladder: Distended, no stones. Spleen: Normal."></textarea>
+            </div>
+        </div>
+    </form>
+
+    <div class="btn-row reveal">
+        <button class="btn btn-primary" id="checkup-btn" onclick="startHealthCheckup()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
+            Analyse Health Checkup
+        </button>
+    </div>
+
+    <!-- Checkup results -->
+    <div id="checkup-results" style="display:none;margin-top:2rem;" aria-live="polite">
+        <!-- Health Score -->
+        <div class="result-card glass-card" style="border-color:var(--accent);margin-bottom:1.5rem;">
+            <h3>Health Score</h3>
+            <div id="checkup-score" style="text-align:center;padding:1rem 0;"></div>
+            <div id="checkup-score-breakdown"></div>
+        </div>
+
+        <!-- Lab Results -->
+        <div class="result-card glass-card" style="margin-bottom:1.5rem;">
+            <h3>Lab Results</h3>
+            <p id="checkup-lab-summary" style="margin-bottom:1rem;color:var(--text-muted);"></p>
+            <div id="checkup-lab-table" style="overflow-x:auto;"></div>
+        </div>
+
+        <!-- Health Findings -->
+        <div class="result-card glass-card" id="checkup-findings-card" style="margin-bottom:1.5rem;display:none;">
+            <h3>Health Findings</h3>
+            <div id="checkup-findings"></div>
+        </div>
+
+        <!-- Abdomen Findings -->
+        <div class="result-card glass-card" id="checkup-abdomen-card" style="margin-bottom:1.5rem;display:none;">
+            <h3>Abdomen Scan Findings</h3>
+            <div id="checkup-abdomen-findings"></div>
+        </div>
+
+        <!-- Diet Plan -->
+        <div class="result-card glass-card" style="border-color:var(--accent);">
+            <h3>Personalised Diet Plan</h3>
+            <div id="checkup-diet"></div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div style="margin-top:1rem;padding:.75rem 1rem;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.2);border-radius:8px;font-size:.85rem;color:var(--text-muted);">
+            <strong>Disclaimer:</strong> <span id="checkup-disclaimer"></span>
         </div>
     </div>
 </section>
@@ -1446,6 +1719,33 @@
     var nutStateSel = document.getElementById('nut-state');
     nutRegionSel.addEventListener('change', function () { populateCountries(nutRegionSel, nutCountrySel, nutStateSel); });
     nutCountrySel.addEventListener('change', function () { populateStates(nutRegionSel, nutCountrySel, nutStateSel); });
+
+    /* Wire up health checkup form cascading dropdowns */
+    var chkRegionSel = document.getElementById('chk-region');
+    var chkCountrySel = document.getElementById('chk-country');
+    var chkStateSel = document.getElementById('chk-state');
+    chkRegionSel.addEventListener('change', function () { populateCountries(chkRegionSel, chkCountrySel, chkStateSel); });
+    chkCountrySel.addEventListener('change', function () { populateStates(chkRegionSel, chkCountrySel, chkStateSel); });
+
+    /* Health checkup form tab switching */
+    document.querySelectorAll('#checkup-tabs .result-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            var target = this.getAttribute('data-chtab');
+            document.querySelectorAll('#checkup-tabs .result-tab').forEach(function (t) {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
+            this.classList.add('active');
+            this.setAttribute('aria-selected', 'true');
+            document.querySelectorAll('.chk-tab-panel').forEach(function (panel) {
+                if (panel.id === target) {
+                    panel.style.display = 'contents';
+                } else {
+                    panel.style.display = 'none';
+                }
+            });
+        });
+    });
 
     /* ==============================================================
        SIDEBAR LOGIC
@@ -1800,6 +2100,7 @@
         var variants = document.getElementById('variants').value;
         var country = document.getElementById('country').value;
         var state = document.getElementById('state').value;
+        var healthConditions = document.getElementById('health-conditions').value;
 
         var fd = new FormData();
         fd.append('file', selectedFile);
@@ -1810,6 +2111,7 @@
         fd.append('state', state);
         fd.append('dietary_restrictions', diets.join(','));
         fd.append('known_variants', variants);
+        fd.append('health_conditions', healthConditions);
 
         analyzeBtn.disabled = true;
         profileBtn.disabled = true;
@@ -1854,6 +2156,7 @@
         var variants = document.getElementById('variants').value;
         var country = document.getElementById('country').value;
         var state = document.getElementById('state').value;
+        var healthConditions = document.getElementById('health-conditions').value;
 
         analyzeBtn.disabled = true;
         profileBtn.disabled = true;
@@ -1879,6 +2182,7 @@
                     state: state || null,
                     dietary_restrictions: diets,
                     known_variants: variants ? variants.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [],
+                    health_conditions: healthConditions ? healthConditions.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [],
                     include_nutrition: true,
                     include_disease_risk: true
                 })
@@ -2221,6 +2525,233 @@
         btn.disabled = false;
         btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75-1.5.75a3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0 3.354 3.354 0 0 0-3 0 3.354 3.354 0 0 1-3 0L3 16.5m15-3.379a48.474 48.474 0 0 0-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 0 1 6 13.12"/></svg> Generate Nutrition Plan';
     };
+
+    /* ---- Health Checkup ---- */
+    window.startHealthCheckup = async function () {
+        var age = document.getElementById('chk-age').value;
+        var sex = document.getElementById('chk-sex').value;
+        var region = document.getElementById('chk-region').value;
+        if (!age || !sex || !region) { toast('Please fill in age, sex, and region on the Profile tab.', 'error'); return; }
+
+        var diets = Array.from(document.querySelectorAll('input[name="chk-diet"]:checked')).map(function (cb) { return cb.value; });
+        var conditions = document.getElementById('chk-conditions').value;
+        var variants = document.getElementById('chk-variants').value;
+        var calories = parseInt(document.getElementById('chk-calories').value) || 2000;
+        var days = parseInt(document.getElementById('chk-days').value) || 7;
+        var country = document.getElementById('chk-country').value;
+        var state = document.getElementById('chk-state').value;
+        var abdomenNotes = document.getElementById('chk-abdomen-notes').value;
+
+        /* Collect blood test values */
+        var bloodFields = [
+            'hemoglobin','rbc_count','wbc_count','platelet_count','hematocrit','mcv','mch','mchc','rdw',
+            'total_cholesterol','ldl_cholesterol','hdl_cholesterol','triglycerides','vldl',
+            'sgot_ast','sgpt_alt','alkaline_phosphatase','total_bilirubin','direct_bilirubin','ggt','total_protein','albumin',
+            'blood_urea','serum_creatinine','uric_acid','bun','egfr',
+            'fasting_glucose','hba1c','postprandial_glucose','fasting_insulin',
+            'tsh','t3','t4','free_t3','free_t4',
+            'vitamin_d','vitamin_b12','folate','iron','ferritin','calcium','magnesium',
+            'crp','esr','homocysteine','sodium','potassium','chloride'
+        ];
+        var bloodTests = {};
+        bloodFields.forEach(function (f) {
+            var el = document.getElementById('chk-' + f);
+            if (el && el.value) bloodTests[f] = parseFloat(el.value);
+        });
+
+        /* Collect urine test values */
+        var urineFields = ['ph','specific_gravity','protein','glucose','ketones','bilirubin','blood','rbc_urine','wbc_urine','epithelial_cells'];
+        var urineTests = {};
+        urineFields.forEach(function (f) {
+            var el = document.getElementById('chk-u-' + f);
+            if (el && el.value) urineTests[f] = parseFloat(el.value);
+        });
+
+        var btn = document.getElementById('checkup-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Analysing\u2026';
+
+        try {
+            var payload = {
+                age: parseInt(age),
+                sex: sex,
+                region: region,
+                country: country || null,
+                state: state || null,
+                dietary_restrictions: diets,
+                known_variants: variants ? variants.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [],
+                health_conditions: conditions ? conditions.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [],
+                calorie_target: calories,
+                meal_plan_days: days,
+                blood_tests: Object.keys(bloodTests).length ? bloodTests : null,
+                urine_tests: Object.keys(urineTests).length ? urineTests : null,
+                abdomen_scan_notes: abdomenNotes || null
+            };
+            var res = await fetch('/api/health-checkup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                var err = await res.json();
+                throw new Error(err.detail || 'Health checkup analysis failed');
+            }
+            var data = await res.json();
+            renderCheckupResults(data);
+            toast('Health checkup analysis complete!', 'success');
+        } catch (err) {
+            toast(err.message, 'error');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg> Analyse Health Checkup';
+    };
+
+    function renderCheckupResults(data) {
+        var container = document.getElementById('checkup-results');
+        container.style.display = 'block';
+
+        /* Health Score */
+        var scoreEl = document.getElementById('checkup-score');
+        var score = data.overall_health_score || 0;
+        var scoreColor = score >= 80 ? '#22c55e' : (score >= 60 ? '#f59e0b' : '#ef4444');
+        scoreEl.innerHTML = '<div style="font-size:3rem;font-weight:800;color:' + scoreColor + ';">' + score.toFixed(1) + '<span style="font-size:1.2rem;opacity:.6;">/100</span></div>' +
+            '<p style="color:var(--text-muted);margin-top:.5rem;">' + data.total_tested + ' parameters tested, ' + data.abnormal_count + ' abnormal</p>';
+
+        /* Score breakdown */
+        var bdEl = document.getElementById('checkup-score-breakdown');
+        var bdHtml = '<div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem;">';
+        for (var cat in (data.health_score_breakdown || {})) {
+            var cs = data.health_score_breakdown[cat];
+            var cc = cs >= 80 ? '#22c55e' : (cs >= 60 ? '#f59e0b' : '#ef4444');
+            bdHtml += '<span style="padding:.25rem .75rem;border-radius:20px;font-size:.8rem;background:' + cc + '20;color:' + cc + ';border:1px solid ' + cc + '40;">' + cat + ': ' + cs.toFixed(0) + '</span>';
+        }
+        bdHtml += '</div>';
+        bdEl.innerHTML = bdHtml;
+
+        /* Lab Results Table */
+        var labSummary = document.getElementById('checkup-lab-summary');
+        labSummary.textContent = data.total_tested + ' parameters analysed, ' + data.abnormal_count + ' outside reference range.';
+        var labTable = document.getElementById('checkup-lab-table');
+        if (data.lab_results && data.lab_results.length) {
+            var thtml = '<table style="width:100%;border-collapse:collapse;font-size:.85rem;">' +
+                '<thead><tr style="border-bottom:2px solid var(--border-solid);text-align:left;">' +
+                '<th style="padding:.5rem;">Parameter</th><th style="padding:.5rem;">Value</th><th style="padding:.5rem;">Unit</th>' +
+                '<th style="padding:.5rem;">Reference</th><th style="padding:.5rem;">Status</th></tr></thead><tbody>';
+            data.lab_results.forEach(function (r) {
+                var statusColor = r.status === 'normal' ? '#22c55e' : (r.status.indexOf('critical') !== -1 ? '#ef4444' : '#f59e0b');
+                var statusLabel = r.status.replace('_', ' ').toUpperCase();
+                thtml += '<tr style="border-bottom:1px solid var(--border-solid);">' +
+                    '<td style="padding:.4rem .5rem;">' + r.display_name + '</td>' +
+                    '<td style="padding:.4rem .5rem;font-weight:600;color:' + statusColor + ';">' + r.value + '</td>' +
+                    '<td style="padding:.4rem .5rem;color:var(--text-muted);">' + r.unit + '</td>' +
+                    '<td style="padding:.4rem .5rem;color:var(--text-muted);">' + r.reference_low + ' - ' + r.reference_high + '</td>' +
+                    '<td style="padding:.4rem .5rem;"><span style="padding:.15rem .5rem;border-radius:12px;font-size:.75rem;background:' + statusColor + '20;color:' + statusColor + ';">' + statusLabel + '</span></td>' +
+                    '</tr>';
+            });
+            thtml += '</tbody></table>';
+            labTable.innerHTML = thtml;
+        } else {
+            labTable.innerHTML = '<p style="color:var(--text-muted);">No lab values provided.</p>';
+        }
+
+        /* Health Findings */
+        var findingsCard = document.getElementById('checkup-findings-card');
+        var findingsEl = document.getElementById('checkup-findings');
+        if (data.findings && data.findings.length) {
+            findingsCard.style.display = 'block';
+            var fhtml = '';
+            data.findings.forEach(function (f) {
+                var sevColor = f.severity === 'severe' ? '#ef4444' : (f.severity === 'moderate' ? '#f59e0b' : '#3b82f6');
+                fhtml += '<div style="border:1px solid ' + sevColor + '30;border-radius:8px;padding:1rem;margin-bottom:.75rem;background:' + sevColor + '08;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">' +
+                    '<strong style="color:var(--text);">' + f.display_name + '</strong>' +
+                    '<span style="padding:.15rem .5rem;border-radius:12px;font-size:.75rem;background:' + sevColor + '20;color:' + sevColor + ';text-transform:uppercase;">' + f.severity + '</span>' +
+                    '</div>' +
+                    '<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:.5rem;">' + f.dietary_impact + '</p>' +
+                    '<div style="font-size:.8rem;color:var(--text-dim);">';
+                if (f.evidence && f.evidence.length) {
+                    fhtml += '<p><strong>Evidence:</strong> ' + f.evidence.join('; ') + '</p>';
+                }
+                if (f.foods_to_increase && f.foods_to_increase.length) {
+                    fhtml += '<p style="color:#22c55e;">Increase: ' + f.foods_to_increase.join(', ') + '</p>';
+                }
+                if (f.foods_to_avoid && f.foods_to_avoid.length) {
+                    fhtml += '<p style="color:#ef4444;">Avoid: ' + f.foods_to_avoid.join(', ') + '</p>';
+                }
+                fhtml += '</div></div>';
+            });
+            findingsEl.innerHTML = fhtml;
+        } else {
+            findingsCard.style.display = 'none';
+        }
+
+        /* Abdomen Findings */
+        var abdCard = document.getElementById('checkup-abdomen-card');
+        var abdEl = document.getElementById('checkup-abdomen-findings');
+        if (data.abdomen_findings && data.abdomen_findings.length) {
+            abdCard.style.display = 'block';
+            var ahtml = '';
+            data.abdomen_findings.forEach(function (af) {
+                var sevColor = af.severity === 'severe' ? '#ef4444' : (af.severity === 'moderate' ? '#f59e0b' : '#3b82f6');
+                ahtml += '<div style="border:1px solid ' + sevColor + '30;border-radius:8px;padding:1rem;margin-bottom:.75rem;">' +
+                    '<strong>' + af.organ.charAt(0).toUpperCase() + af.organ.slice(1) + ':</strong> ' + af.finding +
+                    ' <span style="padding:.15rem .5rem;border-radius:12px;font-size:.75rem;background:' + sevColor + '20;color:' + sevColor + ';">' + af.severity + '</span>' +
+                    '<p style="font-size:.85rem;color:var(--text-muted);margin-top:.25rem;">' + af.dietary_impact + '</p></div>';
+            });
+            abdEl.innerHTML = ahtml;
+        } else {
+            abdCard.style.display = 'none';
+        }
+
+        /* Diet Plan */
+        var dietEl = document.getElementById('checkup-diet');
+        var diet = data.diet_recommendation;
+        if (diet) {
+            var dhtml = '<p class="diet-summary">' + diet.summary + '</p>';
+            if (data.dietary_modifications && data.dietary_modifications.length) {
+                dhtml += '<div style="margin:1rem 0;padding:.75rem;background:rgba(99,102,241,.06);border-radius:8px;border:1px solid rgba(99,102,241,.15);">' +
+                    '<h4 style="margin-bottom:.5rem;font-size:.9rem;">Dietary Modifications Based on Findings</h4><ul style="font-size:.85rem;margin:0;padding-left:1.2rem;">';
+                data.dietary_modifications.forEach(function (m) { dhtml += '<li>' + m + '</li>'; });
+                dhtml += '</ul></div>';
+            }
+            if (data.calorie_adjustment) {
+                dhtml += '<p style="font-size:.9rem;color:var(--accent);margin:.5rem 0;">Calorie adjustment: ' + data.calorie_adjustment + ' kcal/day (target: ' + (diet.calorie_target || 'N/A') + ' kcal/day)</p>';
+            }
+            dhtml += '<div class="nutrient-tags">';
+            (diet.key_nutrients || []).forEach(function (n) { dhtml += '<span class="nutrient-tag">' + n + '</span>'; });
+            dhtml += '</div>';
+            dhtml += '<div class="food-columns">';
+            dhtml += '<div class="food-col increase"><h4>Increase</h4><ul>';
+            (diet.foods_to_increase || []).forEach(function (f) { dhtml += '<li>' + f + '</li>'; });
+            dhtml += '</ul></div>';
+            dhtml += '<div class="food-col avoid"><h4>Avoid / Reduce</h4><ul>';
+            (diet.foods_to_avoid || []).forEach(function (f) { dhtml += '<li>' + f + '</li>'; });
+            dhtml += '</ul></div></div>';
+            if (diet.meal_plans && diet.meal_plans.length) {
+                dhtml += '<h4 style="margin:1rem 0 .5rem;color:var(--text-dim);">Meal Plans</h4><div class="meal-plans">';
+                diet.meal_plans.forEach(function (mp, i) {
+                    var mid = 'chkmeal-' + i;
+                    dhtml += '<div class="meal-day" id="' + mid + '">' +
+                        '<div class="meal-day-header" onclick="var el=document.getElementById(\'' + mid + '\');el.classList.toggle(\'open\');this.setAttribute(\'aria-expanded\',el.classList.contains(\'open\'))" role="button" tabindex="0" aria-expanded="false">' + mp.day + ' <span aria-hidden="true">&#9660;</span></div>' +
+                        '<div class="meal-day-body">' +
+                        '<p><span class="meal-label">Breakfast:</span> ' + mp.breakfast + '</p>' +
+                        '<p><span class="meal-label">Lunch:</span> ' + mp.lunch + '</p>' +
+                        '<p><span class="meal-label">Dinner:</span> ' + mp.dinner + '</p>' +
+                        (mp.snacks && mp.snacks.length ? '<p><span class="meal-label">Snacks:</span> ' + mp.snacks.join(', ') + '</p>' : '') +
+                        '</div></div>';
+                });
+                dhtml += '</div>';
+            }
+            dietEl.innerHTML = dhtml;
+        } else {
+            dietEl.innerHTML = '<p style="color:var(--text-muted);">Diet plan could not be generated.</p>';
+        }
+
+        /* Disclaimer */
+        document.getElementById('checkup-disclaimer').textContent = data.disclaimer || '';
+
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
     /* ---- Downloads ---- */
     function downloadBlob(content, filename, mime) {

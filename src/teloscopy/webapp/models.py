@@ -8,7 +8,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from enum import StrEnum
+import enum
+import sys
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    class StrEnum(str, enum.Enum):
+        """Backport of StrEnum for Python < 3.11."""
 
 from pydantic import BaseModel, Field
 
@@ -515,4 +522,249 @@ class NutritionResponse(BaseModel):
     disclaimer: str = Field(
         default="For research/educational use only — not clinical advice. Results must NOT be used for medical decisions.",
         description="Legal and scientific disclaimer",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Health Checkup — blood tests, urine tests, abdomen scan
+# ---------------------------------------------------------------------------
+
+
+class BloodTestPanel(BaseModel):
+    """Structured blood test results.
+
+    All values are optional — users submit whatever parameters they have.
+    The backend interprets each provided value against age/sex ranges.
+    """
+
+    # CBC (Complete Blood Count)
+    hemoglobin: float | None = Field(None, description="g/dL")
+    rbc_count: float | None = Field(None, description="million cells/mcL")
+    wbc_count: float | None = Field(None, description="thousand cells/mcL")
+    platelet_count: float | None = Field(None, description="thousand/mcL")
+    hematocrit: float | None = Field(None, description="%")
+    mcv: float | None = Field(None, description="fL")
+    mch: float | None = Field(None, description="pg")
+    mchc: float | None = Field(None, description="g/dL")
+    rdw: float | None = Field(None, description="%")
+    neutrophils: float | None = Field(None, description="%")
+    lymphocytes: float | None = Field(None, description="%")
+    monocytes: float | None = Field(None, description="%")
+    eosinophils: float | None = Field(None, description="%")
+    basophils: float | None = Field(None, description="%")
+
+    # Lipid Panel
+    total_cholesterol: float | None = Field(None, description="mg/dL")
+    ldl_cholesterol: float | None = Field(None, description="mg/dL")
+    hdl_cholesterol: float | None = Field(None, description="mg/dL")
+    triglycerides: float | None = Field(None, description="mg/dL")
+    vldl: float | None = Field(None, description="mg/dL")
+    total_cholesterol_hdl_ratio: float | None = Field(None, description="ratio")
+
+    # Liver Function (LFT)
+    sgot_ast: float | None = Field(None, description="U/L")
+    sgpt_alt: float | None = Field(None, description="U/L")
+    alkaline_phosphatase: float | None = Field(None, description="U/L")
+    total_bilirubin: float | None = Field(None, description="mg/dL")
+    direct_bilirubin: float | None = Field(None, description="mg/dL")
+    ggt: float | None = Field(None, description="U/L")
+    total_protein: float | None = Field(None, description="g/dL")
+    albumin: float | None = Field(None, description="g/dL")
+    globulin: float | None = Field(None, description="g/dL")
+    ag_ratio: float | None = Field(None, description="ratio")
+
+    # Kidney Function (KFT)
+    blood_urea: float | None = Field(None, description="mg/dL")
+    serum_creatinine: float | None = Field(None, description="mg/dL")
+    uric_acid: float | None = Field(None, description="mg/dL")
+    bun: float | None = Field(None, description="mg/dL")
+    egfr: float | None = Field(None, description="mL/min/1.73m²")
+
+    # Diabetes Panel
+    fasting_glucose: float | None = Field(None, description="mg/dL")
+    hba1c: float | None = Field(None, description="%")
+    postprandial_glucose: float | None = Field(None, description="mg/dL")
+    fasting_insulin: float | None = Field(None, description="µIU/mL")
+
+    # Thyroid
+    tsh: float | None = Field(None, description="µIU/mL")
+    t3: float | None = Field(None, description="ng/dL")
+    t4: float | None = Field(None, description="µg/dL")
+    free_t3: float | None = Field(None, description="pg/mL")
+    free_t4: float | None = Field(None, description="ng/dL")
+
+    # Vitamins
+    vitamin_d: float | None = Field(None, description="ng/mL")
+    vitamin_b12: float | None = Field(None, description="pg/mL")
+    folate: float | None = Field(None, description="ng/mL")
+
+    # Minerals / Electrolytes
+    iron: float | None = Field(None, description="µg/dL")
+    ferritin: float | None = Field(None, description="ng/mL")
+    tibc: float | None = Field(None, description="µg/dL")
+    transferrin_saturation: float | None = Field(None, description="%")
+    calcium: float | None = Field(None, description="mg/dL")
+    phosphorus: float | None = Field(None, description="mg/dL")
+    magnesium: float | None = Field(None, description="mg/dL")
+    sodium: float | None = Field(None, description="mEq/L")
+    potassium: float | None = Field(None, description="mEq/L")
+    chloride: float | None = Field(None, description="mEq/L")
+
+    # Inflammation
+    crp: float | None = Field(None, description="mg/L")
+    esr: float | None = Field(None, description="mm/hr")
+    homocysteine: float | None = Field(None, description="µmol/L")
+
+
+class UrineTestPanel(BaseModel):
+    """Structured urine test results."""
+
+    ph: float | None = Field(None, description="pH units")
+    specific_gravity: float | None = Field(None, description="ratio")
+    protein: float | None = Field(None, description="mg/dL (0=negative)")
+    glucose: float | None = Field(None, description="mg/dL (0=negative)")
+    ketones: float | None = Field(None, description="mg/dL (0=negative)")
+    bilirubin: float | None = Field(None, description="mg/dL (0=negative)")
+    urobilinogen: float | None = Field(None, description="mg/dL")
+    blood: float | None = Field(None, description="RBC/HPF (0=negative)")
+    nitrites: float | None = Field(None, description="0=negative, 1=positive")
+    leukocytes: float | None = Field(None, description="WBC/HPF (0=negative)")
+    rbc_urine: float | None = Field(None, description="cells/HPF")
+    wbc_urine: float | None = Field(None, description="cells/HPF")
+    epithelial_cells: float | None = Field(None, description="cells/HPF")
+
+
+class HealthCheckupRequest(BaseModel):
+    """Full health checkup request with lab data, scan, and profile."""
+
+    # User profile
+    age: int = Field(..., ge=1, le=150)
+    sex: Sex = Field(...)
+    region: str = Field(..., min_length=1, max_length=128)
+    country: str | None = Field(None, max_length=128)
+    state: str | None = Field(None, max_length=128)
+    dietary_restrictions: list[str] = Field(default_factory=list)
+    known_variants: list[str] = Field(default_factory=list)
+
+    # Lab data
+    blood_tests: BloodTestPanel | None = None
+    urine_tests: UrineTestPanel | None = None
+    abdomen_scan_notes: str | None = Field(
+        None,
+        max_length=5000,
+        description="Free-text abdomen scan / ultrasound findings from the doctor's report",
+    )
+
+    # Diet preferences
+    calorie_target: int = Field(2000, ge=800, le=5000)
+    meal_plan_days: int = Field(7, ge=1, le=30)
+    health_conditions: list[str] = Field(
+        default_factory=list,
+        description="User-reported health conditions (in addition to auto-detected from labs)",
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "age": 42,
+                    "sex": "male",
+                    "region": "South Asia",
+                    "country": "India",
+                    "state": "Karnataka",
+                    "blood_tests": {
+                        "hemoglobin": 13.2,
+                        "fasting_glucose": 118,
+                        "hba1c": 6.1,
+                        "total_cholesterol": 232,
+                        "ldl_cholesterol": 155,
+                        "hdl_cholesterol": 38,
+                        "triglycerides": 198,
+                        "vitamin_d": 14.5,
+                        "vitamin_b12": 180,
+                        "sgpt_alt": 52,
+                        "sgot_ast": 48,
+                        "crp": 4.2,
+                        "tsh": 5.8,
+                        "uric_acid": 8.1,
+                    },
+                    "urine_tests": {
+                        "protein": 15,
+                        "glucose": 30,
+                    },
+                    "abdomen_scan_notes": "Mild hepatomegaly with grade 1 fatty liver. Both kidneys normal.",
+                    "calorie_target": 1800,
+                    "meal_plan_days": 7,
+                    "dietary_restrictions": ["vegetarian"],
+                }
+            ]
+        }
+    }
+
+
+class LabResultResponse(BaseModel):
+    """Single lab result in the response."""
+
+    parameter: str
+    display_name: str
+    value: float
+    unit: str
+    status: str  # "low", "normal", "high", "critical_low", "critical_high"
+    reference_low: float
+    reference_high: float
+    category: str
+
+
+class HealthFindingResponse(BaseModel):
+    """A detected health finding in the response."""
+
+    condition: str
+    display_name: str
+    severity: str
+    evidence: list[str]
+    dietary_impact: str
+    nutrients_to_increase: list[str] = Field(default_factory=list)
+    nutrients_to_decrease: list[str] = Field(default_factory=list)
+    foods_to_increase: list[str] = Field(default_factory=list)
+    foods_to_avoid: list[str] = Field(default_factory=list)
+
+
+class AbdomenFindingResponse(BaseModel):
+    """Abdomen scan finding in the response."""
+
+    organ: str
+    finding: str
+    severity: str
+    dietary_impact: str
+    foods_to_avoid: list[str] = Field(default_factory=list)
+    foods_to_increase: list[str] = Field(default_factory=list)
+
+
+class HealthCheckupResponse(BaseModel):
+    """Complete health checkup analysis with personalised diet plan."""
+
+    # Lab interpretation
+    lab_results: list[LabResultResponse] = Field(default_factory=list)
+    abnormal_count: int = 0
+    total_tested: int = 0
+
+    # Health findings
+    findings: list[HealthFindingResponse] = Field(default_factory=list)
+    abdomen_findings: list[AbdomenFindingResponse] = Field(default_factory=list)
+    detected_conditions: list[str] = Field(default_factory=list)
+
+    # Health score
+    overall_health_score: float = Field(0.0, ge=0.0, le=100.0)
+    health_score_breakdown: dict[str, float] = Field(default_factory=dict)
+
+    # Diet plan (reuse existing DietRecommendation)
+    diet_recommendation: DietRecommendation | None = None
+    dietary_modifications: list[str] = Field(default_factory=list)
+    calorie_adjustment: int = 0
+
+    # Metadata
+    analyzed_at: datetime = Field(default_factory=datetime.utcnow)
+    disclaimer: str = Field(
+        default="For research/educational use only — not clinical or diagnostic advice. "
+        "Lab interpretation is approximate. Always consult your physician for medical decisions.",
     )
