@@ -547,3 +547,30 @@ class TestAndroidDownload:
         assert data["available"] is True
         assert data["size_bytes"] is not None
         assert data["size_bytes"] > 0
+
+
+# ---------------------------------------------------------------------------
+# Legal document pages
+# ---------------------------------------------------------------------------
+
+
+class TestLegalPages:
+    """Tests for Privacy Policy and Terms of Service pages."""
+
+    def test_privacy_policy_returns_html(self, client):
+        """GET /docs/privacy-policy should return styled HTML with content."""
+        resp = client.get("/docs/privacy-policy")
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers.get("content-type", "")
+        assert "<h1>" in resp.text
+        assert "Privacy Policy" in resp.text
+        assert len(resp.text) > 1000
+
+    def test_terms_of_service_returns_html(self, client):
+        """GET /docs/terms-of-service should return styled HTML with content."""
+        resp = client.get("/docs/terms-of-service")
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers.get("content-type", "")
+        assert "<h1>" in resp.text
+        assert "Terms of Service" in resp.text
+        assert len(resp.text) > 1000

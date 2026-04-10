@@ -1652,7 +1652,10 @@ async def dashboard_page(request: Request) -> HTMLResponse:
 #  Legal document routes (Privacy Policy & Terms of Service)             #
 # ===================================================================== #
 
-_DOCS_DIR: Path = _BASE_DIR.parent.parent.parent / "docs"
+# Legal docs live inside the package at teloscopy/data/legal/ so they
+# survive pip-install.  Fall back to the project-root docs/ for dev.
+_LEGAL_DIR: Path = Path(__file__).resolve().parent.parent / "data" / "legal"
+_DOCS_DIR: Path = _LEGAL_DIR if _LEGAL_DIR.exists() else _BASE_DIR.parent.parent.parent / "docs"
 
 
 @app.get("/docs/privacy-policy", response_class=HTMLResponse)
