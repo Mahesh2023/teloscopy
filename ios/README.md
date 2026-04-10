@@ -70,6 +70,10 @@ The app connects to the Teloscopy FastAPI backend. See the main project README f
 | POST | /api/nutrition | Nutrition plan |
 | POST | /api/disease-risk | Disease risk assessment |
 | POST | /api/health-checkup | Health checkup |
+| POST | /api/health-checkup/upload | Upload & analyze health report |
+| POST | /api/health-checkup/parse-report | Parse report, return extracted values |
+| GET | /api/legal/notice | Get legal/consent notice |
+| POST | /api/legal/consent | Record user consent |
 
 ## Design
 

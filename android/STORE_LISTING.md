@@ -26,6 +26,9 @@ Based on your genetic profile, age, and ancestry, Teloscopy generates a tailored
 PROFILE-ONLY MODE
 Don't want to upload a photo? Use profile-only analysis with just your age, sex, region, and known variants for disease risk and nutrition recommendations.
 
+HEALTH CHECKUP ANALYSIS
+Upload your annual health checkup reports (blood tests, urine tests, abdomen scans) in PDF, image, or text format. Teloscopy automatically extracts and analyses 62 blood parameters and 13 urine parameters, runs 24 condition detectors, computes a health score (0-100), and generates tailored dietary recommendations based on your results.
+
 PRIVACY FIRST
 Your photos are never stored -- they are processed in memory and discarded immediately. No tracking, no ads, no data selling. Your health data stays yours.
 
@@ -39,7 +42,7 @@ Health & Fitness
 Everyone
 
 ## Tags
-genomics, health, biological age, disease risk, nutrition, facial analysis, telomere, genetics, personalised health, skin analysis
+genomics, health, biological age, disease risk, nutrition, facial analysis, telomere, genetics, personalised health, skin analysis, health checkup
 
 ## Screenshots Needed
 1. Home screen with feature cards

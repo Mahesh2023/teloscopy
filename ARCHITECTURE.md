@@ -620,7 +620,7 @@ Returns: `image_type` (FISH_MICROSCOPY / FACE_PHOTO / UNKNOWN_PHOTO), `confidenc
 ┌──────────────────────────────────────────────────────────────┐
 │                          BROWSER                              │
 │  ┌────────────────────────────────────────────────────────┐  │
-│  │  index.html (3,851 lines)                              │  │
+│  │  index.html (5,394 lines)                              │  │
 │  │  ├── Hero landing section                              │  │
 │  │  ├── Upload & Profile form (image + 8 profile fields)  │  │
 │  │  ├── Nutrition Planner (standalone form)                │  │
@@ -637,7 +637,7 @@ Returns: `image_type` (FISH_MICROSCOPY / FACE_PHOTO / UNKNOWN_PHOTO), `confidenc
 │  │  ├── Jobs table + Activity log                         │  │
 │  │  └── Improvement suggestions                           │  │
 │  └────────────────────┬───────────────────────────────────┘  │
-│                       │ HTTP/REST (20 endpoints)              │
+│                       │ HTTP/REST (25 API endpoints)          │
 └───────────────────────┼──────────────────────────────────────┘
                         │
 ┌───────────────────────┼──────────────────────────────────────┐
@@ -647,7 +647,10 @@ Returns: `image_type` (FISH_MICROSCOPY / FACE_PHOTO / UNKNOWN_PHOTO), `confidenc
 │  │  ├── Rate Limiter (in-memory sliding window per IP) │     │
 │  │  ├── Security Headers middleware (CSP, XSS, etc.)   │     │
 │  │  ├── Request ID middleware (UUID + timing)           │     │
-│  │  ├── CORS (configurable, * in dev)                  │     │
+│  │  ├── CSRF middleware (state-changing POST routes)    │     │
+│  │  ├── CORS (configurable, * in dev, X-Consent-Token) │     │
+│  │  ├── Consent gate (HMAC tokens, 24h TTL)            │     │
+│  │  ├── RequestValidationError → {"error":{...}} fmt   │     │
 │  │  └── Upload limits: 50 MiB (images), 20 MiB (reports)   │
 │  ├─────────────────────────────────────────────────────┤     │
 │  │  Pipeline Singletons (initialized at startup)       │     │
@@ -660,7 +663,7 @@ Returns: `image_type` (FISH_MICROSCOPY / FACE_PHOTO / UNKNOWN_PHOTO), `confidenc
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### 6.2 Pydantic Models (45 models in `models.py`, 914 lines)
+### 6.2 Pydantic Models (45 models in `models.py`, 1,187 lines)
 
 #### Enumerations
 | Enum | Values |
@@ -673,7 +676,7 @@ Returns: `image_type` (FISH_MICROSCOPY / FACE_PHOTO / UNKNOWN_PHOTO), `confidenc
 #### Key Request Models
 | Model | Key Fields |
 |-------|------------|
-| `UserProfile` | age (1-150), sex, region, country?, state?, dietary_restrictions[], known_variants[] |
+| `UserProfile` | age (1-150), sex, region, country?, state?, dietary_restrictions[], known_variants[], health_conditions[] |
 | `ProfileAnalysisRequest` | UserProfile fields + include_nutrition, include_disease_risk toggles |
 | `DiseaseRiskRequest` | known_variants[], telomere_length?, age, sex, region |
 | `DietPlanRequest` | profile + disease_risks[], meal_plan_days (1-30), calorie_target (800-5000) |
@@ -1350,7 +1353,7 @@ make install-dev && make test && make run
 
 ### 16.3 Render.com Deployment
 
-Configured via `render.yaml` (free tier, web service).
+Configured via `render.yaml` (free tier, web service). Environment variables include `TELOSCOPY_CONSENT_SECRET` for HMAC consent token signing.
 
 ### 16.4 CI/CD Pipeline (GitHub Actions)
 
@@ -1382,9 +1385,21 @@ cd android && ./gradlew assembleDebug
 ### Web Application Security
 - **Security headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, CSP, Referrer-Policy
 - **Rate limiting**: In-memory sliding-window per client IP (configurable)
-- **CORS**: Configurable via `TELOSCOPY_CORS_ORIGINS` (default: `*` in dev, restricted in prod)
+- **CORS**: Configurable via `TELOSCOPY_CORS_ORIGINS` (default: `*` in dev, restricted in prod); exposes `X-Consent-Token` header
+- **CSRF protection**: Middleware validates state-changing POST requests
 - **Upload limits**: 50 MiB for images, 20 MiB for reports
 - **Input validation**: Pydantic models with strict constraints on all endpoints
+- **Error handling**: `RequestValidationError` handler returns consistent `{"error": {"code": 422, "message": "..."}}` format across all endpoints
+
+### Consent System
+- **HMAC-signed tokens**: Server issues consent tokens via `POST /api/legal/consent`, signed with `TELOSCOPY_CONSENT_SECRET` (env var, falls back to hostname-derived default)
+- **Token TTL**: 24 hours server-side; client displays consent gate every 30 days
+- **Auto-refresh**: Frontend `refreshConsentToken()` silently re-obtains a server token using saved localStorage consent data when the current token expires
+- **403 handling**: `handleConsent403()` intercepts 403 responses, attempts silent token refresh, falls back to full consent modal only if refresh fails
+- **`consentFetch()` wrapper**: All 8 API call sites use this utility that wraps `fetch` with automatic 403→refresh→retry logic
+- **Consent-pending CSS gate**: `body.consent-pending` applies `pointer-events: none`, blur, and dim to block UI until consent is obtained
+- **`require_consent()` dependency**: FastAPI dependency that validates the `X-Consent-Token` header against required purposes (e.g., `"health_report"`, `"facial_image"`)
+- **Legal endpoints**: `/api/legal/notice`, `/api/legal/consent`, `/api/legal/consent/withdraw`, `/api/legal/data-deletion`, `/api/legal/grievance`, `/api/legal/privacy-policy`
 
 ### Medical Disclaimer
 
@@ -1505,9 +1520,9 @@ cd android && ./gradlew assembleDebug
 - [x] iOS companion app (SwiftUI, 5 screens) — `ios/Teloscopy/`
 - [x] Multi-institution clinical trial integration — `clinical/trials.py`, `clinical/endpoints.py`
 - [x] Android CI/CD (GitHub Actions) — `.github/workflows/android-ci.yml`
-- [x] Mobile detection + APK download banner — `webapp/templates/index.html`, `webapp/app.py`
+- [x] Mobile download redirects to GitHub Releases — `webapp/app.py` (`/api/download/android`, `/api/download/ios`)
 
 ---
 
 *Architecture document maintained by the Teloscopy development team.*
-*Last updated: April 2026 — v2.0.0*
+*Last updated: April 2026 — v2.1.0 (consent system, health_conditions, error handling, updated stats)*
