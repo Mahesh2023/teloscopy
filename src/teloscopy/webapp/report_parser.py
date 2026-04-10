@@ -17,6 +17,26 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
+def check_extraction_support() -> dict[str, bool]:
+    """Check which extraction libraries are available."""
+    support = {"pdf": False, "ocr": False}
+    for mod in ("fitz", "pdfplumber", "pypdf", "PyPDF2"):
+        try:
+            __import__(mod)
+            support["pdf"] = True
+            break
+        except ImportError:
+            continue
+    try:
+        __import__("pytesseract")
+        __import__("PIL")
+        support["ocr"] = True
+    except ImportError:
+        pass
+    return support
+
+
 # ---------------------------------------------------------------------------
 # Load parameter aliases from JSON
 # ---------------------------------------------------------------------------
@@ -200,11 +220,11 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     except Exception as exc:
         logger.warning("pypdf extraction failed: %s", exc)
 
-    logger.warning(
-        "No PDF library could extract text. "
-        "Install PyMuPDF (`pip install PyMuPDF`), pdfplumber, or pypdf."
+    raise RuntimeError(
+        "No PDF parsing library is installed on the server. "
+        "The administrator needs to install PyMuPDF, pdfplumber, or pypdf. "
+        "As a workaround, you can copy-paste your lab report text into the manual entry form."
     )
-    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -239,9 +259,10 @@ def extract_text_from_image(file_bytes: bytes) -> str:
             logger.info("Image text extracted via pytesseract (%d chars)", len(text))
             return text
     except ImportError:
-        logger.warning(
-            "pytesseract or Pillow not available for OCR. "
-            "Install with: pip install pytesseract Pillow"
+        raise RuntimeError(
+            "OCR libraries (pytesseract, Pillow) are not installed on the server. "
+            "Image-based lab reports cannot be processed. "
+            "As a workaround, you can manually type your lab values into the form."
         )
     except Exception as exc:
         logger.warning("OCR extraction failed: %s", exc)

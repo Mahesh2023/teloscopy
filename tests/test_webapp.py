@@ -365,3 +365,185 @@ class TestResultsEndpoint:
         job_id = upload_resp.json()["job_id"]
         resp = client.get(f"/api/results/{job_id}", headers=_ch(token))
         assert resp.status_code == 409
+
+
+# ---------------------------------------------------------------------------
+# Health checkup report upload endpoints
+# ---------------------------------------------------------------------------
+
+
+def _make_pdf_bytes():
+    """Create a minimal test PDF with lab values using PyMuPDF."""
+    try:
+        import fitz
+    except ImportError:
+        return None
+    doc = fitz.open()
+    page = doc.new_page()
+    text = (
+        "Lab Report\n"
+        "Hemoglobin: 14.5 g/dL\n"
+        "Fasting Glucose: 95 mg/dL\n"
+        "Total Cholesterol: 210 mg/dL\n"
+        "Serum Creatinine: 0.9 mg/dL\n"
+        "TSH: 2.5 mIU/L\n"
+    )
+    page.insert_text((72, 72), text, fontsize=11)
+    pdf_bytes = doc.tobytes()
+    doc.close()
+    return pdf_bytes
+
+
+class TestHealthCheckupParseReport:
+    """Tests for POST /api/health-checkup/parse-report."""
+
+    def test_parse_pdf_report(self, client):
+        """Uploading a PDF lab report should extract values."""
+        pdf_bytes = _make_pdf_bytes()
+        if pdf_bytes is None:
+            pytest.skip("PyMuPDF not available")
+        token = _obtain_consent(client)
+        resp = client.post(
+            "/api/health-checkup/parse-report",
+            files={"file": ("report.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
+            headers=_ch(token),
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["file_type"] == "pdf"
+        assert data["text_length"] > 0
+        blood = data["extracted_blood_tests"]
+        assert "hemoglobin" in blood
+        assert blood["hemoglobin"] == 14.5
+
+    def test_parse_text_report(self, client):
+        """Uploading a plain text lab report should extract values."""
+        text_content = (
+            "Lab Report\n"
+            "Hemoglobin: 13.2 g/dL\n"
+            "WBC Count: 7500 cells/mcL\n"
+            "Platelet Count: 230000 /mcL\n"
+            "HDL Cholesterol: 60 mg/dL\n"
+        ).encode("utf-8")
+        token = _obtain_consent(client)
+        resp = client.post(
+            "/api/health-checkup/parse-report",
+            files={"file": ("report.txt", io.BytesIO(text_content), "text/plain")},
+            headers=_ch(token),
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["file_type"] == "text"
+        blood = data["extracted_blood_tests"]
+        assert "hemoglobin" in blood
+        assert blood["hemoglobin"] == 13.2
+
+    def test_parse_empty_file_returns_zero_confidence(self, client):
+        """An empty file should return 0% confidence."""
+        token = _obtain_consent(client)
+        resp = client.post(
+            "/api/health-checkup/parse-report",
+            files={"file": ("empty.txt", io.BytesIO(b""), "text/plain")},
+            headers=_ch(token),
+        )
+        assert resp.status_code == 400  # empty file check
+
+    def test_parse_unsupported_extension(self, client):
+        """An unsupported file type should return 400."""
+        token = _obtain_consent(client)
+        resp = client.post(
+            "/api/health-checkup/parse-report",
+            files={"file": ("report.docx", io.BytesIO(b"fake"), "application/vnd.openxmlformats")},
+            headers=_ch(token),
+        )
+        assert resp.status_code == 400
+
+    def test_parse_requires_consent(self, client):
+        """Parse endpoint should require consent token."""
+        resp = client.post(
+            "/api/health-checkup/parse-report",
+            files={"file": ("report.txt", io.BytesIO(b"test"), "text/plain")},
+        )
+        assert resp.status_code == 403
+
+
+class TestHealthCheckupUpload:
+    """Tests for POST /api/health-checkup/upload."""
+
+    def test_upload_pdf_and_analyse(self, client):
+        """Uploading a PDF with profile data should return full analysis."""
+        pdf_bytes = _make_pdf_bytes()
+        if pdf_bytes is None:
+            pytest.skip("PyMuPDF not available")
+        token = _obtain_consent(client)
+        resp = client.post(
+            "/api/health-checkup/upload",
+            files={"file": ("report.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
+            data={
+                "age": "45",
+                "sex": "male",
+                "region": "South Asia",
+                "dietary_restrictions": "",
+                "known_variants": "",
+                "calorie_target": "2000",
+                "meal_plan_days": "7",
+            },
+            headers=_ch(token),
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "lab_results" in data
+        assert "overall_health_score" in data
+
+    def test_upload_text_report_and_analyse(self, client):
+        """Text file upload with profile should work."""
+        text_content = (
+            "Hemoglobin: 12.0 g/dL\n"
+            "Fasting Glucose: 110 mg/dL\n"
+            "Total Cholesterol: 250 mg/dL\n"
+        ).encode("utf-8")
+        token = _obtain_consent(client)
+        resp = client.post(
+            "/api/health-checkup/upload",
+            files={"file": ("report.txt", io.BytesIO(text_content), "text/plain")},
+            data={
+                "age": "50",
+                "sex": "female",
+                "region": "Global",
+            },
+            headers=_ch(token),
+        )
+        assert resp.status_code == 200
+
+    def test_upload_requires_consent(self, client):
+        """Upload endpoint should require consent token."""
+        resp = client.post(
+            "/api/health-checkup/upload",
+            files={"file": ("report.txt", io.BytesIO(b"test"), "text/plain")},
+            data={"age": "30", "sex": "male", "region": "Global"},
+        )
+        assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Android APK download
+# ---------------------------------------------------------------------------
+
+
+class TestAndroidDownload:
+    """Tests for Android APK download endpoint."""
+
+    def test_apk_download_returns_file(self, client):
+        """GET /api/download/android should serve a file."""
+        resp = client.get("/api/download/android")
+        assert resp.status_code == 200
+        assert "application/vnd.android.package-archive" in resp.headers.get("content-type", "")
+
+    def test_apk_status_shows_size(self, client):
+        """GET /api/download/android/status should show file info."""
+        resp = client.get("/api/download/android/status")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["available"] is True
+        assert data["size_bytes"] is not None
+        assert data["size_bytes"] > 0

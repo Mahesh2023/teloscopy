@@ -1768,28 +1768,57 @@ _IPA_FILENAME = "teloscopy.ipa"
 
 
 def _ensure_placeholder_apk() -> None:
-    """Generate a properly structured, installable APK if one does not exist or is a stale placeholder."""
+    """Copy the Gradle-built APK into the static dir, or skip if already present.
+
+    A real APK from the Android build is typically 5-25 MB.  We only
+    regenerate when the file is missing or clearly a stale tiny placeholder.
+    """
     apk_path = _DOWNLOAD_DIR / _APK_FILENAME
-    # Regenerate if missing or suspiciously small (old placeholder was ~1.6 KB)
-    if apk_path.exists() and apk_path.stat().st_size > 5000:
+    _MIN_REAL_APK_SIZE = 1_000_000  # 1 MB — anything smaller is a placeholder
+
+    # If a real APK already exists, nothing to do
+    if apk_path.exists() and apk_path.stat().st_size >= _MIN_REAL_APK_SIZE:
         return
+
     _DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Try to find the Gradle-built APK from the Android project
+    from pathlib import Path as _P
+    project_root = _P(__file__).resolve().parent.parent.parent.parent
+    gradle_apk_candidates = [
+        project_root / "android" / "app" / "build" / "outputs" / "apk" / "release" / "app-release.apk",
+        project_root / "android" / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk",
+    ]
+    for candidate in gradle_apk_candidates:
+        if candidate.exists() and candidate.stat().st_size >= _MIN_REAL_APK_SIZE:
+            import shutil
+            shutil.copy2(str(candidate), str(apk_path))
+            logger.info(
+                "Copied Gradle-built APK to %s (%d MB)",
+                apk_path,
+                apk_path.stat().st_size // (1024 * 1024),
+            )
+            return
+
+    # No real APK found — generate a structural placeholder so the download
+    # endpoint doesn't 404, but log a prominent warning.
+    logger.warning(
+        "No Gradle-built APK found.  Run `./gradlew assembleDebug` in the "
+        "android/ directory to build a real APK.  Generating a minimal placeholder."
+    )
     try:
-        # Use the full APK builder which creates proper AXML, DEX, and signs the APK
-        from pathlib import Path as _P
-        build_script = _P(__file__).resolve().parent.parent.parent.parent / "scripts" / "build_apk.py"
+        build_script = project_root / "scripts" / "build_apk.py"
         if build_script.exists():
             import importlib.util
             spec = importlib.util.spec_from_file_location("build_apk", str(build_script))
             mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
             spec.loader.exec_module(mod)  # type: ignore[union-attr]
             mod.build_apk(str(apk_path))
-            logger.info("Built installable APK at %s (%d KB)", apk_path, apk_path.stat().st_size // 1024)
+            logger.info("Built placeholder APK at %s (%d KB)", apk_path, apk_path.stat().st_size // 1024)
         else:
-            # Fallback: generate a minimal signed APK inline
             _build_fallback_apk(apk_path)
     except Exception:
-        logger.warning("Could not generate APK", exc_info=True)
+        logger.warning("Could not generate placeholder APK", exc_info=True)
 
 
 def _build_fallback_apk(apk_path: Path) -> None:
@@ -2631,14 +2660,29 @@ async def parse_report_preview(file: UploadFile = File(...)) -> ReportParsePrevi
 
     # Detect file type and extract text
     file_type = detect_file_type(contents, filename)
-    text = await asyncio.to_thread(extract_text, contents, filename)
-
-    if not text.strip():
+    try:
+        text = await asyncio.to_thread(extract_text, contents, filename)
+    except RuntimeError as exc:
         return ReportParsePreview(
             confidence=0.0,
             file_type=file_type,
             text_length=0,
-            unrecognized_lines=["Could not extract any text from the uploaded file."],
+            unrecognized_lines=[str(exc)],
+        )
+
+    if not text.strip():
+        hints = []
+        if file_type == "pdf":
+            hints.append("The PDF may be a scanned image without a text layer. Try uploading as an image instead, or use the manual entry form.")
+        elif file_type == "image":
+            hints.append("Could not extract text from the image. The image may be too low quality or in an unsupported format. Try the manual entry form.")
+        else:
+            hints.append("Could not extract any text from the uploaded file.")
+        return ReportParsePreview(
+            confidence=0.0,
+            file_type=file_type,
+            text_length=0,
+            unrecognized_lines=hints,
         )
 
     # Parse lab values from extracted text
@@ -2738,14 +2782,25 @@ async def health_checkup_upload(
         )
 
     # Extract text and parse lab values
-    text = await asyncio.to_thread(extract_text, contents, filename)
-    if not text.strip():
+    file_type = detect_file_type(contents, filename)
+    try:
+        text = await asyncio.to_thread(extract_text, contents, filename)
+    except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                "Could not extract text from the uploaded file. "
-                "Please try a different format or use manual entry."
-            ),
+            detail=str(exc),
+        )
+
+    if not text.strip():
+        if file_type == "pdf":
+            detail = "Could not extract text from the PDF. It may be a scanned image without a text layer. Try using the 'Extract Lab Values' button first, or enter values manually."
+        elif file_type == "image":
+            detail = "Could not extract text from the image. It may be too low quality. Try entering values manually."
+        else:
+            detail = "Could not extract text from the uploaded file. Try entering values manually."
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=detail,
         )
 
     blood_dict, urine_dict, abdomen_text = await asyncio.to_thread(
