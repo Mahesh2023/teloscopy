@@ -51,9 +51,12 @@
 - **Interactive Data Visualization** — Chart.js charts for telomere lengths (bar), disease risks (horizontal bar with color coding), and macronutrient breakdowns (doughnut)
 - **30-Day Meal Plans** — Expanded from 3-day to 30-day plans with 551 unique foods and smart variety algorithm ensuring no consecutive repeated dishes
 - **Facial Analysis** — Optional face image analysis for age estimation and health indicators
+- **Health Checkup Analysis** — Upload blood test, urine test, and abdomen scan reports (PDF/image/text) for automated parsing of 62 blood + 13 urine parameters, 24 condition detectors, health scoring (0–100), and tailored dietary recommendations
+- **Report Parser** — Extracts lab values from uploaded reports using 403 aliases across 75 parameters, 3 regex strategies, section detection, and confidence scoring with PDF/image/text support
 - **Profile-Only Analysis** — Disease risk and nutrition recommendations without requiring a microscopy image
 - **Standalone Nutrition Planner** — Independent meal planning with calorie targets, dietary restrictions, and regional food preferences
-- **Security Hardened** — Rate limiting, Content Security Policy, security headers, CORS configuration
+- **Consent & Legal Compliance** — HMAC-signed consent tokens (24h TTL), layered consent architecture per DPDP Act 2023, auto-refresh on expiry, privacy policy and terms of service served in-app
+- **Security Hardened** — Rate limiting, Content Security Policy, security headers, CORS configuration, CSRF protection, consistent error response format
 - **API Documentation** — Full OpenAPI/Swagger UI at `/docs` and ReDoc at `/redoc` with request/response examples
 - **Agent Dashboard** — Real-time system metrics, agent status monitoring, analysis history, and activity logs
 - **Accessible UI** — ARIA labels, keyboard navigation, skip-to-content link, responsive mobile layout
@@ -223,7 +226,7 @@ src/teloscopy/
 | CLI | Click + Rich |
 | Container | Docker + Docker Compose |
 | CI/CD | GitHub Actions (lint, test, Docker build) |
-| Security | Rate limiting, CSP headers, CORS |
+| Security | Rate limiting, CSP headers, CORS, HMAC consent tokens |
 
 ## Disease Risk Prediction
 
@@ -277,7 +280,7 @@ Interactive API documentation is available at `/docs` (Swagger UI) and `/redoc` 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/upload` | Upload microscopy image |
-| `POST` | `/api/analyze` | Full analysis pipeline |
+| `POST` | `/api/analyze` | Full analysis pipeline (supports `health_conditions`) |
 | `GET` | `/api/status/{id}` | Check job progress |
 | `GET` | `/api/results/{id}` | Get full results |
 | `POST` | `/api/disease-risk` | Disease risk assessment |
@@ -285,9 +288,20 @@ Interactive API documentation is available at `/docs` (Swagger UI) and `/redoc` 
 | `POST` | `/api/validate-image` | Validate image before upload |
 | `POST` | `/api/profile-analysis` | Profile-only analysis (no image) |
 | `POST` | `/api/nutrition` | Standalone nutrition planner |
-| `GET` | `/health` | Health check |
+| `POST` | `/api/health-checkup` | Health checkup analysis (blood/urine/abdomen) |
+| `POST` | `/api/health-checkup/upload` | Upload & analyze a health report file |
+| `POST` | `/api/health-checkup/parse-report` | Parse report and return extracted values |
+| `GET` | `/api/legal/notice` | Get legal/consent notice |
+| `POST` | `/api/legal/consent` | Record user consent |
+| `POST` | `/api/legal/consent/withdraw` | Withdraw consent |
+| `GET` | `/api/legal/privacy-policy` | Privacy policy summary (JSON) |
+| `POST` | `/api/legal/data-deletion` | Request data deletion |
+| `POST` | `/api/legal/grievance` | Submit a grievance |
+| `GET` | `/api/health` | Health check |
 | `GET` | `/readiness` | Readiness check |
 | `GET` | `/api/agents/status` | Agent system status |
+| `GET` | `/api/download/android` | Redirect to Android GitHub release |
+| `GET` | `/api/download/ios` | Redirect to iOS GitHub release |
 
 ## Deployment
 
@@ -300,6 +314,7 @@ Or manually:
 2. Sign up at [render.com](https://render.com)
 3. New Web Service → connect your GitHub → select teloscopy
 4. Settings: Python 3, Build: `pip install -e ".[all,webapp]"`, Start: `uvicorn teloscopy.webapp.app:app --host 0.0.0.0 --port $PORT`
+5. Add environment variable `TELOSCOPY_CONSENT_SECRET` with a secure random string
 
 ### Docker (self-hosted)
 
@@ -341,16 +356,20 @@ Quantitative FISH (qFISH) measures telomere length by:
 
 | Metric | Value |
 |--------|-------|
-| Total Python files | 56 |
-| Total lines of code | 48,000+ |
+| Total Python files | 75 |
+| Total lines of code | 49,500+ |
 | Disease variants in DB | 519 |
 | Geographic food regions | 30 |
 | Gene-nutrient mappings | 120+ |
 | Food items in database | 551 |
 | Agent types | 7 |
-| API endpoints | 18 |
-| Test cases | 160+ |
+| API endpoints | 25 |
+| Test cases | 722 |
 | Max meal plan length | 30 days |
+| Blood test parameters | 62 |
+| Urine test parameters | 13 |
+| Condition detectors | 24 |
+| Report parser aliases | 403 |
 
 ## License
 

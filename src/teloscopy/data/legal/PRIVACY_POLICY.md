@@ -53,6 +53,7 @@ Email: animaticalpha123@gmail.com
 This Policy applies to all Personal Data and Sensitive Personal Data or Information collected or processed through:
 
 - The Teloscopy Android mobile application;
+- The Teloscopy iOS mobile application;
 - The Teloscopy backend server and associated application programming interfaces (APIs);
 - Any web-based interface or portal associated with Teloscopy.
 

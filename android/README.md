@@ -9,6 +9,7 @@ A genomic health analysis companion app built with Jetpack Compose. Upload facia
 - **Disease Risk Assessment** -- Colour-coded risk cards with probability bars, contributing factors, and actionable recommendations.
 - **Personalised Nutrition** -- Calorie targets, key nutrients, foods to increase/avoid, and multi-day meal plans that respect dietary restrictions.
 - **Dark Theme** -- Material 3 dark-cyan theme optimised for OLED displays.
+- **Health Checkup** -- Upload blood test, urine test, and abdomen scan reports for automated analysis with 62 blood + 13 urine parameters, health scoring, and dietary recommendations.
 
 ## Tech Stack
 
