@@ -1174,25 +1174,42 @@ def _validate_image_content(contents: bytes, filename: str) -> ImageValidationRe
 @app.get("/", response_class=HTMLResponse)
 async def index_page(request: Request) -> HTMLResponse:
     """Serve the main landing / upload page."""
-    return templates.TemplateResponse(request=request, name="index.html")
+    import json as _json
+
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={"research_json": _json.dumps(_RESEARCH_CACHE)},
+    )
 
 
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_page(request: Request) -> HTMLResponse:
     """Serve the dedicated upload page (same template, scroll-to-upload)."""
+    import json as _json
+
     return templates.TemplateResponse(
-        request=request, name="index.html", context={"scroll_to": "upload"}
+        request=request,
+        name="index.html",
+        context={"scroll_to": "upload", "research_json": _json.dumps(_RESEARCH_CACHE)},
     )
 
 
 @app.get("/results/{job_id}", response_class=HTMLResponse)
 async def results_page(request: Request, job_id: str) -> HTMLResponse:
     """Serve a results page for a specific job."""
+    import json as _json
+
     job: JobStatus | None = _jobs.get(job_id)
     return templates.TemplateResponse(
         request=request,
         name="index.html",
-        context={"job_id": job_id, "job": job, "scroll_to": "results"},
+        context={
+            "job_id": job_id,
+            "job": job,
+            "scroll_to": "results",
+            "research_json": _json.dumps(_RESEARCH_CACHE),
+        },
     )
 
 

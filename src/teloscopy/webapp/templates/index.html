@@ -2331,8 +2331,15 @@ document.addEventListener('DOMContentLoaded', function () {
 /* ==============================================================
    RESEARCH PANEL
    ============================================================== */
+/* Research data is embedded by Jinja2 at render time — no fetch needed */
 var _researchData = null;
 var _researchLoaded = false;
+var _EMBEDDED_RESEARCH = null;
+try {
+    _EMBEDDED_RESEARCH = {{ research_json | default('null') | safe }};
+} catch (_) {
+    _EMBEDDED_RESEARCH = null;
+}
 
 function toggleResearchPanel() {
     var panel = document.getElementById('research-panel');
@@ -2402,7 +2409,33 @@ document.addEventListener('keydown', function (e) {
 });
 
 function loadResearchContent() {
-    /* AbortController gives us a 15-second timeout so the spinner never hangs forever */
+    /* ── Strategy: use server-embedded JSON (instant) → fall back to fetch ── */
+    function _renderDocs(data) {
+        _researchData = data;
+        _researchLoaded = true;
+        var docs = (data && data.documents) ? data.documents : [];
+        if (docs.length === 0) {
+            var content = document.getElementById('research-content');
+            if (content) {
+                content.innerHTML = '<div class="research-loading" style="color:var(--text-secondary);">' +
+                    '<span>No research documents found.</span></div>';
+            }
+            var toc = document.getElementById('research-toc');
+            if (toc) toc.innerHTML = '';
+            return;
+        }
+        renderResearchToc(docs);
+        renderResearchContent(docs);
+        setupResearchScrollSpy();
+    }
+
+    /* 1) Try the data embedded at render time (zero network round-trip) */
+    if (_EMBEDDED_RESEARCH && _EMBEDDED_RESEARCH.documents && _EMBEDDED_RESEARCH.documents.length > 0) {
+        _renderDocs(_EMBEDDED_RESEARCH);
+        return;
+    }
+
+    /* 2) Fallback: fetch from API */
     var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     var timeoutId = controller ? setTimeout(function () { controller.abort(); }, 15000) : null;
     var opts = controller ? { signal: controller.signal } : {};
@@ -2414,22 +2447,7 @@ function loadResearchContent() {
             return r.json();
         })
         .then(function (data) {
-            _researchData = data;
-            _researchLoaded = true;
-            var docs = data.documents || [];
-            if (docs.length === 0) {
-                var content = document.getElementById('research-content');
-                if (content) {
-                    content.innerHTML = '<div class="research-loading" style="color:var(--text-secondary);">' +
-                        '<span>No research documents found.</span></div>';
-                }
-                var toc = document.getElementById('research-toc');
-                if (toc) toc.innerHTML = '';
-                return;
-            }
-            renderResearchToc(docs);
-            renderResearchContent(docs);
-            setupResearchScrollSpy();
+            _renderDocs(data);
         })
         .catch(function (err) {
             if (timeoutId) clearTimeout(timeoutId);
