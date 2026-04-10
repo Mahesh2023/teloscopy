@@ -95,6 +95,11 @@ class UserProfile(BaseModel):
         max_length=100,
         description="Known genetic variants (rsIDs or gene names)",
     )
+    health_conditions: list[str] = Field(
+        default_factory=list,
+        max_length=100,
+        description="Existing health conditions (e.g. 'diabetes', 'hypertension')",
+    )
 
 
 # ---------------------------------------------------------------------------

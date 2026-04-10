@@ -17,5 +17,7 @@ services:
         value: /tmp/teloscopy_output
       - key: TELOSCOPY_LOG_LEVEL
         value: INFO
+      - key: TELOSCOPY_CONSENT_SECRET
+        value: "teloscopy-render-prod-consent-v1-stable"
     healthCheckPath: /api/health
     autoDeploy: true

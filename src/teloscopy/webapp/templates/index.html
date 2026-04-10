@@ -2456,9 +2456,11 @@
             if (!raw) return false;
             var data = JSON.parse(raw);
             if (!data.accepted || !data.timestamp) return false;
-            /* Consent expires after 1 day to match server token TTL (24 hours) */
+            /* Client-side consent lasts 30 days (controls when the full consent
+               overlay auto-shows).  The *server* token TTL is 24 h; when it
+               expires the browser silently re-obtains one — see refreshConsentToken(). */
             var daysSince = (Date.now() - data.timestamp) / (1000 * 60 * 60 * 24);
-            return daysSince < 1;
+            return daysSince < 30;
         } catch (_) { return false; }
     }
 
@@ -2609,21 +2611,62 @@
     };
 
     /**
-     * Handle a 403 response by clearing expired consent and re-prompting.
-     * Returns true if the response was a consent 403 (caller should abort).
-     * Distinguishes consent 403s from CSRF 403s by cloning the response.
+     * Silently re-obtain a consent token from the server without showing the
+     * full consent overlay.  Uses the purposes saved in localStorage from the
+     * last explicit consent acceptance.  Returns the new token string, or ''
+     * on failure (caller should fall back to the full consent modal).
      */
-    window.handleConsent403 = function (res) {
-        if (res.status === 403) {
-            try { localStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
-            try { localStorage.removeItem(CONSENT_KEY); } catch (_) {}
-            window.openConsentModal();
-            if (typeof toast === 'function') {
-                toast('Please accept the privacy notice to continue.', 'warning');
+    window.refreshConsentToken = async function () {
+        try {
+            var raw = localStorage.getItem(CONSENT_KEY);
+            if (!raw) return '';
+            var saved = JSON.parse(raw);
+            if (!saved.accepted || !saved.purposes) return '';
+            var r = await fetch('/api/legal/consent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    consents: saved.purposes.map(function (p) {
+                        return { purpose: p, granted: true, notice_version: '1.0' };
+                    }),
+                    data_principal_age_confirmed: true,
+                    privacy_policy_version: saved.privacy_policy_version || '1.0',
+                    terms_version: saved.terms_version || '1.0'
+                })
+            });
+            if (!r.ok) return '';
+            var data = await r.json();
+            if (data.consent_token) {
+                try { localStorage.setItem('teloscopy_consent_token', data.consent_token); } catch (_) {}
+                return data.consent_token;
             }
-            return true;
+        } catch (_) {}
+        return '';
+    };
+
+    /**
+     * Handle a 403 response.  First attempts a silent token refresh; only
+     * falls back to the full consent overlay if the refresh fails.
+     * Returns true if the caller should abort (token invalid and refresh
+     * failed or response was 403).
+     */
+    window.handleConsent403 = async function (res) {
+        if (res.status !== 403) return false;
+        /* Try silent refresh first — avoids re-prompting the user */
+        try { localStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
+        var newToken = await window.refreshConsentToken();
+        if (newToken) {
+            /* Token refreshed — caller should RETRY the request (return false
+               so the caller knows we recovered). */
+            return false;
         }
-        return false;
+        /* Refresh failed — fall back to full consent overlay */
+        try { localStorage.removeItem(CONSENT_KEY); } catch (_) {}
+        window.openConsentModal();
+        if (typeof toast === 'function') {
+            toast('Please accept the privacy notice to continue.', 'warning');
+        }
+        return true;
     };
 })();
 
@@ -3524,8 +3567,10 @@ function escapeHtml(str) {
         try {
             var fd = new FormData();
             fd.append('file', file);
-            var res = await fetch('/api/validate-image', { method: 'POST', body: fd, headers: window.getConsentHeaders() });
-            if (!res.ok) return;
+            var res = await consentFetch(function () {
+                return fetch('/api/validate-image', { method: 'POST', body: fd, headers: window.getConsentHeaders() });
+            });
+            if (!res || !res.ok) return;
             var v = await res.json();
 
             /* Show image type badge */
@@ -3580,6 +3625,33 @@ function escapeHtml(str) {
         setTimeout(function () { el.remove(); }, 4000);
     }
 
+    /**
+     * Wrapper around fetch() that automatically retries once on 403 by
+     * silently refreshing the consent token.  fetchFn should be a zero-arg
+     * function that returns a fetch Promise (so getConsentHeaders() is
+     * re-evaluated on retry with the fresh token).
+     *
+     * If the retry also returns 403, falls back to showing the consent
+     * overlay and returns null (caller should abort).
+     */
+    async function consentFetch(fetchFn) {
+        var res = await fetchFn();
+        if (res.status === 403) {
+            var newToken = await window.refreshConsentToken();
+            if (newToken) {
+                res = await fetchFn();  /* retry with fresh token */
+            }
+            if (res.status === 403) {
+                /* Still 403 — force full re-consent */
+                try { localStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
+                window.openConsentModal();
+                toast('Please accept the privacy notice to continue.', 'warning');
+                return null;
+            }
+        }
+        return res;
+    }
+
     /* ---- Analysis with image ---- */
     window.startAnalysis = async function () {
         if (!window.requireConsent()) return;
@@ -3619,8 +3691,10 @@ function escapeHtml(str) {
         showSkeleton();
 
         try {
-            var res = await fetch('/api/analyze', { method: 'POST', body: fd, headers: window.getConsentHeaders() });
-            if (window.handleConsent403(res)) { analyzeBtn.disabled = false; profileBtn.disabled = false; progressWrapper.classList.remove('visible'); return; }
+            var res = await consentFetch(function () {
+                return fetch('/api/analyze', { method: 'POST', body: fd, headers: window.getConsentHeaders() });
+            });
+            if (!res) { analyzeBtn.disabled = false; profileBtn.disabled = false; progressWrapper.classList.remove('visible'); resultsSection.classList.remove('visible'); hideSkeleton(); return; }
             if (!res.ok) {
                 var err = await res.json();
                 throw new Error((err.error && err.error.message) || err.detail || 'Upload failed');
@@ -3666,10 +3740,7 @@ function escapeHtml(str) {
         showSkeleton();
 
         try {
-            var res = await fetch('/api/profile-analysis', {
-                method: 'POST',
-                headers: window.withConsent({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify({
+            var _profileBody = JSON.stringify({
                     age: parseInt(age),
                     sex: sex,
                     region: region,
@@ -3680,14 +3751,20 @@ function escapeHtml(str) {
                     health_conditions: healthConditions ? healthConditions.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [],
                     include_nutrition: true,
                     include_disease_risk: true
-                })
+                });
+            var res = await consentFetch(function () {
+                return fetch('/api/profile-analysis', {
+                    method: 'POST',
+                    headers: window.withConsent({ 'Content-Type': 'application/json' }),
+                    body: _profileBody
+                });
             });
 
             progressFill.style.width = '80%';
             progressFill.setAttribute('aria-valuenow', '80');
             progressPct.textContent = '80%';
 
-            if (window.handleConsent403(res)) { analyzeBtn.disabled = false; profileBtn.disabled = false; progressWrapper.classList.remove('visible'); return; }
+            if (!res) { analyzeBtn.disabled = false; profileBtn.disabled = false; progressWrapper.classList.remove('visible'); resultsSection.classList.remove('visible'); hideSkeleton(); return; }
             if (!res.ok) {
                 var err = await res.json();
                 throw new Error((err.error && err.error.message) || err.detail || 'Analysis failed');
@@ -3763,7 +3840,11 @@ function escapeHtml(str) {
     async function pollStatus() {
         if (!currentJobId) return;
         try {
-            var res  = await fetch('/api/status/' + currentJobId, { headers: window.getConsentHeaders() });
+            var res = await consentFetch(function () {
+                return fetch('/api/status/' + currentJobId, { headers: window.getConsentHeaders() });
+            });
+            if (!res) { clearInterval(pollTimer); pollTimer = null; return; }
+            if (!res.ok) return;  /* transient error — try again next interval */
             var data = await res.json();
             progressFill.style.width = data.progress_pct + '%';
             progressFill.setAttribute('aria-valuenow', Math.round(data.progress_pct));
@@ -3790,7 +3871,11 @@ function escapeHtml(str) {
 
     async function fetchResults() {
         try {
-            var res  = await fetch('/api/results/' + currentJobId, { headers: window.getConsentHeaders() });
+            var res = await consentFetch(function () {
+                return fetch('/api/results/' + currentJobId, { headers: window.getConsentHeaders() });
+            });
+            if (!res) return;
+            if (!res.ok) { toast('Could not load results.', 'error'); return; }
             var data = await res.json();
             lastResult = data;
             renderResults(data);
@@ -4270,10 +4355,7 @@ function escapeHtml(str) {
         btn.innerHTML = '<span class="spinner"></span> Generating\u2026';
 
         try {
-            var res = await fetch('/api/nutrition', {
-                method: 'POST',
-                headers: window.withConsent({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify({
+            var _nutBody = JSON.stringify({
                     age: parseInt(age),
                     sex: sex,
                     region: region,
@@ -4284,9 +4366,15 @@ function escapeHtml(str) {
                     health_conditions: conditions ? conditions.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [],
                     calorie_target: calories,
                     meal_plan_days: days
-                })
+                });
+            var res = await consentFetch(function () {
+                return fetch('/api/nutrition', {
+                    method: 'POST',
+                    headers: window.withConsent({ 'Content-Type': 'application/json' }),
+                    body: _nutBody
+                });
             });
-            if (window.handleConsent403(res)) { btn.disabled = false; return; }
+            if (!res) { btn.disabled = false; btn.textContent = 'Generate Nutrition Plan'; return; }
             if (!res.ok) {
                 var err = await res.json();
                 throw new Error((err.error && err.error.message) || err.detail || 'Failed to generate nutrition plan');
@@ -4395,12 +4483,14 @@ function escapeHtml(str) {
             var formData = new FormData();
             formData.append('file', _reportFile);
 
-            var res = await fetch('/api/health-checkup/parse-report', {
-                method: 'POST',
-                body: formData,
-                headers: window.getConsentHeaders()
+            var res = await consentFetch(function () {
+                return fetch('/api/health-checkup/parse-report', {
+                    method: 'POST',
+                    body: formData,
+                    headers: window.getConsentHeaders()
+                });
             });
-            if (window.handleConsent403(res)) { parseBtn.disabled = false; parseBtn.textContent = 'Extract Lab Values'; return; }
+            if (!res) { parseBtn.disabled = false; parseBtn.textContent = 'Extract Lab Values'; return; }
             if (!res.ok) {
                 var err = await res.json();
                 throw new Error((err.error && err.error.message) || err.detail || 'Failed to parse report');
@@ -4558,12 +4648,14 @@ function escapeHtml(str) {
             formData.append('calorie_target', document.getElementById('chk-calories').value || '2000');
             formData.append('meal_plan_days', document.getElementById('chk-days').value || '7');
 
-            var res = await fetch('/api/health-checkup/upload', {
-                method: 'POST',
-                body: formData,
-                headers: window.getConsentHeaders()
+            var res = await consentFetch(function () {
+                return fetch('/api/health-checkup/upload', {
+                    method: 'POST',
+                    body: formData,
+                    headers: window.getConsentHeaders()
+                });
             });
-            if (window.handleConsent403(res)) { btn.disabled = false; btn.textContent = 'Upload & Analyse Directly'; return; }
+            if (!res) { btn.disabled = false; btn.textContent = 'Upload & Analyse Directly'; return; }
             if (!res.ok) {
                 var err = await res.json();
                 throw new Error((err.error && err.error.message) || err.detail || 'Report upload analysis failed');
@@ -4650,12 +4742,15 @@ function escapeHtml(str) {
                 urine_tests: Object.keys(urineTests).length ? urineTests : null,
                 abdomen_scan_notes: abdomenNotes || null
             };
-            var res = await fetch('/api/health-checkup', {
-                method: 'POST',
-                headers: window.withConsent({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify(payload)
+            var _chkBody = JSON.stringify(payload);
+            var res = await consentFetch(function () {
+                return fetch('/api/health-checkup', {
+                    method: 'POST',
+                    headers: window.withConsent({ 'Content-Type': 'application/json' }),
+                    body: _chkBody
+                });
             });
-            if (window.handleConsent403(res)) { btn.disabled = false; btn.textContent = 'Analyse Health Checkup'; return; }
+            if (!res) { btn.disabled = false; btn.textContent = 'Analyse Health Checkup'; return; }
             if (!res.ok) {
                 var err = await res.json();
                 throw new Error((err.error && err.error.message) || err.detail || 'Health checkup analysis failed');

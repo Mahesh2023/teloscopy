@@ -40,6 +40,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -619,6 +620,35 @@ async def _value_error_handler(request: Request, exc: ValueError) -> Any:
     return JSONResponse(
         status_code=422,
         content={"error": {"code": 422, "message": str(exc), "request_id": request_id}},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def _request_validation_error_handler(request: Request, exc: RequestValidationError) -> Any:
+    """Return structured JSON for FastAPI request-validation errors.
+
+    Without this handler FastAPI returns ``{"detail": [...]}``, which the
+    frontend cannot parse into a user-friendly message.
+    """
+    from fastapi.responses import JSONResponse
+
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    # Build a concise human-readable summary
+    messages: list[str] = []
+    for e in exc.errors():
+        field = e.get("loc", [])[-1] if e.get("loc") else "input"
+        messages.append(f"{field}: {e.get('msg', 'invalid')}")
+    summary = "; ".join(messages[:5]) or "Validation error"
+    logger.warning("RequestValidationError on %s: %s", request.url.path, summary)
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "code": 422,
+                "message": f"Invalid input — {summary}",
+                "request_id": request_id,
+            }
+        },
     )
 
 
@@ -2169,6 +2199,7 @@ async def full_analysis(
     state: str = Form(""),
     dietary_restrictions: str = Form(""),
     known_variants: str = Form(""),
+    health_conditions: str = Form(""),
 ) -> JobStatus:
     """Run the full analysis pipeline (image + profile → results).
 
@@ -2196,6 +2227,7 @@ async def full_analysis(
     # Parse comma-separated lists
     restrictions: list[str] = [r.strip() for r in dietary_restrictions.split(",") if r.strip()]
     variants: list[str] = [v.strip() for v in known_variants.split(",") if v.strip()]
+    conditions: list[str] = [c.strip() for c in health_conditions.split(",") if c.strip()]
 
     profile = UserProfile(
         age=age,
@@ -2205,6 +2237,7 @@ async def full_analysis(
         state=state or None,
         dietary_restrictions=restrictions,
         known_variants=variants,
+        health_conditions=conditions,
     )
 
     job = JobStatus(job_id=job_id, message="Queued for analysis")
