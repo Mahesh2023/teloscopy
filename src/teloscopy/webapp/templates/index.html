@@ -2271,6 +2271,21 @@ document.addEventListener('DOMContentLoaded', function () {
     if (resOverlay) {
         resOverlay.addEventListener('click', function () { closeResearchPanel(); });
     }
+
+    /* Handle ?open=research or ?open=download URL parameters (e.g. from dashboard links) */
+    try {
+        var params = new URLSearchParams(window.location.search);
+        var openParam = params.get('open');
+        if (openParam === 'research') {
+            openResearchPanel();
+        } else if (openParam === 'download') {
+            openDownloadModal();
+        }
+        /* Clean the URL so the param doesn't persist on reload */
+        if (openParam && window.history && window.history.replaceState) {
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    } catch (_) {}
 });
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
@@ -2281,19 +2296,38 @@ document.addEventListener('keydown', function (e) {
 
 function loadResearchContent() {
     fetch('/api/research')
-        .then(function (r) { return r.json(); })
+        .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
         .then(function (data) {
             _researchData = data;
             _researchLoaded = true;
-            renderResearchToc(data.documents);
-            renderResearchContent(data.documents);
+            var docs = data.documents || [];
+            if (docs.length === 0) {
+                var content = document.getElementById('research-content');
+                if (content) {
+                    content.innerHTML = '<div class="research-loading" style="color:var(--text-secondary);">' +
+                        '<span>No research documents found.</span></div>';
+                }
+                return;
+            }
+            renderResearchToc(docs);
+            renderResearchContent(docs);
             setupResearchScrollSpy();
         })
         .catch(function (err) {
+            console.error('[Research] Failed to load:', err);
+            _researchLoaded = false;
             var content = document.getElementById('research-content');
             if (content) {
                 content.innerHTML = '<div class="research-loading" style="color:var(--danger);">' +
                     '<span>Failed to load research content. Please try again.</span></div>';
+            }
+            var toc = document.getElementById('research-toc');
+            if (toc) {
+                toc.innerHTML = '<div style="padding:1rem;color:var(--text-secondary);font-size:.85rem;">' +
+                    'Could not load table of contents.</div>';
             }
         });
 }
