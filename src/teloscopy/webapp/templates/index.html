@@ -883,6 +883,70 @@
         }
         .download-modal-close:hover { color: var(--text-primary); }
 
+        /* Microphone permission popup */
+        .mic-perm-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+            z-index: 1200; align-items: center; justify-content: center;
+        }
+        .mic-perm-overlay.visible { display: flex; }
+        .mic-perm-modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem; max-width: 460px; width: 92%;
+            text-align: left; position: relative;
+        }
+        .mic-perm-modal h3 {
+            font-size: 1.2rem; color: var(--text-primary); margin-bottom: .5rem;
+            display: flex; align-items: center; gap: .5rem;
+        }
+        .mic-perm-modal h3 svg { width: 22px; height: 22px; flex-shrink: 0; }
+        .mic-perm-modal p {
+            font-size: .88rem; color: var(--text-secondary); margin-bottom: 1rem;
+            line-height: 1.55;
+        }
+        .mic-perm-steps {
+            list-style: none; padding: 0; margin: 0 0 1.25rem 0;
+            counter-reset: mic-step;
+        }
+        .mic-perm-steps li {
+            counter-increment: mic-step;
+            position: relative; padding-left: 2rem;
+            font-size: .86rem; color: var(--text-secondary);
+            line-height: 1.55; margin-bottom: .5rem;
+        }
+        .mic-perm-steps li::before {
+            content: counter(mic-step);
+            position: absolute; left: 0; top: 1px;
+            width: 1.4rem; height: 1.4rem; border-radius: 50%;
+            background: var(--accent); color: var(--bg-primary);
+            font-size: .75rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .mic-perm-actions {
+            display: flex; gap: .75rem; justify-content: flex-end;
+        }
+        .mic-perm-btn {
+            padding: .6rem 1.2rem; border-radius: 10px;
+            font-weight: 600; font-size: .88rem; cursor: pointer;
+            border: none; transition: opacity .2s;
+        }
+        .mic-perm-btn:hover { opacity: .85; }
+        .mic-perm-btn-settings {
+            background: var(--accent); color: var(--bg-primary);
+        }
+        .mic-perm-btn-close {
+            background: transparent; color: var(--text-secondary);
+            border: 1px solid var(--border) !important;
+        }
+        .mic-perm-close {
+            position: absolute; top: 10px; right: 12px;
+            background: none; border: none; color: var(--text-muted);
+            cursor: pointer; font-size: 1.2rem; line-height: 1;
+        }
+        .mic-perm-close:hover { color: var(--text-primary); }
+
         /* Sidebar mobile-app nav item */
         .nav-item-mobile-app { color: var(--accent) !important; }
         .nav-item-research { color: #7c8cf8 !important; }
@@ -2842,6 +2906,23 @@
 
 <!-- Toast container -->
 <div class="toast-container" id="toast-container" aria-live="polite" role="status"></div>
+
+<!-- Microphone permission popup -->
+<div class="mic-perm-overlay" id="mic-perm-overlay" role="dialog" aria-modal="true" aria-labelledby="mic-perm-title">
+    <div class="mic-perm-modal">
+        <button class="mic-perm-close" id="mic-perm-close-x" aria-label="Close">&times;</button>
+        <h3 id="mic-perm-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            Microphone Access Required
+        </h3>
+        <p>Voice input needs microphone permission. Your browser has blocked access. Follow these steps to enable it:</p>
+        <ol class="mic-perm-steps" id="mic-perm-steps"></ol>
+        <div class="mic-perm-actions">
+            <button class="mic-perm-btn mic-perm-btn-close" id="mic-perm-dismiss">Dismiss</button>
+            <button class="mic-perm-btn mic-perm-btn-settings" id="mic-perm-settings">Open Settings</button>
+        </div>
+    </div>
+</div>
 
 <!-- ================================================================
      JAVASCRIPT
@@ -5987,6 +6068,121 @@ function escapeHtml(str) {
             this.style.height = Math.min(this.scrollHeight, 120) + 'px';
         });
 
+        /* ---- Microphone permission popup ---- */
+        var _micPermOverlay = document.getElementById('mic-perm-overlay');
+        var _micPermSteps = document.getElementById('mic-perm-steps');
+        var _micPermSettingsBtn = document.getElementById('mic-perm-settings');
+
+        function _detectBrowser() {
+            var ua = navigator.userAgent;
+            if (/Edg\//i.test(ua)) return 'edge';
+            if (/OPR\//i.test(ua) || /Opera/i.test(ua)) return 'opera';
+            if (/Chrome\//i.test(ua) && /Safari\//i.test(ua)) return 'chrome';
+            if (/Firefox\//i.test(ua)) return 'firefox';
+            if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) return 'safari';
+            return 'other';
+        }
+
+        function _getMicPermInstructions() {
+            var browser = _detectBrowser();
+            var url = '';
+            var steps = [];
+            if (browser === 'chrome') {
+                url = 'chrome://settings/content/microphone';
+                steps = [
+                    'Click the <strong>lock icon</strong> (or tune icon) in the address bar, to the left of the URL.',
+                    'Find <strong>Microphone</strong> in the site permissions list.',
+                    'Change the setting from "Block" to <strong>"Allow"</strong>.',
+                    'Close the popup and <strong>reload this page</strong>.'
+                ];
+            } else if (browser === 'edge') {
+                url = 'edge://settings/content/microphone';
+                steps = [
+                    'Click the <strong>lock icon</strong> in the address bar.',
+                    'Find <strong>Microphone</strong> in the permissions dropdown.',
+                    'Switch it to <strong>"Allow"</strong>.',
+                    'Close the popup and <strong>reload this page</strong>.'
+                ];
+            } else if (browser === 'firefox') {
+                url = 'about:preferences#privacy';
+                steps = [
+                    'Click the <strong>lock icon</strong> in the address bar.',
+                    'Click the <strong>arrow next to "Connection secure"</strong>, then <strong>"More Information"</strong>.',
+                    'Go to the <strong>Permissions</strong> tab.',
+                    'Find <strong>"Use the Microphone"</strong>, uncheck "Use Default" and select <strong>"Allow"</strong>.',
+                    '<strong>Reload this page</strong>.'
+                ];
+            } else if (browser === 'safari') {
+                url = '';
+                steps = [
+                    'In the menu bar, go to <strong>Safari &rarr; Settings</strong> (or Preferences).',
+                    'Click the <strong>Websites</strong> tab.',
+                    'Select <strong>Microphone</strong> in the left sidebar.',
+                    'Find this website and change the setting to <strong>"Allow"</strong>.',
+                    '<strong>Reload this page</strong>.'
+                ];
+            } else if (browser === 'opera') {
+                url = 'opera://settings/content/microphone';
+                steps = [
+                    'Click the <strong>lock icon</strong> in the address bar.',
+                    'Find <strong>Microphone</strong> in site settings.',
+                    'Change it to <strong>"Allow"</strong>.',
+                    '<strong>Reload this page</strong>.'
+                ];
+            } else {
+                url = '';
+                steps = [
+                    'Open your <strong>browser settings</strong>.',
+                    'Navigate to <strong>Privacy / Site Settings</strong>.',
+                    'Find <strong>Microphone</strong> permissions for this site.',
+                    'Change the permission to <strong>"Allow"</strong>.',
+                    '<strong>Reload this page</strong>.'
+                ];
+            }
+            return { browser: browser, url: url, steps: steps };
+        }
+
+        function _showMicPermissionPopup() {
+            var info = _getMicPermInstructions();
+            _micPermSteps.innerHTML = '';
+            info.steps.forEach(function(s) {
+                var li = document.createElement('li');
+                li.innerHTML = DOMPurify.sanitize(s, { ALLOWED_TAGS: ['strong', 'em'] });
+                _micPermSteps.appendChild(li);
+            });
+            /* "Open Settings" button — for Chrome/Edge/Opera we can try opening
+               the settings URL; for others it reloads so the user can re-grant. */
+            if (info.url) {
+                _micPermSettingsBtn.textContent = 'Open Settings';
+                _micPermSettingsBtn.onclick = function() {
+                    /* Chrome/Edge/Opera settings URLs can't be opened via JS for
+                       security reasons. Copy the URL and prompt the user. */
+                    try { window.open(info.url, '_blank'); } catch (e) { /* blocked */ }
+                    /* Also copy the URL so the user can paste it manually */
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(info.url).then(function() {
+                            if (typeof toast === 'function')
+                                toast('Settings URL copied — paste ' + info.url + ' in a new tab', 'info');
+                        }).catch(function() {});
+                    }
+                };
+            } else {
+                _micPermSettingsBtn.textContent = 'Reload Page';
+                _micPermSettingsBtn.onclick = function() { location.reload(); };
+            }
+            _micPermOverlay.classList.add('visible');
+        }
+
+        function _hideMicPermissionPopup() {
+            _micPermOverlay.classList.remove('visible');
+        }
+
+        document.getElementById('mic-perm-close-x').addEventListener('click', _hideMicPermissionPopup);
+        document.getElementById('mic-perm-dismiss').addEventListener('click', _hideMicPermissionPopup);
+        _micPermOverlay.addEventListener('click', function(e) {
+            if (e.target === _micPermOverlay) _hideMicPermissionPopup();
+        });
+
         /* ---- Web Speech API — Speech Recognition ---- */
         var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         var _voiceState = 'idle'; /* idle | requesting | listening | stopping */
@@ -6029,6 +6225,7 @@ function escapeHtml(str) {
                         if (voiceStatusDot) voiceStatusDot.classList.add('error');
                         if (voiceStatusText) voiceStatusText.textContent =
                             'Microphone access denied. Please allow microphone in browser settings and reload.';
+                        _showMicPermissionPopup();
                         resolve(false);
                     });
             });
@@ -6074,6 +6271,7 @@ function escapeHtml(str) {
                     if (voiceStatusDot) voiceStatusDot.classList.add('error');
                     if (voiceStatusText) voiceStatusText.textContent =
                         'Microphone blocked. Check browser permissions & ensure HTTPS, then reload.';
+                    _showMicPermissionPopup();
                 } else if (event.error === 'no-speech') {
                     if (voiceStatusText) voiceStatusText.textContent =
                         'No speech detected. Click microphone to try again.';
