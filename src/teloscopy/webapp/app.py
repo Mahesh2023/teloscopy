@@ -11,6 +11,13 @@ Run with::
 
 from __future__ import annotations
 
+# Load .env file (if present) before anything reads os.getenv
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _load_dotenv()
+except ImportError:
+    pass
+
 import asyncio
 import collections
 import hashlib
@@ -2122,6 +2129,25 @@ def _build_counselling_response(
     # ── Select components ──
     opening, opening_idx = _pick(_OPENING_PHRASES, used_openings)
     acknowledgment = random.choice(_ACKNOWLEDGMENT_PHRASES)
+
+    # Personalise the acknowledgment by echoing back the user's words
+    # Extract a short, meaningful snippet (first sentence or ~80 chars)
+    _snippet = user_message.strip()
+    _first_sent_end = min(
+        (_snippet.find(". ") + 1) if ". " in _snippet else len(_snippet),
+        (_snippet.find("? ") + 1) if "? " in _snippet else len(_snippet),
+        (_snippet.find("! ") + 1) if "! " in _snippet else len(_snippet),
+        80,
+    )
+    _snippet = _snippet[:_first_sent_end].strip().rstrip(".,!?;:")
+    if len(_snippet) > 12:
+        _echo_prefixes = [
+            f'When you say "{_snippet}" \u2014 ',
+            f'You mention "{_snippet}." ',
+            f'"{_snippet}" \u2014 ',
+        ]
+        acknowledgment = random.choice(_echo_prefixes) + acknowledgment[0].lower() + acknowledgment[1:]
+
     inquiry, inquiry_idx = _pick(theme["inquiry_patterns"], used_inquiries)
 
     # Pick a different inquiry for deepening (or cross-theme deepener)
@@ -2319,6 +2345,107 @@ def _build_llm_messages(
     return msgs
 
 
+# ── Follow-up suggestion pools (context-aware conversation starters) ──
+
+_FOLLOWUP_GENERAL = [
+    "Tell me more about that",
+    "I'm not sure I understand myself",
+    "Can we go deeper?",
+    "What do you mean by that?",
+    "I feel something but can't name it",
+    "That resonates with me",
+    "I'd like to sit with that",
+]
+
+_FOLLOWUP_BY_THEME: dict[str, list[str]] = {
+    "fear": [
+        "What am I actually afraid of?",
+        "Can fear be observed without running?",
+        "Where do I feel fear in my body?",
+    ],
+    "anxiety": [
+        "My mind won't stop racing",
+        "I keep worrying about the future",
+        "How do I be present right now?",
+    ],
+    "sorrow": [
+        "I feel a deep sadness",
+        "Is it okay to just feel this?",
+        "I don't want to push this away",
+    ],
+    "loneliness": [
+        "I feel disconnected from others",
+        "Am I avoiding being alone with myself?",
+        "What is this emptiness I feel?",
+    ],
+    "depression": [
+        "Everything feels heavy",
+        "I've lost interest in things I loved",
+        "I don't know how to start again",
+    ],
+    "anger": [
+        "I keep reacting before I think",
+        "Where does this anger come from?",
+        "Can I feel anger without acting on it?",
+    ],
+    "relationship": [
+        "I struggle to be honest with others",
+        "Why do I keep repeating patterns?",
+        "What does real connection look like?",
+    ],
+    "self_knowledge": [
+        "Who am I beneath all these roles?",
+        "I want to understand myself better",
+        "What am I not seeing about myself?",
+    ],
+    "conditioning": [
+        "How much of me is just habit?",
+        "I feel trapped by expectations",
+        "Can I see my conditioning clearly?",
+    ],
+    "thought": [
+        "I can't stop overthinking",
+        "Are my thoughts really me?",
+        "How do I observe my own thinking?",
+    ],
+    "meditation": [
+        "How do I quiet my mind?",
+        "I struggle to be still",
+        "What is meditation really?",
+    ],
+    "love": [
+        "I don't know if I know what love is",
+        "Can love exist without attachment?",
+        "I want to love without fear",
+    ],
+}
+
+_FOLLOWUP_DEEPENING = [
+    "What would change if I truly accepted this?",
+    "Can I be with this feeling without trying to fix it?",
+    "What is the silence beneath all this noise?",
+    "Am I observing, or am I judging?",
+]
+
+
+def _suggest_followups(theme_key: str, turn_count: int) -> list[str]:
+    """Return 2-3 contextual follow-up suggestions for the user."""
+    pool: list[str] = []
+    # Theme-specific suggestions
+    pool.extend(_FOLLOWUP_BY_THEME.get(theme_key, []))
+    # Add general follow-ups
+    if turn_count < 3:
+        pool.extend(_FOLLOWUP_GENERAL)
+    else:
+        # Deeper into conversation — offer deeper prompts
+        pool.extend(_FOLLOWUP_DEEPENING)
+    pool.extend(_FOLLOWUP_GENERAL[:3])
+    # Pick 3 random unique suggestions
+    if len(pool) <= 3:
+        return pool
+    return random.sample(pool, 3)
+
+
 @app.get("/api/psychiatry/themes", tags=["Psychiatry"], dependencies=[Depends(rate_limit(60, 60))])
 async def get_psychiatry_themes() -> dict[str, Any]:
     """Return all counselling themes and their metadata."""
@@ -2375,12 +2502,14 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
             "theme_title": _COUNSEL_THEMES.get(theme_key, {}).get("title", ""),
             "ai_response": llm_response,
             "mode": "ai",
+            "followups": _suggest_followups(theme_key, len(conversation)),
         }
 
     # ── Fallback to template-based engine ──
     theme_key = _match_counselling_theme(message)
     response = _build_counselling_response(theme_key, message, history=history)
     response["mode"] = "template"
+    response["followups"] = _suggest_followups(theme_key, len(history))
     return response
 
 

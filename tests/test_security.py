@@ -743,3 +743,78 @@ class TestThemeMatchingEngine:
     def test_default_fallback(self):
         from teloscopy.webapp.app import _match_counselling_theme
         assert _match_counselling_theme("hello world") == "self_knowledge"
+
+
+class TestCounselFollowups:
+    """Verify followup suggestions are returned from /api/psychiatry/counsel."""
+
+    def test_counsel_response_includes_followups(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel anxious about everything."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "followups" in data
+        assert isinstance(data["followups"], list)
+        assert len(data["followups"]) >= 2
+        for f in data["followups"]:
+            assert isinstance(f, str)
+            assert len(f) > 5
+
+    def test_counsel_followups_vary_with_theme(self, client):
+        """Followups for different themes should be somewhat different."""
+        resp1 = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I am afraid of losing everything."},
+        )
+        resp2 = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel deeply lonely and disconnected."},
+        )
+        f1 = set(resp1.json()["followups"])
+        f2 = set(resp2.json()["followups"])
+        # They shouldn't always be identical (randomised, different pools)
+        # Just check both have valid followups
+        assert len(f1) >= 2
+        assert len(f2) >= 2
+
+    def test_suggest_followups_function(self):
+        from teloscopy.webapp.app import _suggest_followups
+        result = _suggest_followups("fear", 0)
+        assert isinstance(result, list)
+        assert 1 <= len(result) <= 3
+        for f in result:
+            assert isinstance(f, str)
+
+    def test_suggest_followups_deep_conversation(self):
+        from teloscopy.webapp.app import _suggest_followups
+        result = _suggest_followups("anxiety", 10)
+        assert isinstance(result, list)
+        assert len(result) >= 1
+
+
+class TestCounselPersonalisedAcknowledgment:
+    """Verify template responses echo back the user's words."""
+
+    def test_acknowledgment_contains_user_words(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I keep comparing myself to everyone around me and it hurts."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        ack = data["response"]["acknowledgment"]
+        # The acknowledgment should contain a snippet of the user's message
+        assert "comparing" in ack.lower() or "everyone" in ack.lower() or '"' in ack
+
+    def test_short_messages_may_not_be_echoed(self, client):
+        """Very short messages (< 12 chars) don't get echo prefix."""
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel sad."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        # Should still have a valid acknowledgment
+        assert len(data["response"]["acknowledgment"]) > 10

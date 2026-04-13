@@ -1078,6 +1078,47 @@
             background: rgba(147,51,234,.22);
         }
 
+        /* Typing animation cursor */
+        .counsel-msg.counsellor.typing-active::after {
+            content: '\u258E';
+            display: inline;
+            color: rgba(147,51,234,.7);
+            animation: blink-cursor .7s steps(1) infinite;
+            font-weight: 300;
+            margin-left: 1px;
+        }
+        @keyframes blink-cursor {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Follow-up suggestion chips */
+        .counsel-followups {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .4rem;
+            padding: .5rem 0;
+            align-self: flex-start;
+            max-width: 85%;
+        }
+        .counsel-followup-chip {
+            display: inline-block;
+            padding: .35rem .75rem;
+            font-size: .8rem;
+            background: rgba(147,51,234,.08);
+            border: 1px solid rgba(147,51,234,.2);
+            border-radius: 16px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: background .2s, border-color .2s, color .2s;
+            white-space: nowrap;
+        }
+        .counsel-followup-chip:hover {
+            background: rgba(147,51,234,.18);
+            border-color: rgba(147,51,234,.4);
+            color: var(--text);
+        }
+
         /* Input area */
         .counsel-input-row {
             display: flex;
@@ -5993,6 +6034,96 @@ function escapeHtml(str) {
             return div;
         }
 
+        /* ---- Typing animation — reveals text word-by-word ---- */
+        function addMessageAnimated(text, type, extras, onComplete) {
+            var div = document.createElement('div');
+            div.className = 'counsel-msg ' + type + ' typing-active';
+            div.textContent = '';
+            counselChat.appendChild(div);
+            counselChat.scrollTop = counselChat.scrollHeight;
+
+            /* Split into words, preserving whitespace structure */
+            var words = text.split(/(\s+)/);
+            var idx = 0;
+            var speed = 35; /* ms per word — feels like natural typing */
+
+            function typeNext() {
+                if (idx >= words.length) {
+                    /* Done typing — remove cursor, add extras */
+                    div.classList.remove('typing-active');
+                    var html = div.innerHTML;
+                    if (extras) {
+                        if (extras.insight) {
+                            html += '<span class="counsel-insight">' + escapeHtml(extras.insight) + '</span>';
+                        }
+                        if (extras.quote) {
+                            html += '<span class="counsel-source-quote">&ldquo;' + escapeHtml(extras.quote) + '&rdquo;</span>';
+                        }
+                    }
+                    if (type === 'counsellor' && synthesis) {
+                        html += '<button class="speak-btn" type="button" onclick="window._counselSpeakText(this.parentElement)" aria-label="Speak this response">' +
+                            '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">' +
+                            '<path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"/>' +
+                            '</svg> Listen</button>';
+                    }
+                    div.innerHTML = html;
+                    if (onComplete) onComplete();
+                    return;
+                }
+                var word = words[idx];
+                idx++;
+                /* Convert newlines to <br> for paragraph breaks */
+                if (/\n\s*\n/.test(word)) {
+                    div.innerHTML += '<br><br>';
+                } else if (word === '\n') {
+                    div.innerHTML += '<br>';
+                } else {
+                    div.appendChild(document.createTextNode(word));
+                }
+                counselChat.scrollTop = counselChat.scrollHeight;
+                /* Slight pause after punctuation for natural rhythm */
+                var delay = speed;
+                if (/[.!?]$/.test(word)) delay = speed * 4;
+                else if (/[,;:]$/.test(word)) delay = speed * 2;
+                setTimeout(typeNext, delay);
+            }
+
+            typeNext();
+            return div;
+        }
+
+        /* ---- Follow-up suggestion chips ---- */
+        var _currentFollowups = null;
+
+        function showFollowups(suggestions) {
+            /* Remove previous follow-up chips */
+            if (_currentFollowups && _currentFollowups.parentNode) {
+                _currentFollowups.parentNode.removeChild(_currentFollowups);
+            }
+            if (!suggestions || !suggestions.length) return;
+
+            var container = document.createElement('div');
+            container.className = 'counsel-followups';
+            suggestions.forEach(function(s) {
+                var chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'counsel-followup-chip';
+                chip.textContent = s;
+                chip.addEventListener('click', function() {
+                    counselInput.value = s;
+                    counselInput.focus();
+                    /* Remove chips once one is clicked */
+                    if (container.parentNode) container.parentNode.removeChild(container);
+                    _currentFollowups = null;
+                    sendCounselMessage();
+                });
+                container.appendChild(chip);
+            });
+            counselChat.appendChild(container);
+            counselChat.scrollTop = counselChat.scrollHeight;
+            _currentFollowups = container;
+        }
+
         /* ---- Send message to counselling API ---- */
         function sendCounselMessage() {
             var message = counselInput.value.trim();
@@ -6001,6 +6132,12 @@ function escapeHtml(str) {
             /* Unlock synthesis on this user gesture so the response
                can auto-speak even though the fetch callback is async */
             if (typeof _trySynthUnlock === 'function') _trySynthUnlock();
+
+            /* Remove previous follow-up chips */
+            if (_currentFollowups && _currentFollowups.parentNode) {
+                _currentFollowups.parentNode.removeChild(_currentFollowups);
+                _currentFollowups = null;
+            }
 
             counselInput.value = '';
             counselInput.style.height = 'auto';
@@ -6025,7 +6162,9 @@ function escapeHtml(str) {
             .then(function(data) {
                 counselChat.removeChild(typingDiv);
 
-                var fullText, extras;
+                var fullText, extras, followups;
+                followups = data.followups || [];
+
                 if (data.mode === 'ai' && data.ai_response) {
                     /* AI-powered response — single flowing text */
                     fullText = data.ai_response;
@@ -6052,13 +6191,17 @@ function escapeHtml(str) {
                     }
                 }
 
-                addMessage(fullText, 'counsellor', extras);
-                counsellingHistory.push({ role: 'counsellor', text: fullText, theme: data.theme });
+                /* Animate the response word-by-word */
+                addMessageAnimated(fullText, 'counsellor', extras, function() {
+                    /* Show follow-up suggestions after animation completes */
+                    showFollowups(followups);
 
-                /* Auto-speak if enabled */
-                if (autoSpeakToggle && autoSpeakToggle.checked && synthesis) {
-                    speakText(fullText);
-                }
+                    /* Auto-speak if enabled */
+                    if (autoSpeakToggle && autoSpeakToggle.checked && synthesis) {
+                        speakText(fullText);
+                    }
+                });
+                counsellingHistory.push({ role: 'counsellor', text: fullText, theme: data.theme });
             })
             .catch(function(err) {
                 counselChat.removeChild(typingDiv);
