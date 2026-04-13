@@ -6903,15 +6903,21 @@ function escapeHtml(str) {
             }
         }
 
-        /* ---- Chrome 15-second pause workaround ---- */
+        /* ---- Chrome 15-second pause workaround ----
+         * Chrome kills utterances after ~15s of continuous speech.
+         * Pause/resume resets the timer.  We use 5s intervals to stay
+         * well within the limit.  Guard against browsers where pause()
+         * throws or triggers 'interrupted' — wrapped in try-catch. */
         function _startResume() {
             _stopResume();
             _resumeTimer = setInterval(function() {
-                if (synthesis && synthesis.speaking && !synthesis.paused) {
-                    synthesis.pause();
-                    synthesis.resume();
-                }
-            }, 7000);
+                try {
+                    if (synthesis && synthesis.speaking && !synthesis.paused) {
+                        synthesis.pause();
+                        synthesis.resume();
+                    }
+                } catch(e) { /* some browsers throw on pause/resume */ }
+            }, 5000);
         }
         function _stopResume() {
             if (_resumeTimer) { clearInterval(_resumeTimer); _resumeTimer = null; }
@@ -6991,12 +6997,31 @@ function escapeHtml(str) {
 
             var idx = 0;
             var cancelled = false;
+            var _watchdog = null;       /* catches silently-killed utterances */
+            var _chunkHandled = false;  /* prevents double-advance from onend + onerror */
+
+            function _clearWatchdog() {
+                if (_watchdog) { clearTimeout(_watchdog); _watchdog = null; }
+            }
+
+            function advance(gap) {
+                if (_chunkHandled) return;
+                _chunkHandled = true;
+                _clearWatchdog();
+                idx++;
+                if (cancelled || idx >= chunks.length) {
+                    _stopResume(); _markSpeakingEnd();
+                    return;
+                }
+                setTimeout(next, gap);
+            }
 
             function next() {
                 if (cancelled || idx >= chunks.length) {
                     _stopResume(); _markSpeakingEnd();
                     return;
                 }
+                _chunkHandled = false;
                 var c = chunks[idx];
                 var u = new SpeechSynthesisUtterance(c.text);
                 if (voice) {
@@ -7013,35 +7038,56 @@ function escapeHtml(str) {
 
                 u.onstart = function() {
                     if (idx === 0) { _markSpeakingStart(); _startResume(); }
+                    /* Watchdog: if no onend/onerror within 20s, force-advance.
+                     * Catches Chrome silently killing utterances. Each chunk
+                     * is <=180 chars so ~12s at rate 0.88 is generous. */
+                    _clearWatchdog();
+                    _watchdog = setTimeout(function() {
+                        if (!_chunkHandled && !cancelled) {
+                            console.warn('[Teloscopy voice] Watchdog: chunk', idx, 'stalled — forcing advance');
+                            try { synthesis.cancel(); } catch(e) {}
+                            advance(300);
+                        }
+                    }, 20000);
                 };
                 u.onend = function() {
-                    idx++;
-                    if (cancelled || idx >= chunks.length) {
-                        _stopResume(); _markSpeakingEnd();
-                        return;
-                    }
                     var gap = c.paraEnd ? 1000 : 400;
-                    setTimeout(next, gap);
+                    advance(gap);
                 };
                 u.onerror = function(e) {
                     console.warn('[Teloscopy voice] Utterance error:', e.error, 'chunk:', idx);
-                    if (e.error === 'interrupted' || e.error === 'canceled') return;
-                    idx++;
-                    if (!cancelled && idx < chunks.length) {
-                        setTimeout(next, 200);
-                    } else {
+                    /* 'canceled' means deliberate user cancel — stop entirely */
+                    if (e.error === 'canceled') {
+                        _clearWatchdog();
                         _stopResume(); _markSpeakingEnd();
+                        return;
                     }
+                    /* 'interrupted' or any other error — skip to next chunk
+                     * so the speech chain stays alive */
+                    advance(300);
                 };
 
                 synthesis.speak(u);
+
+                /* Fallback: if onstart never fires (some Android TTS engines),
+                 * start a longer watchdog from speak() call time */
+                if (!_watchdog) {
+                    _watchdog = setTimeout(function() {
+                        if (!_chunkHandled && !cancelled) {
+                            console.warn('[Teloscopy voice] Watchdog (no-start): chunk', idx, '— forcing advance');
+                            try { synthesis.cancel(); } catch(e) {}
+                            advance(300);
+                        }
+                    }, 25000);
+                }
             }
 
-            /* 150ms settle time after cancel() */
-            setTimeout(next, 150);
+            /* 250ms settle time after cancel() — longer for mobile reliability */
+            setTimeout(next, 250);
 
             _speakCancelFn = function() {
                 cancelled = true;
+                _clearWatchdog();
                 _stopResume();
                 try { synthesis.cancel(); } catch(e){}
                 _markSpeakingEnd();
