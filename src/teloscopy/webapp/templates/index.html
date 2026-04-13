@@ -5998,10 +5998,6 @@ function escapeHtml(str) {
             var message = counselInput.value.trim();
             if (!message) return;
 
-            /* Unlock speech synthesis on the first user gesture (click/Enter)
-             * so that auto-speak from the fetch callback actually works. */
-            _unlockSynthesis();
-
             counselInput.value = '';
             counselInput.style.height = 'auto';
             counselSendBtn.disabled = true;
@@ -6311,7 +6307,6 @@ function escapeHtml(str) {
         }
 
         voiceBtn.addEventListener('click', function() {
-            _unlockSynthesis(); /* Warm up synthesis on user gesture */
             if (!recognition) {
                 if (typeof toast === 'function') toast('Voice input is not available. ' +
                     (_secureContext ? 'Try Chrome or Edge.' : 'HTTPS is required.'), 'warning');
@@ -6346,133 +6341,153 @@ function escapeHtml(str) {
             }
         });
 
-        /* ---- Web Speech API — Speech Synthesis (Buddha-like serene voice) ---- */
+        /* ---- Web Speech API — Speech Synthesis (serene, natural voice) ---- */
 
         /*
-         * Voice design: imagine a calm, settled presence — like listening to
-         * a wise teacher who speaks slowly, with care, giving each word room
-         * to breathe.  The voice is deep and warm but never strained.
+         * Design goal: a warm, natural human voice — calm as a Buddha sitting
+         * in stillness.  Not a machine.  Every word is given space to land.
          *
-         * Key design decisions:
-         *  1. Split into SENTENCES (not paragraphs). Each sentence is a
-         *     separate SpeechSynthesisUtterance. This:
-         *       - Fixes Chrome Android's ~250-char utterance cutoff
-         *       - Creates natural meditative pacing
-         *       - Prevents the "abrupt stop" on mobile
-         *  2. Short pause (500ms) between sentences within a paragraph.
-         *     Longer pause (1200ms) between paragraphs — a full breath.
-         *  3. Warm-up: Chrome requires the first speak() in a direct user
-         *     gesture. We speak a tiny word on first click to unlock.
-         *  4. Chrome resume timer: Chrome pauses after ~15s. Periodic
-         *     pause/resume keeps it alive.
-         *  5. Voice preference: naturally deep male voices first; the depth
-         *     comes from voice choice, not extreme pitch shifting.
-         *
-         * Parameters:
-         *   rate   : 0.82  — unhurried, measured
-         *   pitch  : 0.88  — natural depth without distortion
-         *   volume : 0.85  — soft, present
+         * Architecture:
+         *  - Text is split into short sentence-sized chunks (<180 chars) so
+         *    Chrome Android doesn't cut off mid-sentence.
+         *  - Each chunk is a separate SpeechSynthesisUtterance.
+         *  - 550ms pause between sentences, 1300ms between paragraphs.
+         *  - Voices queued ONLY after voices are loaded and selected.
+         *  - Chrome synthesis unlock happens on first page interaction
+         *    (click/touch anywhere in counselling area) and WAITS for
+         *    the unlock utterance to complete before marking as ready.
+         *  - Chrome 15-second pause bug: periodic pause/resume keeps it alive.
          */
 
         var _calmVoice = null;
-        var _voicesLoaded = false;
+        var _voicesReady = false;   /* true once we have at least one voice */
 
-        /* Ranked voice preferences — deep calm male voices first */
-        var _calmVoicePreferences = [
-            /* macOS / iOS */
-            'Daniel',           /* British male — deep, resonant */
-            'Evan',             /* macOS Sequoia — calm male */
-            'Rishi',            /* Indian English — measured, deep */
-            'Moira',            /* Irish — soft, contemplative */
-            'Fiona',            /* Scottish — warm */
-            'Samantha',         /* macOS — warm, clear */
-            'Karen',            /* Australian — gentle */
-            'Zoe',              /* macOS Sequoia — warm */
-            /* Windows neural / natural */
-            'Microsoft Guy Online (Natural)',
-            'Microsoft Eric Online (Natural)',
+        /* ---- Voice preferences: natural deep male voices first ---- */
+        var _calmVoicePrefs = [
+            'Daniel', 'Evan', 'Rishi',
+            'Moira', 'Fiona', 'Samantha', 'Karen', 'Zoe',
+            'Microsoft Guy Online (Natural)', 'Microsoft Eric Online (Natural)',
             'Microsoft Guy',
-            'Microsoft Jenny Online (Natural)',
-            'Microsoft Aria Online (Natural)',
-            'Microsoft Jenny',
-            'Microsoft Aria',
-            /* Chrome network */
-            'Google UK English Male',
-            'Google UK English Female',
-            'Google US English',
-            /* Android */
-            'English United Kingdom',
-            'English (United Kingdom)',
-            /* Linux espeak */
-            'English (Great Britain)',
-            'english_rp',
-            'english-us',
+            'Microsoft Jenny Online (Natural)', 'Microsoft Aria Online (Natural)',
+            'Microsoft Jenny', 'Microsoft Aria',
+            'Google UK English Male', 'Google UK English Female', 'Google US English',
+            'English United Kingdom', 'English (United Kingdom)',
+            'English (Great Britain)', 'english_rp', 'english-us',
         ];
 
-        function _selectCalmVoice() {
-            if (_calmVoice) return _calmVoice;
+        function _pickVoice() {
             var voices = synthesis ? synthesis.getVoices() : [];
-            if (voices.length === 0) return null;
-
-            for (var i = 0; i < _calmVoicePreferences.length; i++) {
-                var pref = _calmVoicePreferences[i].toLowerCase();
-                var match = voices.find(function(v) {
-                    return v.name.toLowerCase().indexOf(pref) > -1 &&
-                           v.lang.indexOf('en') === 0;
-                });
-                if (match) { _calmVoice = match; return match; }
+            if (!voices.length) return null;
+            for (var i = 0; i < _calmVoicePrefs.length; i++) {
+                var p = _calmVoicePrefs[i].toLowerCase();
+                for (var j = 0; j < voices.length; j++) {
+                    if (voices[j].name.toLowerCase().indexOf(p) > -1 &&
+                        voices[j].lang.indexOf('en') === 0) {
+                        console.log('[Teloscopy voice] Selected:', voices[j].name, voices[j].lang);
+                        return voices[j];
+                    }
+                }
             }
             /* Fallback: any local English voice */
-            var localEn = voices.find(function(v) {
-                return v.lang.indexOf('en') === 0 && v.localService;
-            });
-            if (localEn) { _calmVoice = localEn; return localEn; }
-            /* Last resort */
-            var anyEn = voices.find(function(v) {
-                return v.lang.indexOf('en') === 0;
-            });
-            if (anyEn) { _calmVoice = anyEn; return anyEn; }
+            for (var k = 0; k < voices.length; k++) {
+                if (voices[k].lang.indexOf('en') === 0 && voices[k].localService) {
+                    console.log('[Teloscopy voice] Fallback local:', voices[k].name);
+                    return voices[k];
+                }
+            }
+            /* Last resort: any English */
+            for (var m = 0; m < voices.length; m++) {
+                if (voices[m].lang.indexOf('en') === 0) {
+                    console.log('[Teloscopy voice] Fallback any:', voices[m].name);
+                    return voices[m];
+                }
+            }
+            console.warn('[Teloscopy voice] No English voice found');
             return null;
         }
 
-        /* ---- Speech parameters ---- */
-        var _calmRate        = 0.82;
-        var _calmPitch       = 0.88;
-        var _calmVolume      = 0.85;
-        var _sentencePause   = 500;   /* ms between sentences — a breath */
-        var _paragraphPause  = 1200;  /* ms between paragraphs — a full breath */
-
-        /* ---- Synthesis unlock ----
-         * Chrome blocks speak() from async callbacks unless one speak()
-         * has already occurred during a direct user gesture.
-         * We speak a tiny real word (empty strings are sometimes ignored). */
-        var _synthUnlocked = false;
-        function _unlockSynthesis() {
-            if (_synthUnlocked || !synthesis) return;
-            try {
-                var u = new SpeechSynthesisUtterance('.');
-                u.volume = 0.01;   /* near-silent */
-                u.rate = 10;       /* fastest — over in milliseconds */
-                var v = _selectCalmVoice();
-                if (v) u.voice = v;
-                synthesis.speak(u);
-                _synthUnlocked = true;
-            } catch (e) { /* swallow */ }
+        function _ensureVoice() {
+            if (!_calmVoice) _calmVoice = _pickVoice();
+            _voicesReady = !!_calmVoice;
+            return _calmVoice;
         }
 
+        /* ---- Speech parameters ---- */
+        var _rate          = 0.84;
+        var _pitch         = 0.92;
+        var _volume        = 0.88;
+        var _sentGap       = 550;    /* ms between sentences */
+        var _paraGap       = 1300;   /* ms between paragraphs */
+
+        /* ---- Synthesis unlock ----
+         * Chrome requires the FIRST speechSynthesis.speak() to both:
+         *   (a) happen during a user gesture, AND
+         *   (b) COMPLETE (not be cancelled).
+         * We attach a one-time listener on the counselling container that
+         * speaks a real short word at near-zero volume and waits for onend. */
+        var _synthReady = false;
+        var _synthReadyCallbacks = [];
+
+        function _onSynthReady(fn) {
+            if (_synthReady) { fn(); return; }
+            _synthReadyCallbacks.push(fn);
+        }
+
+        function _doUnlock() {
+            if (_synthReady || !synthesis) return;
+            try {
+                _ensureVoice();
+                var u = new SpeechSynthesisUtterance('ready');
+                u.volume = 0.01;
+                u.rate = 4;
+                if (_calmVoice) u.voice = _calmVoice;
+                u.onend = function() {
+                    _synthReady = true;
+                    console.log('[Teloscopy voice] Synthesis unlocked');
+                    _synthReadyCallbacks.forEach(function(cb) { try { cb(); } catch(e){} });
+                    _synthReadyCallbacks = [];
+                };
+                u.onerror = function() {
+                    /* Even on error, mark ready — some browsers don't need unlock */
+                    _synthReady = true;
+                    _synthReadyCallbacks.forEach(function(cb) { try { cb(); } catch(e){} });
+                    _synthReadyCallbacks = [];
+                };
+                synthesis.speak(u);
+            } catch (e) {
+                _synthReady = true; /* best effort */
+            }
+        }
+
+        /* Attach unlock to multiple user gestures for reliability */
+        var _unlockAttached = false;
+        function _attachUnlock() {
+            if (_unlockAttached) return;
+            _unlockAttached = true;
+            var area = counselChat.parentElement || document;
+            var handler = function() {
+                _doUnlock();
+                area.removeEventListener('click', handler, true);
+                area.removeEventListener('touchstart', handler, true);
+            };
+            area.addEventListener('click', handler, true);
+            area.addEventListener('touchstart', handler, true);
+        }
+        _attachUnlock();
+
         /* ---- Chrome 15-second pause workaround ---- */
-        var _chromeResumeTimer = null;
-        function _startChromeResume() {
-            _stopChromeResume();
-            _chromeResumeTimer = setInterval(function() {
+        var _resumeTimer = null;
+        function _startResume() {
+            _stopResume();
+            _resumeTimer = setInterval(function() {
                 if (synthesis && synthesis.speaking) {
                     synthesis.pause();
                     synthesis.resume();
                 }
-            }, 8000);
+            }, 7000);
         }
-        function _stopChromeResume() {
-            if (_chromeResumeTimer) { clearInterval(_chromeResumeTimer); _chromeResumeTimer = null; }
+        function _stopResume() {
+            if (_resumeTimer) { clearInterval(_resumeTimer); _resumeTimer = null; }
         }
 
         /* ---- UI helpers ---- */
@@ -6489,133 +6504,150 @@ function escapeHtml(str) {
             if (voiceStatusText) voiceStatusText.textContent = 'Voice ready \u2014 click the microphone to speak';
         }
 
-        /* ---- Sentence splitter ----
-         * Splits text into short chunks that stay under ~200 characters
-         * (safe for Chrome Android). Splits on sentence boundaries first,
-         * then on commas/semicolons if a sentence is still too long. */
-        function _splitIntoChunks(text) {
-            var MAX_CHUNK = 180;
-            /* First split into paragraphs */
-            var paragraphs = text.split(/\n\s*\n/).filter(function(p) { return p.trim(); });
-            if (paragraphs.length === 0) paragraphs = [text];
+        /* ---- Sentence splitter (no lookbehind — works in all browsers) ----
+         * 1. Split on paragraph breaks (\n\n).
+         * 2. Within each paragraph, split on '. ' / '! ' / '? '
+         *    by replacing them with a sentinel, then splitting.
+         * 3. If a sentence exceeds 180 chars, split on ', ' or '; '.
+         */
+        function _splitText(text) {
+            var MAX = 180;
+            var paras = text.split(/\n\s*\n/);
+            var chunks = []; /* { text, paraEnd } */
 
-            var result = []; /* each entry: { text: '...', paragraphEnd: bool } */
+            for (var p = 0; p < paras.length; p++) {
+                var raw = paras[p].replace(/\s+/g, ' ').trim();
+                if (!raw) continue;
 
-            paragraphs.forEach(function(para, pIdx) {
-                /* Split paragraph into sentences */
-                var sentences = para.trim().replace(/\s+/g, ' ')
-                    .split(/(?<=[.!?])\s+/)
-                    .filter(function(s) { return s.trim(); });
+                /* Split into sentences: replace '. ' with '.\x00' etc,
+                 * then split on \x00.  Keeps the punctuation with the sentence. */
+                var marked = raw
+                    .replace(/\. /g, '.\x00')
+                    .replace(/\! /g, '!\x00')
+                    .replace(/\? /g, '?\x00');
+                var sentences = marked.split('\x00').filter(function(s) { return s.trim(); });
 
-                sentences.forEach(function(sentence, sIdx) {
-                    var isLast = (sIdx === sentences.length - 1);
-                    if (sentence.length <= MAX_CHUNK) {
-                        result.push({ text: sentence, paragraphEnd: isLast && pIdx < paragraphs.length - 1 });
+                for (var s = 0; s < sentences.length; s++) {
+                    var sent = sentences[s].trim();
+                    var isLastSent = (s === sentences.length - 1);
+                    var paraEnd = isLastSent && (p < paras.length - 1);
+
+                    if (sent.length <= MAX) {
+                        chunks.push({ text: sent, paraEnd: paraEnd });
                     } else {
-                        /* Split long sentence on commas / semicolons */
-                        var parts = sentence.split(/(?<=[,;])\s+/);
+                        /* Split on commas / semicolons */
+                        var subMarked = sent.replace(/, /g, ',\x00').replace(/; /g, ';\x00');
+                        var parts = subMarked.split('\x00');
                         var buf = '';
-                        parts.forEach(function(part, partIdx) {
-                            if (buf && (buf + ' ' + part).length > MAX_CHUNK) {
-                                result.push({ text: buf.trim(), paragraphEnd: false });
+                        for (var k = 0; k < parts.length; k++) {
+                            var part = parts[k].trim();
+                            if (buf && (buf + ' ' + part).length > MAX) {
+                                chunks.push({ text: buf, paraEnd: false });
                                 buf = part;
                             } else {
                                 buf = buf ? (buf + ' ' + part) : part;
                             }
-                            if (partIdx === parts.length - 1 && buf) {
-                                result.push({ text: buf.trim(), paragraphEnd: isLast && pIdx < paragraphs.length - 1 });
-                                buf = '';
-                            }
-                        });
+                        }
+                        if (buf) chunks.push({ text: buf, paraEnd: paraEnd });
                     }
-                });
-            });
-            return result;
+                }
+            }
+            return chunks;
         }
 
         /* ---- Main speak function ---- */
-        function speakText(text) {
-            if (!synthesis) return null;
+        var _speaking = false;
+        var _cancelFn = null;
 
-            /* Always cancel first, then wait for Chrome to settle */
+        function _speakNow(text) {
+            if (!synthesis) return null;
             synthesis.cancel();
 
-            var voice = _selectCalmVoice();
-            var chunks = _splitIntoChunks(text);
-            if (chunks.length === 0) return null;
+            var voice = _ensureVoice();
+            var chunks = _splitText(text);
+            if (!chunks.length) return null;
+
+            console.log('[Teloscopy voice] Speaking', chunks.length, 'chunks, voice:', voice ? voice.name : 'default');
 
             var idx = 0;
             var cancelled = false;
 
-            function speakChunk() {
+            function next() {
                 if (cancelled || idx >= chunks.length) {
-                    _stopChromeResume();
+                    _stopResume();
                     _markSpeakingEnd();
+                    _speaking = false;
                     return;
                 }
+                var c = chunks[idx];
+                var u = new SpeechSynthesisUtterance(c.text);
+                if (voice) {
+                    u.voice = voice;
+                    u.lang = voice.lang;
+                } else {
+                    u.lang = 'en-GB';
+                }
+                u.rate = _rate;
+                u.pitch = _pitch;
+                u.volume = _volume;
 
-                var chunk = chunks[idx];
-                var utterance = new SpeechSynthesisUtterance(chunk.text);
-                if (voice) utterance.voice = voice;
-                utterance.lang = voice ? voice.lang : 'en-GB';
-                utterance.rate = _calmRate;
-                utterance.pitch = _calmPitch;
-                utterance.volume = _calmVolume;
-
-                utterance.onstart = function() {
-                    if (idx === 0) {
-                        _markSpeakingStart();
-                        _startChromeResume();
-                    }
+                u.onstart = function() {
+                    if (idx === 0) { _markSpeakingStart(); _startResume(); }
                 };
-
-                utterance.onend = function() {
+                u.onend = function() {
                     idx++;
                     if (cancelled || idx >= chunks.length) {
-                        _stopChromeResume();
-                        _markSpeakingEnd();
+                        _stopResume(); _markSpeakingEnd(); _speaking = false;
                         return;
                     }
-                    /* Paragraph boundary → long pause; sentence → short pause */
-                    var pause = chunk.paragraphEnd ? _paragraphPause : _sentencePause;
-                    setTimeout(speakChunk, pause);
+                    var gap = c.paraEnd ? _paraGap : _sentGap;
+                    setTimeout(next, gap);
                 };
-
-                utterance.onerror = function(e) {
-                    if (e.error !== 'interrupted' && e.error !== 'canceled') {
-                        _stopChromeResume();
-                        _markSpeakingEnd();
+                u.onerror = function(e) {
+                    console.warn('[Teloscopy voice] Utterance error:', e.error, 'chunk:', idx);
+                    if (e.error === 'interrupted' || e.error === 'canceled') return;
+                    /* Try to continue with next chunk on error */
+                    idx++;
+                    if (!cancelled && idx < chunks.length) {
+                        setTimeout(next, 300);
+                    } else {
+                        _stopResume(); _markSpeakingEnd(); _speaking = false;
                     }
                 };
 
-                synthesis.speak(utterance);
+                synthesis.speak(u);
             }
 
-            /* Wait after cancel() for Chrome to reset its internal state.
-             * 200ms is conservative but reliable across desktop & mobile. */
-            setTimeout(speakChunk, 200);
+            _speaking = true;
+            /* 250ms settle time after cancel() — reliable on all platforms */
+            setTimeout(next, 250);
 
-            return function cancelSpeech() {
+            return function() {
                 cancelled = true;
-                _stopChromeResume();
-                try { synthesis.cancel(); } catch (e) { /* safe */ }
+                _stopResume();
+                try { synthesis.cancel(); } catch(e){}
                 _markSpeakingEnd();
+                _speaking = false;
             };
         }
 
-        /* Cancel-aware wrapper */
-        var _cancelCurrentSpeech = null;
-        var _coreSpeakText = speakText;
-        speakText = function(text) {
-            if (_cancelCurrentSpeech) {
-                _cancelCurrentSpeech();
-                _cancelCurrentSpeech = null;
+        /* Public speakText: waits for synthesis unlock, then speaks */
+        function speakText(text) {
+            if (!synthesis || !text) return;
+            /* Cancel any ongoing speech */
+            if (_cancelFn) { _cancelFn(); _cancelFn = null; }
+
+            if (_synthReady) {
+                _cancelFn = _speakNow(text);
+            } else {
+                /* Queue for after unlock completes */
+                _onSynthReady(function() {
+                    _cancelFn = _speakNow(text);
+                });
+                /* Trigger unlock in case it hasn't happened yet */
+                _doUnlock();
             }
-            /* Extra settle time after cancel before new speech */
-            setTimeout(function() {
-                _cancelCurrentSpeech = _coreSpeakText(text);
-            }, 50);
-        };
+        }
 
         /* Global function for speak buttons in chat messages */
         window._counselSpeakText = function(msgEl) {
@@ -6623,18 +6655,19 @@ function escapeHtml(str) {
             var clone = msgEl.cloneNode(true);
             var extras = clone.querySelectorAll('.counsel-insight, .counsel-source-quote, .speak-btn');
             extras.forEach(function(el) { el.remove(); });
-            _unlockSynthesis();
             speakText(clone.textContent.trim());
         };
 
-        /* Ensure voices are loaded (some browsers fire this asynchronously) */
+        /* Load voices — some browsers fire onvoiceschanged async */
         if (synthesis) {
-            synthesis.onvoiceschanged = function() {
-                _voicesLoaded = true;
+            var _tryLoadVoices = function() {
                 _calmVoice = null;
-                _selectCalmVoice();
+                _ensureVoice();
             };
-            _selectCalmVoice();
+            synthesis.onvoiceschanged = _tryLoadVoices;
+            _tryLoadVoices();
+            /* Some browsers need a small delay */
+            setTimeout(_tryLoadVoices, 500);
         }
 
     })();
