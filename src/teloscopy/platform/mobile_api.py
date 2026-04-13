@@ -426,12 +426,22 @@ class ImageUploadHandler:
 
     def get_path(self, upload_id: str, user_id: str = "") -> str | None:
         """Resolve upload ID to file path (or None if missing)."""
-        user_dir = os.path.join(self._upload_dir, user_id or "_anonymous")
+        # Sanitize user_id to prevent path traversal (same as save())
+        safe_user_id = re.sub(r'[^a-zA-Z0-9_@.\-]', '_', user_id or "_anonymous")
+        if '..' in safe_user_id:
+            safe_user_id = safe_user_id.replace('..', '__')
+        user_dir = os.path.join(self._upload_dir, safe_user_id)
         if not os.path.isdir(user_dir):
             return None
+        # Sanitize upload_id as well
+        safe_upload_id = re.sub(r'[^a-zA-Z0-9]', '', upload_id)
         for fname in os.listdir(user_dir):
-            if fname.startswith(upload_id):
-                return os.path.join(user_dir, fname)
+            if fname.startswith(safe_upload_id):
+                resolved = os.path.realpath(os.path.join(user_dir, fname))
+                # Ensure the resolved path is within upload_dir
+                if not resolved.startswith(os.path.realpath(self._upload_dir)):
+                    return None
+                return resolved
         return None
 
 

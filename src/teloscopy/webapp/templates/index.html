@@ -766,6 +766,27 @@
             .btn-row { flex-direction: column; align-items: stretch; }
             .download-row { flex-direction: column; align-items: stretch; }
             .upload-card { padding: 2rem 1rem; }
+
+            /* ---- Psychiatry responsive (tablet / small laptop) ---- */
+            .psychiatry-hero { padding: 1.5rem .75rem; margin-bottom: 1.25rem; }
+            .psychiatry-hero h3 { font-size: 1.15rem; }
+            .psychiatry-hero p { font-size: .85rem; }
+            .counsel-quote-banner { padding: .75rem 1rem; font-size: .82rem; max-width: 100%; }
+            .counsel-chat { min-height: 240px; max-height: 400px; padding: .85rem; }
+            .counsel-msg { max-width: 92%; padding: .7rem .9rem; font-size: .87rem; }
+            .counsel-input-row { gap: .5rem; }
+            .counsel-input-row textarea { font-size: .87rem; padding: .65rem .8rem; min-height: 44px; }
+            .voice-btn { width: 42px; height: 42px; }
+            .counsel-send-btn { height: 42px; padding: 0 1rem; font-size: .84rem; }
+            .psych-consent-gate { padding: 1.25rem 1rem; }
+            .psych-consent-gate h3 { font-size: 1rem; }
+            .psych-consent-terms { max-height: 200px; padding: .75rem 1rem; font-size: .8rem; }
+            .psych-consent-checks label { padding: .5rem .65rem; font-size: .8rem; }
+            .theme-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .6rem; }
+            .theme-card { padding: .7rem .85rem; }
+            .theme-card .theme-title { font-size: .82rem; }
+            .theme-card .theme-desc { font-size: .74rem; }
+            .psychiatry-disclaimer { font-size: .78rem; padding: .75rem .85rem; }
         }
         @media (max-width: 480px) {
             .btn { width: 100%; }
@@ -774,6 +795,38 @@
             .section { padding: 1rem .75rem !important; }
             .stat-value { font-size: 1.2rem; }
             .badge { font-size: .72rem; padding: .25rem .6rem; }
+
+            /* ---- Psychiatry responsive (phone) ---- */
+            .psychiatry-hero { padding: 1rem .6rem; margin-bottom: 1rem; border-radius: 14px; }
+            .psychiatry-hero h3 { font-size: 1.05rem; }
+            .counsel-quote-banner { padding: .6rem .85rem; font-size: .78rem; margin: .75rem auto; }
+            .counsel-chat { min-height: 200px; max-height: 350px; padding: .6rem; border-radius: 12px; gap: .5rem; }
+            .counsel-msg { max-width: 95%; padding: .6rem .75rem; font-size: .84rem; line-height: 1.5; border-radius: 12px; }
+            .counsel-msg.user { border-bottom-right-radius: 3px; }
+            .counsel-msg.counsellor { border-bottom-left-radius: 3px; }
+            .counsel-msg .speak-btn { padding: .2rem .5rem; font-size: .7rem; }
+            .counsel-input-row { gap: .4rem; flex-wrap: wrap; }
+            .counsel-input-row textarea { min-width: 0; width: 100%; font-size: .85rem; padding: .6rem .7rem; border-radius: 10px; }
+            .voice-btn { width: 40px; height: 40px; }
+            .voice-btn svg { width: 18px; height: 18px; }
+            .counsel-send-btn { height: 40px; padding: 0 .85rem; font-size: .82rem; border-radius: 10px; flex: 1; }
+            .counsel-followup-wrap { gap: .4rem; }
+            .counsel-followup-chip { padding: .3rem .6rem; font-size: .75rem; }
+            .psych-consent-gate { padding: 1rem .75rem; border-radius: 14px; margin-bottom: 1rem; }
+            .psych-consent-gate h3 { font-size: .95rem; gap: .35rem; }
+            .psych-consent-gate h3 svg { width: 18px; height: 18px; }
+            .psych-consent-gate .gate-subtitle { font-size: .82rem; margin-bottom: 1rem; }
+            .psych-consent-terms { max-height: 180px; padding: .65rem .85rem; font-size: .78rem; border-radius: 10px; }
+            .psych-consent-checks { gap: .4rem; }
+            .psych-consent-checks label { padding: .45rem .6rem; font-size: .78rem; border-radius: 8px; gap: .45rem; }
+            .psych-consent-accept { padding: .6rem 1rem; font-size: .85rem; border-radius: 10px; }
+            .theme-explorer h4 { font-size: .92rem; }
+            .theme-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .5rem; }
+            .theme-card { padding: .6rem .7rem; border-radius: 10px; }
+            .theme-card .theme-title { font-size: .78rem; }
+            .theme-card .theme-desc { font-size: .72rem; -webkit-line-clamp: 2; }
+            .psychiatry-disclaimer { font-size: .75rem; padding: .6rem .7rem; border-radius: 10px; }
+            .voice-status { font-size: .75rem; }
         }
 
         /* ============================================================
@@ -883,9 +936,514 @@
         }
         .download-modal-close:hover { color: var(--text-primary); }
 
+        /* Microphone permission popup */
+        .mic-perm-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+            z-index: 1200; align-items: center; justify-content: center;
+        }
+        .mic-perm-overlay.visible { display: flex; }
+        .mic-perm-modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem; max-width: 460px; width: 92%;
+            text-align: left; position: relative;
+        }
+        .mic-perm-modal h3 {
+            font-size: 1.2rem; color: var(--text-primary); margin-bottom: .5rem;
+            display: flex; align-items: center; gap: .5rem;
+        }
+        .mic-perm-modal h3 svg { width: 22px; height: 22px; flex-shrink: 0; }
+        .mic-perm-modal p {
+            font-size: .88rem; color: var(--text-secondary); margin-bottom: 1rem;
+            line-height: 1.55;
+        }
+        .mic-perm-steps {
+            list-style: none; padding: 0; margin: 0 0 1.25rem 0;
+            counter-reset: mic-step;
+        }
+        .mic-perm-steps li {
+            counter-increment: mic-step;
+            position: relative; padding-left: 2rem;
+            font-size: .86rem; color: var(--text-secondary);
+            line-height: 1.55; margin-bottom: .5rem;
+        }
+        .mic-perm-steps li::before {
+            content: counter(mic-step);
+            position: absolute; left: 0; top: 1px;
+            width: 1.4rem; height: 1.4rem; border-radius: 50%;
+            background: var(--accent); color: var(--bg-primary);
+            font-size: .75rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .mic-perm-actions {
+            display: flex; gap: .75rem; justify-content: flex-end;
+        }
+        .mic-perm-btn {
+            padding: .6rem 1.2rem; border-radius: 10px;
+            font-weight: 600; font-size: .88rem; cursor: pointer;
+            border: none; transition: opacity .2s;
+        }
+        .mic-perm-btn:hover { opacity: .85; }
+        .mic-perm-btn-settings {
+            background: var(--accent); color: var(--bg-primary);
+        }
+        .mic-perm-btn-close {
+            background: transparent; color: var(--text-secondary);
+            border: 1px solid var(--border) !important;
+        }
+        .mic-perm-close {
+            position: absolute; top: 10px; right: 12px;
+            background: none; border: none; color: var(--text-muted);
+            cursor: pointer; font-size: 1.2rem; line-height: 1;
+        }
+        .mic-perm-close:hover { color: var(--text-primary); }
+
         /* Sidebar mobile-app nav item */
         .nav-item-mobile-app { color: var(--accent) !important; }
         .nav-item-research { color: #7c8cf8 !important; }
+
+        /* ============================================================
+           PSYCHIATRY SECTION — Voice Counselling
+           ============================================================ */
+        .psychiatry-hero {
+            text-align: center;
+            padding: 2rem 1rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, rgba(147,51,234,.08) 0%, rgba(99,102,241,.06) 50%, rgba(0,212,170,.05) 100%);
+            border-radius: 20px;
+            border: 1px solid rgba(147,51,234,.15);
+        }
+        .psychiatry-hero h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: .5rem;
+        }
+        .psychiatry-hero p {
+            color: var(--text-dim);
+            font-size: .92rem;
+            max-width: 640px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        .counsel-quote-banner {
+            font-style: italic;
+            color: var(--text-dim);
+            font-size: .88rem;
+            padding: 1rem 1.5rem;
+            margin: 1.25rem auto;
+            max-width: 580px;
+            border-left: 3px solid rgba(147,51,234,.4);
+            background: rgba(147,51,234,.04);
+            border-radius: 0 10px 10px 0;
+        }
+        .counsel-quote-banner cite {
+            display: block;
+            margin-top: .5rem;
+            font-size: .8rem;
+            color: var(--text-dim);
+            opacity: .7;
+            font-style: normal;
+        }
+
+        /* Voice counselling chat area */
+        .counsel-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+        .counsel-chat {
+            min-height: 320px;
+            max-height: 520px;
+            overflow-y: auto;
+            padding: 1.25rem;
+            background: rgba(15,15,25,.3);
+            border: 1px solid rgba(147,51,234,.15);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: .75rem;
+            scroll-behavior: smooth;
+        }
+        .counsel-msg {
+            max-width: 85%;
+            padding: .9rem 1.15rem;
+            border-radius: 14px;
+            font-size: .92rem;
+            line-height: 1.6;
+            animation: fadeIn .3s ease;
+        }
+        .counsel-msg.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #6366f1, #7c3aed);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        .counsel-msg.counsellor {
+            align-self: flex-start;
+            background: rgba(147,51,234,.10);
+            border: 1px solid rgba(147,51,234,.18);
+            color: var(--text);
+            border-bottom-left-radius: 4px;
+        }
+        .counsel-msg.counsellor .counsel-insight {
+            display: block;
+            margin-top: .6rem;
+            padding-top: .6rem;
+            border-top: 1px solid rgba(147,51,234,.15);
+            font-style: italic;
+            font-size: .85rem;
+            color: var(--text-dim);
+        }
+        .counsel-msg.counsellor .counsel-source-quote {
+            display: block;
+            margin-top: .5rem;
+            font-size: .82rem;
+            color: rgba(147,51,234,.7);
+            font-style: italic;
+        }
+        .counsel-msg.system {
+            align-self: center;
+            background: rgba(0,212,170,.08);
+            border: 1px solid rgba(0,212,170,.15);
+            color: var(--text-dim);
+            font-size: .85rem;
+            text-align: center;
+            max-width: 90%;
+        }
+        .counsel-msg .speak-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            margin-top: .5rem;
+            padding: .25rem .6rem;
+            font-size: .78rem;
+            background: rgba(147,51,234,.12);
+            border: 1px solid rgba(147,51,234,.2);
+            border-radius: 8px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: background .2s;
+        }
+        .counsel-msg .speak-btn:hover {
+            background: rgba(147,51,234,.22);
+        }
+
+        /* Typing animation cursor */
+        .counsel-msg.counsellor.typing-active::after {
+            content: '\u258E';
+            display: inline;
+            color: rgba(147,51,234,.7);
+            animation: blink-cursor .7s steps(1) infinite;
+            font-weight: 300;
+            margin-left: 1px;
+        }
+        @keyframes blink-cursor {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Follow-up suggestion chips */
+        .counsel-followups {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .4rem;
+            padding: .5rem 0;
+            align-self: flex-start;
+            max-width: 85%;
+        }
+        .counsel-followup-chip {
+            display: inline-block;
+            padding: .35rem .75rem;
+            font-size: .8rem;
+            background: rgba(147,51,234,.08);
+            border: 1px solid rgba(147,51,234,.2);
+            border-radius: 16px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: background .2s, border-color .2s, color .2s;
+            white-space: nowrap;
+        }
+        .counsel-followup-chip:hover {
+            background: rgba(147,51,234,.18);
+            border-color: rgba(147,51,234,.4);
+            color: var(--text);
+        }
+
+        /* Input area */
+        .counsel-input-row {
+            display: flex;
+            gap: .75rem;
+            align-items: flex-end;
+        }
+        .counsel-input-row textarea {
+            flex: 1;
+            padding: .8rem 1rem;
+            background: rgba(15,15,25,.4);
+            border: 1px solid rgba(147,51,234,.2);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: .92rem;
+            font-family: inherit;
+            resize: none;
+            min-height: 48px;
+            max-height: 120px;
+            transition: border-color .2s;
+        }
+        .counsel-input-row textarea:focus {
+            outline: none;
+            border-color: rgba(147,51,234,.5);
+        }
+        .counsel-input-row textarea::placeholder {
+            color: var(--text-dim);
+            opacity: .5;
+        }
+
+        /* Voice button */
+        .voice-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px solid rgba(147,51,234,.3);
+            background: rgba(147,51,234,.08);
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .3s;
+            flex-shrink: 0;
+        }
+        .voice-btn:hover {
+            background: rgba(147,51,234,.18);
+            border-color: rgba(147,51,234,.5);
+        }
+        .voice-btn.listening {
+            background: rgba(239,68,68,.15);
+            border-color: rgba(239,68,68,.5);
+            animation: voicePulse 1.5s infinite;
+        }
+        .voice-btn.speaking {
+            background: rgba(0,212,170,.12);
+            border-color: rgba(0,212,170,.4);
+        }
+        @keyframes voicePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.3); }
+            50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+        }
+
+        .counsel-send-btn {
+            height: 48px;
+            padding: 0 1.25rem;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #7c3aed, #6366f1);
+            color: #fff;
+            font-weight: 600;
+            font-size: .9rem;
+            cursor: pointer;
+            transition: opacity .2s, transform .2s;
+            flex-shrink: 0;
+        }
+        .counsel-send-btn:hover {
+            opacity: .88;
+            transform: translateY(-1px);
+        }
+        .counsel-send-btn:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Theme explorer cards */
+        .theme-explorer {
+            margin-top: 1.5rem;
+        }
+        .theme-explorer h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: .75rem;
+            color: var(--text);
+        }
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: .75rem;
+        }
+        .theme-card {
+            padding: .85rem 1rem;
+            background: rgba(15,15,25,.3);
+            border: 1px solid rgba(147,51,234,.12);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .theme-card:hover {
+            background: rgba(147,51,234,.08);
+            border-color: rgba(147,51,234,.3);
+            transform: translateY(-2px);
+        }
+        .theme-card .theme-title {
+            font-weight: 600;
+            font-size: .88rem;
+            color: var(--text);
+            margin-bottom: .25rem;
+        }
+        .theme-card .theme-desc {
+            font-size: .78rem;
+            color: var(--text-dim);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Voice status indicator */
+        .voice-status {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            font-size: .82rem;
+            color: var(--text-dim);
+            padding: .4rem .8rem;
+            background: rgba(15,15,25,.3);
+            border-radius: 8px;
+            min-height: 28px;
+        }
+        .voice-status .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(147,51,234,.4);
+            flex-shrink: 0;
+        }
+        .voice-status .status-dot.active {
+            background: #00d4aa;
+            animation: voicePulse 1.5s infinite;
+        }
+        .voice-status .status-dot.error {
+            background: #ef4444;
+        }
+
+        /* Disclaimer */
+        .psychiatry-disclaimer {
+            margin-top: 1.5rem;
+            padding: .8rem 1rem;
+            background: rgba(234,179,8,.06);
+            border: 1px solid rgba(234,179,8,.2);
+            border-radius: 10px;
+            font-size: .8rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        /* Psychiatry consent gate — blocks all content until T&C accepted */
+        .psych-consent-gate {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            background: rgba(10,10,20,.6);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid rgba(147,51,234,.2);
+            padding: 2rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .psych-consent-gate h3 {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: .75rem;
+        }
+        .psych-consent-gate h3 svg { width: 22px; height: 22px; color: #a855f7; flex-shrink: 0; }
+        .psych-consent-gate .gate-subtitle {
+            color: var(--text-dim);
+            font-size: .88rem;
+            line-height: 1.55;
+            margin-bottom: 1.25rem;
+        }
+        .psych-consent-terms {
+            background: rgba(15,15,25,.4);
+            border: 1px solid rgba(147,51,234,.12);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            max-height: 260px;
+            overflow-y: auto;
+            margin-bottom: 1.25rem;
+            font-size: .84rem;
+            color: var(--text-dim);
+            line-height: 1.6;
+        }
+        .psych-consent-terms h4 {
+            font-size: .9rem;
+            color: var(--text);
+            margin: .75rem 0 .35rem;
+            font-weight: 600;
+        }
+        .psych-consent-terms h4:first-child { margin-top: 0; }
+        .psych-consent-terms ul { padding-left: 1.2rem; margin: .3rem 0; }
+        .psych-consent-terms ul li { margin-bottom: .25rem; }
+        .psych-consent-checks {
+            display: flex;
+            flex-direction: column;
+            gap: .5rem;
+            margin-bottom: 1.25rem;
+        }
+        .psych-consent-checks label {
+            display: flex;
+            align-items: flex-start;
+            gap: .6rem;
+            padding: .6rem .8rem;
+            background: rgba(15,15,25,.3);
+            border: 1px solid rgba(147,51,234,.1);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: .84rem;
+            color: var(--text-dim);
+            line-height: 1.45;
+            transition: border-color .2s;
+        }
+        .psych-consent-checks label:hover { border-color: rgba(147,51,234,.3); }
+        .psych-consent-checks input[type="checkbox"] {
+            margin-top: 2px;
+            accent-color: #a855f7;
+            flex-shrink: 0;
+        }
+        .psych-consent-checks .req { color: var(--danger); font-weight: 700; }
+        .psych-consent-accept {
+            display: block;
+            width: 100%;
+            padding: .7rem 1.5rem;
+            font-size: .92rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: opacity .2s, transform .1s;
+        }
+        .psych-consent-accept:hover { opacity: .9; }
+        .psych-consent-accept:active { transform: scale(.98); }
+        .psych-consent-accept:disabled {
+            opacity: .35;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* When consent not given, blur the actual counselling content */
+        .psych-content-locked {
+            filter: blur(6px);
+            pointer-events: none;
+            user-select: none;
+            opacity: .3;
+        }
 
         /* ============================================================
            RESEARCH PANEL — slide-out from right
@@ -1300,9 +1858,31 @@
             font-size: .78rem;
         }
         .footer-links a:hover { color: var(--accent); }
+
+        /* noscript fallback */
+        .noscript-block {
+            background: var(--bg-card-solid, #1a2035); color: var(--text, #e0e6ed);
+            padding: 3rem 2rem; text-align: center; min-height: 100vh;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .noscript-block h2 { margin-bottom: 1rem; }
+        .noscript-block p { max-width: 500px; line-height: 1.6; color: var(--text-dim, #8f9bb3); }
+        .noscript-block a { color: var(--accent, #00d4aa); }
     </style>
 </head>
 <body>
+
+<noscript>
+<div class="noscript-block">
+    <h2>JavaScript Required</h2>
+    <p>Teloscopy requires JavaScript to function, including displaying the mandatory data consent notice
+       required by the Digital Personal Data Protection Act, 2023. Please enable JavaScript and reload this page.</p>
+    <p style="margin-top:1rem;">
+        <a href="/docs/privacy-policy">Privacy Policy</a> &middot;
+        <a href="/docs/terms-of-service">Terms of Service</a>
+    </p>
+</div>
+</noscript>
 
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
@@ -1332,6 +1912,10 @@
         <a href="#checkup-section" class="nav-item" data-section="checkup-section">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
             <span class="nav-item-label">Health Checkup</span>
+        </a>
+        <a href="#psychiatry-section" class="nav-item" data-section="psychiatry-section">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg>
+            <span class="nav-item-label">Psychiatry</span>
         </a>
         <a href="#results-section" class="nav-item" data-section="results-section">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
@@ -2094,6 +2678,198 @@
 </section>
 
 <!-- ================================================================
+     PSYCHIATRY — Inquiry-based Voice Counselling
+     ================================================================ -->
+<section class="section" id="psychiatry-section" style="scroll-margin-top:20px;">
+    <h2 class="section-title reveal">Psychiatry Analysis</h2>
+    <p class="section-subtitle reveal">
+        Explore the landscape of your mind through deep self-inquiry &mdash;
+        examining fear, conditioning, thought, and the possibility of psychological freedom.
+    </p>
+
+    <!-- ============================================================
+         PSYCHIATRY CONSENT GATE — must accept before using counselling
+         ============================================================ -->
+    <div class="psych-consent-gate" id="psych-consent-gate">
+        <h3>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
+            Terms &amp; Conditions &mdash; Counselling Service
+        </h3>
+        <p class="gate-subtitle">
+            Please read and accept the following terms before using the counselling feature.
+            This service involves sharing personal thoughts and feelings, and it is important
+            that you understand how it works and its limitations.
+        </p>
+
+        <div class="psych-consent-terms" id="psych-terms-scroll">
+            <h4>1. Nature of This Service</h4>
+            <p>
+                This is an <strong>AI-assisted self-reflection tool</strong>, not therapy, counselling,
+                or psychiatric treatment. It uses inquiry-based dialogue to help you explore your
+                inner experience. It does not diagnose, treat, or prescribe.
+            </p>
+
+            <h4>2. Not a Substitute for Professional Care</h4>
+            <p>
+                This tool is <strong>not</strong> a replacement for licensed mental health professionals,
+                psychiatrists, psychologists, or crisis services. If you are experiencing a mental health
+                crisis, suicidal thoughts, or self-harm urges, please contact:
+            </p>
+            <ul>
+                <li><strong>India:</strong> iCall &mdash; 9152987821 &nbsp;|&nbsp; Vandrevala Foundation &mdash; 1860-2662-345</li>
+                <li><strong>International:</strong> Crisis Text Line &mdash; text HOME to 741741</li>
+                <li><strong>Emergency:</strong> Call your local emergency number immediately</li>
+            </ul>
+
+            <h4>3. AI &amp; Data Processing</h4>
+            <p>
+                Your messages may be processed by an AI language model (LLM) to generate responses.
+                This means your conversation text is sent to an external AI service for processing.
+                Conversations are <strong>not permanently stored</strong> on our servers and are
+                discarded at the end of your session. However, the AI provider may process your
+                messages according to their own data policies.
+            </p>
+
+            <h4>4. No Confidentiality Guarantee</h4>
+            <p>
+                Unlike sessions with a licensed therapist, conversations here are <strong>not
+                protected by therapist-client privilege</strong>. Do not share information that
+                you would only share in a confidential clinical setting.
+            </p>
+
+            <h4>5. Limitations of AI Responses</h4>
+            <ul>
+                <li>Responses are generated by AI and may be inaccurate, inappropriate, or unhelpful.</li>
+                <li>The AI cannot understand context the way a human therapist can.</li>
+                <li>The AI does not remember previous sessions.</li>
+                <li>Responses should not be taken as professional advice of any kind.</li>
+            </ul>
+
+            <h4>6. Your Responsibility</h4>
+            <p>
+                By using this service, you acknowledge that you are engaging in voluntary self-reflection.
+                You are solely responsible for decisions you make based on interactions with this tool.
+                Teloscopy and its creators bear no liability for outcomes arising from use of this feature.
+            </p>
+
+            <h4>7. Age Requirement</h4>
+            <p>
+                You must be <strong>18 years of age or older</strong> to use this counselling feature,
+                or have verifiable parental/guardian consent as required by the Digital Personal Data
+                Protection Act, 2023 (Section 9).
+            </p>
+
+            <h4>8. Medical Disclaimer</h4>
+            <p>
+                Teloscopy is <strong>not</strong> a medical device, not registered with CDSCO, and not
+                a clinical establishment. Nothing in this counselling feature constitutes medical advice,
+                diagnosis, or treatment under the Drugs &amp; Cosmetics Act, 1940 or the Clinical
+                Establishments Act, 2010.
+            </p>
+        </div>
+
+        <div class="psych-consent-checks">
+            <label>
+                <input type="checkbox" id="psych-consent-understand" />
+                <span><span class="req">*</span> I understand that this is an <strong>AI-assisted self-reflection tool</strong> and <strong>not</strong> a substitute for professional mental health care, therapy, or psychiatric treatment.</span>
+            </label>
+            <label>
+                <input type="checkbox" id="psych-consent-ai-data" />
+                <span><span class="req">*</span> I consent to my conversation messages being processed by an <strong>AI language model</strong> and understand that conversations may be sent to an external AI service.</span>
+            </label>
+            <label>
+                <input type="checkbox" id="psych-consent-age" />
+                <span><span class="req">*</span> I confirm that I am <strong>18 years of age or older</strong>, or have verifiable parental/guardian consent.</span>
+            </label>
+            <label>
+                <input type="checkbox" id="psych-consent-liability" />
+                <span><span class="req">*</span> I accept that I am solely responsible for decisions made based on this tool, and I have read and agree to the terms above.</span>
+            </label>
+        </div>
+
+        <button class="psych-consent-accept" id="psych-consent-accept-btn" type="button" disabled>
+            I Accept &amp; Begin Counselling
+        </button>
+    </div>
+
+    <!-- All counselling content — locked (blurred) until consent accepted -->
+    <div id="psych-content-wrapper" class="psych-content-locked">
+
+    <div class="psychiatry-hero reveal">
+        <h3>Voice Counselling</h3>
+        <p>
+            Speak or type what is on your mind. This is not therapy &mdash; it is an invitation
+            to look at yourself with fresh eyes, without judgement, without seeking a conclusion.
+            We explore together.
+        </p>
+        <div class="counsel-quote-banner" id="counsel-rotating-quote">
+            "Self-knowledge is the beginning of wisdom. In self-knowledge is the whole universe;
+            it embraces all the struggles of humanity."
+        </div>
+    </div>
+
+    <div class="counsel-container reveal">
+        <!-- Voice status bar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+            <div class="voice-status" id="voice-status">
+                <span class="status-dot" id="voice-status-dot"></span>
+                <span id="voice-status-text">Voice ready &mdash; click the microphone to speak</span>
+            </div>
+            <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--text-dim);cursor:pointer;">
+                <input type="checkbox" id="auto-speak-toggle" checked style="accent-color:#7c3aed;"> Auto-speak responses
+            </label>
+        </div>
+
+        <!-- Chat messages area -->
+        <div class="counsel-chat" id="counsel-chat" role="log" aria-label="Counselling conversation">
+            <div class="counsel-msg system">
+                Welcome. This is a space for quiet inquiry into the nature of your mind.
+                There are no right or wrong answers &mdash; only the act of looking.
+                Share what you are feeling or exploring, and we will look at it together.
+            </div>
+        </div>
+
+        <!-- Input row: textarea + voice button + send button -->
+        <div class="counsel-input-row">
+            <textarea
+                id="counsel-input"
+                placeholder="Share what is on your mind, or click the microphone to speak..."
+                rows="2"
+                aria-label="Counselling message input"
+            ></textarea>
+            <button class="voice-btn" id="voice-btn" type="button" aria-label="Toggle voice input" title="Click to speak">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/>
+                </svg>
+            </button>
+            <button class="counsel-send-btn" id="counsel-send-btn" type="button" aria-label="Send message">Send</button>
+        </div>
+    </div>
+
+    <!-- Theme explorer -->
+    <div class="theme-explorer reveal">
+        <h4>Explore Themes</h4>
+        <p style="font-size:.85rem;color:var(--text-dim);margin-bottom:.75rem;">
+            Choose a theme to begin a guided inquiry, or simply share what is alive in you right now.
+        </p>
+        <div class="theme-grid" id="theme-grid">
+            <!-- Populated by JS from /api/psychiatry/themes -->
+        </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="psychiatry-disclaimer reveal">
+        <strong>Important:</strong> This counselling tool uses inquiry-based self-reflection
+        and is intended for personal exploration only.
+        It is <strong>not</strong> a substitute for professional psychiatric care, therapy,
+        or medical advice. If you are experiencing a mental health crisis, please contact
+        a qualified mental health professional or crisis helpline immediately.
+    </div>
+
+    </div><!-- /psych-content-wrapper -->
+</section>
+
+<!-- ================================================================
      RESULTS (tabbed)
      ================================================================ -->
 <section class="section" id="results-section" aria-live="polite">
@@ -2345,12 +3121,15 @@
 <!-- ================================================================
      CONSENT & LEGAL NOTICE MODAL (DPDP Act 2023 Section 5 & 6)
      ================================================================ -->
-<div class="consent-overlay" id="consent-overlay" role="dialog" aria-modal="true" aria-label="Data consent and privacy notice">
+<div class="consent-overlay" id="consent-overlay" role="dialog" aria-modal="true" aria-label="Data consent and privacy notice" onclick="if(event.target===this && !document.body.classList.contains('consent-pending')){this.classList.remove('visible');}">
     <div class="consent-modal">
-        <h2>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
-            Privacy Notice &amp; Data Consent
-        </h2>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
+            <h2 style="flex:1;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
+                Privacy Notice &amp; Data Consent
+            </h2>
+            <button type="button" id="consent-close-btn" onclick="document.getElementById('consent-overlay').classList.remove('visible');" aria-label="Close" style="display:none;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.4rem;padding:.2rem .5rem;line-height:1;">&times;</button>
+        </div>
         <p class="consent-subtitle">
             Before using Teloscopy, please review this notice and provide your consent for data processing.
             Your consent is free, specific, and can be withdrawn at any time.
@@ -2438,9 +3217,27 @@
 <!-- Toast container -->
 <div class="toast-container" id="toast-container" aria-live="polite" role="status"></div>
 
+<!-- Microphone permission popup -->
+<div class="mic-perm-overlay" id="mic-perm-overlay" role="dialog" aria-modal="true" aria-labelledby="mic-perm-title">
+    <div class="mic-perm-modal">
+        <button class="mic-perm-close" id="mic-perm-close-x" aria-label="Close">&times;</button>
+        <h3 id="mic-perm-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            Microphone Access Required
+        </h3>
+        <p>Voice input needs microphone permission. Your browser has blocked access. Follow these steps to enable it:</p>
+        <ol class="mic-perm-steps" id="mic-perm-steps"></ol>
+        <div class="mic-perm-actions">
+            <button class="mic-perm-btn mic-perm-btn-close" id="mic-perm-dismiss">Dismiss</button>
+            <button class="mic-perm-btn mic-perm-btn-settings" id="mic-perm-settings">Open Settings</button>
+        </div>
+    </div>
+</div>
+
 <!-- ================================================================
      JAVASCRIPT
      ================================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" integrity="sha384-mNAOA/ircSPCEOT33k3NCAjSeXksJbVjVIkP+BEfwnGiFT0VLG3WmrV7sOBs7pFP" crossorigin="anonymous"></script>
 <script>
 /* ==============================================================
    CONSENT MANAGEMENT (DPDP Act 2023 Compliance)
@@ -2456,11 +3253,11 @@
             if (!raw) return false;
             var data = JSON.parse(raw);
             if (!data.accepted || !data.timestamp) return false;
-            /* Client-side consent lasts 30 days (controls when the full consent
-               overlay auto-shows).  The *server* token TTL is 24 h; when it
-               expires the browser silently re-obtains one — see refreshConsentToken(). */
+            /* Client-side consent expires after 1 day to match the server token
+               TTL of 24 h.  When it expires the full consent overlay re-appears
+               to ensure informed, periodic re-consent per DPDP Act requirements. */
             var daysSince = (Date.now() - data.timestamp) / (1000 * 60 * 60 * 24);
-            return daysSince < 30;
+            return daysSince < 1;
         } catch (_) { return false; }
     }
 
@@ -2479,6 +3276,22 @@
         if (!hasValidConsent()) {
             document.body.classList.add('consent-pending');
             document.getElementById('consent-overlay').classList.add('visible');
+        } else {
+            /* Migrate stale consent data — older versions may lack the
+               'psychiatry' purpose.  Silently upgrade localStorage and
+               refresh the server-side token so all features work. */
+            try {
+                var raw = localStorage.getItem(CONSENT_KEY);
+                if (raw) {
+                    var saved = JSON.parse(raw);
+                    if (saved.purposes && saved.purposes.indexOf('psychiatry') === -1) {
+                        saved.purposes.push('psychiatry');
+                        localStorage.setItem(CONSENT_KEY, JSON.stringify(saved));
+                        /* Refresh the consent token in the background */
+                        if (window.refreshConsentToken) window.refreshConsentToken();
+                    }
+                }
+            } catch (_) {}
         }
     }
     /* Run as early as possible — DOMContentLoaded for element access */
@@ -2492,14 +3305,29 @@
     });
 
     window.openConsentModal = function () {
-        document.body.classList.add('consent-pending');
         var overlay = document.getElementById('consent-overlay');
-        if (overlay) overlay.classList.add('visible');
+        if (!overlay) return;
+        var closeBtn = document.getElementById('consent-close-btn');
+        var alreadyConsented = hasValidConsent();
+        if (alreadyConsented) {
+            /* User already consented — open modal in "review" mode without
+               blocking the page.  Don't add consent-pending; just show the
+               overlay so they can review or withdraw. */
+            overlay.classList.add('visible');
+            if (closeBtn) closeBtn.style.display = 'block';
+        } else {
+            /* First visit or expired — full blocking mode */
+            document.body.classList.add('consent-pending');
+            overlay.classList.add('visible');
+            if (closeBtn) closeBtn.style.display = 'none';
+        }
         /* Close sidebar on mobile */
         var sb = document.getElementById('sidebar');
         var ov = document.getElementById('sidebar-overlay');
         if (sb) sb.classList.remove('mobile-open');
         if (ov) ov.classList.remove('visible');
+        /* Sync the accept button state with current checkbox values */
+        updateAcceptBtn();
     };
 
     window.acceptConsent = async function () {
@@ -2508,7 +3336,7 @@
             accepted: true,
             timestamp: Date.now(),
             purposes: ['telomere_analysis', 'disease_risk', 'nutrition_plan', 'facial_analysis',
-                        'health_report', 'genetic_data', 'profile_data'],
+                        'health_report', 'genetic_data', 'profile_data', 'psychiatry'],
             research_consent: researchConsent ? researchConsent.checked : false,
             age_confirmed: true,
             privacy_policy_version: '1.0',
@@ -2533,15 +3361,22 @@
             var data = await r.json();
             /* Store the server-issued consent token for subsequent API calls */
             if (data.consent_token) {
-                try { localStorage.setItem('teloscopy_consent_token', data.consent_token); } catch (_) {}
+                try { sessionStorage.setItem('teloscopy_consent_token', data.consent_token); } catch (_) {}
             }
         } catch (_) { /* offline fallback — user can still browse, re-consent will be attempted on next API call */ }
 
         document.body.classList.remove('consent-pending');
         document.getElementById('consent-overlay').classList.remove('visible');
+
+        /* Re-load consent-gated content now that we have a token */
+        if (typeof window._loadCounselThemes === 'function') {
+            window._loadCounselThemes();
+        }
     };
 
     window.declineConsent = function () {
+        /* Close the consent overlay first */
+        document.getElementById('consent-overlay').classList.remove('visible');
         /* Keep consent-pending on body — user CANNOT use the app without consent.
            Replace main content with a message but sidebar stays locked. */
         var main = document.getElementById('main-content');
@@ -2566,7 +3401,7 @@
 
     window.withdrawConsent = function () {
         try { localStorage.removeItem(CONSENT_KEY); } catch (_) {}
-        try { localStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
+        try { sessionStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
         /* Notify backend (invalidates consent token server-side) */
         try {
             fetch('/api/legal/consent/withdraw', {
@@ -2575,7 +3410,7 @@
                 body: JSON.stringify({
                     session_id: '',
                     purposes: ['telomere_analysis', 'disease_risk', 'nutrition_plan',
-                               'facial_analysis', 'health_report', 'genetic_data', 'profile_data']
+                               'facial_analysis', 'health_report', 'genetic_data', 'profile_data', 'psychiatry']
                 })
             }).catch(function () {});
         } catch (_) {}
@@ -2595,8 +3430,8 @@
      */
     window.getConsentHeaders = function () {
         var token = '';
-        try { token = localStorage.getItem('teloscopy_consent_token') || ''; } catch (_) {}
-        var headers = {};
+        try { token = sessionStorage.getItem('teloscopy_consent_token') || ''; } catch (_) {}
+        var headers = { 'X-Requested-With': 'XMLHttpRequest' };
         if (token) headers['X-Consent-Token'] = token;
         return headers;
     };
@@ -2622,11 +3457,24 @@
             if (!raw) return '';
             var saved = JSON.parse(raw);
             if (!saved.accepted || !saved.purposes) return '';
+            /* Ensure all current purposes are included — handles migration
+               from older consent data that predates the psychiatry feature */
+            var ALL_PURPOSES = ['telomere_analysis', 'disease_risk', 'nutrition_plan',
+                'facial_analysis', 'health_report', 'genetic_data', 'profile_data', 'psychiatry'];
+            var purposes = saved.purposes.slice();
+            ALL_PURPOSES.forEach(function (p) {
+                if (purposes.indexOf(p) === -1) purposes.push(p);
+            });
+            /* Persist the updated purposes so future refreshes don't need migration */
+            if (purposes.length !== saved.purposes.length) {
+                saved.purposes = purposes;
+                try { localStorage.setItem(CONSENT_KEY, JSON.stringify(saved)); } catch (_) {}
+            }
             var r = await fetch('/api/legal/consent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    consents: saved.purposes.map(function (p) {
+                    consents: purposes.map(function (p) {
                         return { purpose: p, granted: true, notice_version: '1.0' };
                     }),
                     data_principal_age_confirmed: true,
@@ -2637,7 +3485,7 @@
             if (!r.ok) return '';
             var data = await r.json();
             if (data.consent_token) {
-                try { localStorage.setItem('teloscopy_consent_token', data.consent_token); } catch (_) {}
+                try { sessionStorage.setItem('teloscopy_consent_token', data.consent_token); } catch (_) {}
                 return data.consent_token;
             }
         } catch (_) {}
@@ -2653,7 +3501,7 @@
     window.handleConsent403 = async function (res) {
         if (res.status !== 403) return false;
         /* Try silent refresh first — avoids re-prompting the user */
-        try { localStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
+        try { sessionStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
         var newToken = await window.refreshConsentToken();
         if (newToken) {
             /* Token refreshed — caller should RETRY the request (return false
@@ -2699,7 +3547,7 @@ var _researchData = null;
 var _researchLoaded = false;
 var _EMBEDDED_RESEARCH = null;
 try {
-    _EMBEDDED_RESEARCH = {{ research_json | default('null') | safe }};
+    _EMBEDDED_RESEARCH = {{ research_json | default('null') | safe | replace('</', '<\\/') }};
 } catch (_) {
     _EMBEDDED_RESEARCH = null;
 }
@@ -3038,6 +3886,10 @@ function markdownToHtml(md) {
     html = html.replace(/<link[^>]*>/gi, '');
     html = html.replace(/\bon\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
     html = html.replace(/javascript\s*:/gi, '');
+
+    if (typeof DOMPurify !== 'undefined') {
+        html = DOMPurify.sanitize(html, {ALLOWED_TAGS: ['h1','h2','h3','h4','h5','h6','p','br','hr','ul','ol','li','a','strong','em','b','i','code','pre','blockquote','table','thead','tbody','tr','th','td','span','div','img','sub','sup'], ALLOWED_ATTR: ['href','src','alt','class','id','target','rel']});
+    }
 
     return html;
 }
@@ -3637,13 +4489,26 @@ function escapeHtml(str) {
     async function consentFetch(fetchFn) {
         var res = await fetchFn();
         if (res.status === 403) {
+            /* Check if this is actually a consent issue (not CSRF or rate limit) */
+            var body = null;
+            try { body = await res.clone().json(); } catch (_) {}
+            var detail = (body && (body.detail || (body.error && body.error.message))) || '';
+            var isConsentIssue = /consent/i.test(detail);
+
+            if (!isConsentIssue) {
+                /* Not a consent problem (e.g. CSRF) — don't nuke consent data */
+                return res;
+            }
+
             var newToken = await window.refreshConsentToken();
             if (newToken) {
                 res = await fetchFn();  /* retry with fresh token */
             }
             if (res.status === 403) {
-                /* Still 403 — force full re-consent */
-                try { localStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
+                /* Still 403 — force full re-consent (clear both keys so
+                   hasValidConsent() returns false and modal opens in gate mode) */
+                try { sessionStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
+                try { localStorage.removeItem('teloscopy_consent_v1'); } catch (_) {}
                 window.openConsentModal();
                 toast('Please accept the privacy notice to continue.', 'warning');
                 return null;
@@ -3806,8 +4671,8 @@ function escapeHtml(str) {
             data.disease_risks.forEach(function (d) {
                 var cls = d.risk_level;
                 rl.innerHTML += '<div class="risk-item ' + cls + '">' +
-                    '<span class="risk-name">' + d.disease + '</span>' +
-                    '<span class="risk-badge ' + cls + '">' + d.risk_level.replace('_', ' ') + '</span>' +
+                    '<span class="risk-name">' + escapeHtml(d.disease) + '</span>' +
+                    '<span class="risk-badge ' + cls + '">' + escapeHtml(d.risk_level.replace('_', ' ')) + '</span>' +
                     '<span class="risk-prob">' + (d.probability * 100).toFixed(1) + '%</span></div>';
             });
         }
@@ -3889,28 +4754,28 @@ function escapeHtml(str) {
     /* ---- Render diet helper ---- */
     function renderDiet(diet) {
         var dc = document.getElementById('diet-content');
-        var html = '<p class="diet-summary">' + diet.summary + '</p>';
+        var html = '<p class="diet-summary">' + escapeHtml(diet.summary) + '</p>';
         html += '<div class="nutrient-tags">';
-        diet.key_nutrients.forEach(function (n) { html += '<span class="nutrient-tag">' + n + '</span>'; });
+        diet.key_nutrients.forEach(function (n) { html += '<span class="nutrient-tag">' + escapeHtml(n) + '</span>'; });
         html += '</div>';
         html += '<div class="food-columns">';
         html += '<div class="food-col increase"><h4>Increase</h4><ul>';
-        diet.foods_to_increase.forEach(function (f) { html += '<li>' + f + '</li>'; });
+        diet.foods_to_increase.forEach(function (f) { html += '<li>' + escapeHtml(f) + '</li>'; });
         html += '</ul></div>';
         html += '<div class="food-col avoid"><h4>Avoid / Reduce</h4><ul>';
-        diet.foods_to_avoid.forEach(function (f) { html += '<li>' + f + '</li>'; });
+        diet.foods_to_avoid.forEach(function (f) { html += '<li>' + escapeHtml(f) + '</li>'; });
         html += '</ul></div></div>';
 
         if (diet.meal_plans && diet.meal_plans.length) {
             html += '<h4 style="margin-bottom:.5rem;color:var(--text-dim);">Sample Meal Plans</h4><div class="meal-plans">';
             diet.meal_plans.forEach(function (mp, i) {
                 html += '<div class="meal-day" id="meal-' + i + '">' +
-                    '<div class="meal-day-header" onclick="toggleMeal(' + i + ')" role="button" tabindex="0" aria-expanded="false" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();toggleMeal(' + i + ')}">' + mp.day + ' <span aria-hidden="true">&#9660;</span></div>' +
+                    '<div class="meal-day-header" onclick="toggleMeal(' + i + ')" role="button" tabindex="0" aria-expanded="false" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();toggleMeal(' + i + ')}">' + escapeHtml(mp.day) + ' <span aria-hidden="true">&#9660;</span></div>' +
                     '<div class="meal-day-body">' +
-                    '<p><span class="meal-label">Breakfast:</span> ' + mp.breakfast + '</p>' +
-                    '<p><span class="meal-label">Lunch:</span> ' + mp.lunch + '</p>' +
-                    '<p><span class="meal-label">Dinner:</span> ' + mp.dinner + '</p>' +
-                    (mp.snacks.length ? '<p><span class="meal-label">Snacks:</span> ' + mp.snacks.join(', ') + '</p>' : '') +
+                    '<p><span class="meal-label">Breakfast:</span> ' + escapeHtml(mp.breakfast) + '</p>' +
+                    '<p><span class="meal-label">Lunch:</span> ' + escapeHtml(mp.lunch) + '</p>' +
+                    '<p><span class="meal-label">Dinner:</span> ' + escapeHtml(mp.dinner) + '</p>' +
+                    (mp.snacks.length ? '<p><span class="meal-label">Snacks:</span> ' + escapeHtml(mp.snacks.join(', ')) + '</p>' : '') +
                     '</div></div>';
             });
             html += '</div>';
@@ -3966,12 +4831,12 @@ function escapeHtml(str) {
                 else if (phenoLower.indexOf('poor') !== -1 || phenoLower.indexOf('high sensitivity') !== -1) phenoClass = 'poor';
                 else if (phenoLower.indexOf('ultra') !== -1 || phenoLower.indexOf('rapid') !== -1) phenoClass = 'ultra-rapid';
                 pgxHtml += '<tr>' +
-                    '<td style="font-weight:600;">' + (p.gene || '') + '</td>' +
-                    '<td style="font-family:var(--mono);font-size:.78rem;">' + (p.rsid || '') + '</td>' +
-                    '<td><span class="pheno-badge ' + phenoClass + '">' + (p.predicted_phenotype || '') + '</span></td>' +
+                    '<td style="font-weight:600;">' + escapeHtml(p.gene || '') + '</td>' +
+                    '<td style="font-family:var(--mono);font-size:.78rem;">' + escapeHtml(p.rsid || '') + '</td>' +
+                    '<td><span class="pheno-badge ' + phenoClass + '">' + escapeHtml(p.predicted_phenotype || '') + '</span></td>' +
                     '<td>' + ((p.confidence || 0) * 100).toFixed(0) + '%</td>' +
-                    '<td style="font-size:.8rem;">' + (p.affected_drugs || []).join(', ') + '</td>' +
-                    '<td style="font-size:.8rem;color:var(--text-dim);">' + (p.clinical_recommendation || '') + '</td>' +
+                    '<td style="font-size:.8rem;">' + escapeHtml((p.affected_drugs || []).join(', ')) + '</td>' +
+                    '<td style="font-size:.8rem;color:var(--text-dim);">' + escapeHtml(p.clinical_recommendation || '') + '</td>' +
                     '</tr>';
             });
             pgxHtml += '</tbody></table>';
@@ -3990,7 +4855,7 @@ function escapeHtml(str) {
 
             /* BMI Category */
             hsHtml += '<div class="health-dash-item"><h4>Estimated BMI Category</h4>' +
-                '<div style="font-size:1.2rem;font-weight:700;color:var(--text);">' + (hs.estimated_bmi_category || 'N/A') + '</div>' +
+                '<div style="font-size:1.2rem;font-weight:700;color:var(--text);">' + escapeHtml(hs.estimated_bmi_category || 'N/A') + '</div>' +
                 '<div style="font-size:.78rem;color:var(--text-dim);margin-top:.25rem;">Confidence: ' + ((hs.bmi_confidence || 0) * 100).toFixed(0) + '%</div></div>';
 
             /* Anemia Risk */
@@ -4153,7 +5018,7 @@ function escapeHtml(str) {
             if (ad.population_specific_risks && ad.population_specific_risks.length) {
                 adHtml += '<div class="health-dash-item mt-2"><h4>Population-Specific Risks</h4><ul style="list-style:none;padding:0;margin:0;">';
                 ad.population_specific_risks.forEach(function (r) {
-                    adHtml += '<li style="padding:.25rem 0;font-size:.85rem;color:var(--text-dim);"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warning);margin-right:.5rem;vertical-align:middle;"></span>' + r + '</li>';
+                    adHtml += '<li style="padding:.25rem 0;font-size:.85rem;color:var(--text-dim);"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warning);margin-right:.5rem;vertical-align:middle;"></span>' + escapeHtml(r) + '</li>';
                 });
                 adHtml += '</ul></div>';
             }
@@ -4175,10 +5040,10 @@ function escapeHtml(str) {
         /* Telomere stats */
         var t = r.telomere_results;
         document.getElementById('telomere-stats').innerHTML =
-            '<div class="stat-item"><div class="stat-label">Mean Length</div><div class="stat-value">' + t.mean_length + ' kb</div></div>' +
-            '<div class="stat-item"><div class="stat-label">Std Dev</div><div class="stat-value">' + t.std_dev + ' kb</div></div>' +
-            '<div class="stat-item"><div class="stat-label">T/S Ratio</div><div class="stat-value">' + t.t_s_ratio + '</div></div>' +
-            '<div class="stat-item"><div class="stat-label">Bio Age Est.</div><div class="stat-value">' + t.biological_age_estimate + ' yr</div></div>';
+            '<div class="stat-item"><div class="stat-label">Mean Length</div><div class="stat-value">' + escapeHtml(String(t.mean_length)) + ' kb</div></div>' +
+            '<div class="stat-item"><div class="stat-label">Std Dev</div><div class="stat-value">' + escapeHtml(String(t.std_dev)) + ' kb</div></div>' +
+            '<div class="stat-item"><div class="stat-label">T/S Ratio</div><div class="stat-value">' + escapeHtml(String(t.t_s_ratio)) + '</div></div>' +
+            '<div class="stat-item"><div class="stat-label">Bio Age Est.</div><div class="stat-value">' + escapeHtml(String(t.biological_age_estimate)) + ' yr</div></div>';
 
         /* Facial analysis (if present) */
         var facialCard = document.getElementById('facial-card');
@@ -4194,9 +5059,9 @@ function escapeHtml(str) {
             fhtml += '</div>';
             if (fa.predicted_eye_colour !== 'unknown' || fa.predicted_hair_colour !== 'unknown') {
                 fhtml += '<div class="mt-2" style="font-size:.88rem;color:var(--text-dim);">';
-                if (fa.predicted_eye_colour !== 'unknown') fhtml += 'Eye colour: <strong style="color:var(--text);">' + fa.predicted_eye_colour + '</strong> &nbsp; ';
-                if (fa.predicted_hair_colour !== 'unknown') fhtml += 'Hair colour: <strong style="color:var(--text);">' + fa.predicted_hair_colour + '</strong> &nbsp; ';
-                if (fa.predicted_skin_type !== 'unknown') fhtml += 'Skin type: <strong style="color:var(--text);">' + fa.predicted_skin_type + '</strong>';
+                if (fa.predicted_eye_colour !== 'unknown') fhtml += 'Eye colour: <strong style="color:var(--text);">' + escapeHtml(fa.predicted_eye_colour) + '</strong> &nbsp; ';
+                if (fa.predicted_hair_colour !== 'unknown') fhtml += 'Hair colour: <strong style="color:var(--text);">' + escapeHtml(fa.predicted_hair_colour) + '</strong> &nbsp; ';
+                if (fa.predicted_skin_type !== 'unknown') fhtml += 'Skin type: <strong style="color:var(--text);">' + escapeHtml(fa.predicted_skin_type) + '</strong>';
                 fhtml += '</div>';
             }
             if (fa.ancestry && fa.ancestry.confidence > 0) {
@@ -4213,7 +5078,7 @@ function escapeHtml(str) {
             }
             if (fa.analysis_warnings && fa.analysis_warnings.length) {
                 fhtml += '<div class="mt-2" style="font-size:.82rem;color:var(--warning);">';
-                fa.analysis_warnings.forEach(function (w) { fhtml += '<p>' + w + '</p>'; });
+                fa.analysis_warnings.forEach(function (w) { fhtml += '<p>' + escapeHtml(w) + '</p>'; });
                 fhtml += '</div>';
             }
             document.getElementById('facial-content').innerHTML = fhtml;
@@ -4259,11 +5124,11 @@ function escapeHtml(str) {
                 var genoColor = (s.predicted_allele_1 === s.ref_allele && s.predicted_allele_2 === s.ref_allele) ? 'var(--accent)' :
                     (s.predicted_allele_1 !== s.predicted_allele_2) ? 'var(--warning)' : '#e06c75';
                 tbl += '<tr style="border-bottom:1px solid var(--glass-border);">' +
-                    '<td style="padding:.4rem .6rem;font-family:monospace;">' + s.rsid + '</td>' +
-                    '<td style="padding:.4rem .6rem;font-weight:600;">' + s.gene + '</td>' +
+                    '<td style="padding:.4rem .6rem;font-family:monospace;">' + escapeHtml(s.rsid) + '</td>' +
+                    '<td style="padding:.4rem .6rem;font-weight:600;">' + escapeHtml(s.gene) + '</td>' +
                     '<td style="padding:.4rem .6rem;font-family:monospace;">chr' + s.chromosome + ':' + s.position.toLocaleString() + '</td>' +
-                    '<td style="padding:.4rem .6rem;font-family:monospace;">' + s.ref_allele + '</td>' +
-                    '<td style="padding:.4rem .6rem;font-family:monospace;color:' + genoColor + ';font-weight:600;">' + s.predicted_allele_1 + '/' + s.predicted_allele_2 + '</td>' +
+                    '<td style="padding:.4rem .6rem;font-family:monospace;">' + escapeHtml(s.ref_allele) + '</td>' +
+                    '<td style="padding:.4rem .6rem;font-family:monospace;color:' + genoColor + ';font-weight:600;">' + escapeHtml(s.predicted_allele_1) + '/' + escapeHtml(s.predicted_allele_2) + '</td>' +
                     '<td style="padding:.4rem .6rem;">' + (s.confidence * 100).toFixed(0) + '%</td></tr>';
             });
             tbl += '</tbody></table></div>';
@@ -4275,8 +5140,8 @@ function escapeHtml(str) {
             var fastaHtml = '<details><summary style="cursor:pointer;font-size:.85rem;color:var(--accent);margin-bottom:.5rem;">View FASTA sequences (' + dna.total_variants + ' fragments)</summary>' +
                 '<pre style="background:rgba(0,0,0,.3);padding:1rem;border-radius:var(--radius-sm);font-size:.75rem;overflow-x:auto;max-height:400px;overflow-y:auto;line-height:1.5;color:var(--text-dim);">';
             dna.sequences.forEach(function (s) {
-                fastaHtml += '<span style="color:var(--accent);">&gt;' + s.rsid + '|' + s.gene + '|chr' + s.chromosome + ':' + s.position + '|predicted=' + s.predicted_allele_1 + '/' + s.predicted_allele_2 + '|confidence=' + s.confidence.toFixed(2) + '</span>\n';
-                fastaHtml += s.flanking_5prime + '<span style="color:#e06c75;font-weight:bold;">[' + s.predicted_allele_1 + '/' + s.predicted_allele_2 + ']</span>' + s.flanking_3prime + '\n';
+                fastaHtml += '<span style="color:var(--accent);">&gt;' + escapeHtml(s.rsid) + '|' + escapeHtml(s.gene) + '|chr' + s.chromosome + ':' + s.position + '|predicted=' + escapeHtml(s.predicted_allele_1) + '/' + escapeHtml(s.predicted_allele_2) + '|confidence=' + s.confidence.toFixed(2) + '</span>\n';
+                fastaHtml += escapeHtml(s.flanking_5prime) + '<span style="color:#e06c75;font-weight:bold;">[' + escapeHtml(s.predicted_allele_1) + '/' + escapeHtml(s.predicted_allele_2) + ']</span>' + escapeHtml(s.flanking_3prime) + '\n';
             });
             fastaHtml += '</pre></details>';
             document.getElementById('dna-fasta-block').innerHTML = fastaHtml;
@@ -4286,7 +5151,7 @@ function escapeHtml(str) {
                 '<button class="btn btn-outline" onclick="downloadDnaFasta()">Download FASTA</button>';
 
             /* Disclaimer */
-            document.getElementById('dna-disclaimer').innerHTML = dna.disclaimer;
+            document.getElementById('dna-disclaimer').textContent = dna.disclaimer;
 
             /* Store FASTA globally for download */
             window._dnaFastaContent = dna.fasta;
@@ -4301,8 +5166,8 @@ function escapeHtml(str) {
         r.disease_risks.forEach(function (d) {
             var cls = d.risk_level;
             rl.innerHTML += '<div class="risk-item ' + cls + '">' +
-                '<span class="risk-name">' + d.disease + '</span>' +
-                '<span class="risk-badge ' + cls + '">' + d.risk_level.replace('_', ' ') + '</span>' +
+                '<span class="risk-name">' + escapeHtml(d.disease) + '</span>' +
+                '<span class="risk-badge ' + cls + '">' + escapeHtml(d.risk_level.replace('_', ' ')) + '</span>' +
                 '<span class="risk-prob">' + (d.probability * 100).toFixed(1) + '%</span></div>';
         });
 
@@ -5378,6 +6243,1096 @@ function escapeHtml(str) {
     }
     loadAgents();
     setInterval(loadAgents, 10000);
+
+    /* ==============================================================
+       PSYCHIATRY — Inquiry-based Voice Counselling Engine
+       ============================================================== */
+    (function initPsychiatryCounselling() {
+        var counselChat = document.getElementById('counsel-chat');
+        var counselInput = document.getElementById('counsel-input');
+        var counselSendBtn = document.getElementById('counsel-send-btn');
+        var voiceBtn = document.getElementById('voice-btn');
+        var voiceStatusDot = document.getElementById('voice-status-dot');
+        var voiceStatusText = document.getElementById('voice-status-text');
+        var autoSpeakToggle = document.getElementById('auto-speak-toggle');
+        var themeGrid = document.getElementById('theme-grid');
+        var rotatingQuote = document.getElementById('counsel-rotating-quote');
+
+        if (!counselChat) return; /* Section not in DOM */
+
+        /* ---- Psychiatry consent gate ---- */
+        var PSYCH_CONSENT_KEY = 'teloscopy_psych_consent_v1';
+        var _psychConsentGate = document.getElementById('psych-consent-gate');
+        var _psychContentWrapper = document.getElementById('psych-content-wrapper');
+        var _psychAcceptBtn = document.getElementById('psych-consent-accept-btn');
+        var _psychChecks = [
+            'psych-consent-understand',
+            'psych-consent-ai-data',
+            'psych-consent-age',
+            'psych-consent-liability'
+        ];
+        var _psychConsentAccepted = false;
+
+        function _hasPsychConsent() {
+            try {
+                var raw = sessionStorage.getItem(PSYCH_CONSENT_KEY);
+                if (!raw) return false;
+                var data = JSON.parse(raw);
+                return data.accepted === true;
+            } catch (_) { return false; }
+        }
+
+        function _savePsychConsent() {
+            try {
+                sessionStorage.setItem(PSYCH_CONSENT_KEY, JSON.stringify({
+                    accepted: true,
+                    timestamp: Date.now()
+                }));
+            } catch (_) {}
+        }
+
+        function _updatePsychAcceptBtn() {
+            if (!_psychAcceptBtn) return;
+            var allChecked = _psychChecks.every(function(id) {
+                var el = document.getElementById(id);
+                return el && el.checked;
+            });
+            _psychAcceptBtn.disabled = !allChecked;
+        }
+
+        function _unlockPsychContent() {
+            _psychConsentAccepted = true;
+            if (_psychConsentGate) _psychConsentGate.style.display = 'none';
+            if (_psychContentWrapper) _psychContentWrapper.classList.remove('psych-content-locked');
+        }
+
+        function _lockPsychContent() {
+            _psychConsentAccepted = false;
+            if (_psychConsentGate) _psychConsentGate.style.display = '';
+            if (_psychContentWrapper) _psychContentWrapper.classList.add('psych-content-locked');
+        }
+
+        /* Check if already accepted this session */
+        if (_hasPsychConsent()) {
+            _unlockPsychContent();
+        } else {
+            _lockPsychContent();
+        }
+
+        /* Wire checkbox listeners */
+        _psychChecks.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('change', _updatePsychAcceptBtn);
+        });
+
+        /* Accept button */
+        if (_psychAcceptBtn) {
+            _psychAcceptBtn.addEventListener('click', function() {
+                if (_psychChecks.every(function(id) {
+                    var el = document.getElementById(id);
+                    return el && el.checked;
+                })) {
+                    _savePsychConsent();
+                    _unlockPsychContent();
+                    /* Smooth scroll to the counselling area */
+                    var hero = document.querySelector('.psychiatry-hero');
+                    if (hero) hero.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        }
+
+        /* Guard function — returns true only if consent was given */
+        function requirePsychConsent() {
+            if (_psychConsentAccepted) return true;
+            if (_hasPsychConsent()) {
+                _unlockPsychContent();
+                return true;
+            }
+            _lockPsychContent();
+            /* Scroll to the consent gate */
+            if (_psychConsentGate) {
+                _psychConsentGate.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            if (typeof toast === 'function') {
+                toast('Please accept the Terms & Conditions before using the counselling feature.', 'warning');
+            }
+            return false;
+        }
+
+        var isListening = false;
+        var isSpeaking = false;
+        var recognition = null;
+        var synthesis = window.speechSynthesis || null;
+        var counsellingHistory = [];
+        var _counselIndexHistory = [];  /* tracks _indices from each API response for de-duplication */
+
+        /* ---- Rotating wisdom quotes ---- */
+        var wisdomQuotes = [
+            "Self-knowledge is the beginning of wisdom. In self-knowledge is the whole universe; it embraces all the struggles of humanity.",
+            "The ability to observe without evaluating is the highest form of intelligence.",
+            "Truth is a pathless land. No one can come to it through any organisation, through any creed, through any dogma.",
+            "It is no measure of health to be well adjusted to a profoundly sick society.",
+            "The observer IS the observed. The thinker IS the thought.",
+            "Freedom is found in the choiceless awareness of our daily existence and activity.",
+            "The first step is the last step. Perceive what you are thinking, perceive your ambition, your anxiety. Just perceive it.",
+            "Where there is comparison, there is no love.",
+            "When you suffer psychologically, when you remain with it completely without escape, then out of that suffering comes compassion.",
+            "The root of fear is thought. Thought breeds fear; thought also cultivates pleasure.",
+            "You have an image of your partner and they have an image of you. The relationship is between these two images.",
+            "Meditation is the emptying of the mind of all the things that the mind has put together.",
+        ];
+        var quoteIdx = 0;
+        function rotateQuote() {
+            quoteIdx = (quoteIdx + 1) % wisdomQuotes.length;
+            if (rotatingQuote) {
+                rotatingQuote.innerHTML = '&ldquo;' + wisdomQuotes[quoteIdx] + '&rdquo;';
+            }
+        }
+        setInterval(rotateQuote, 15000);
+
+        /* ---- Load themes from API ---- */
+        function loadThemes() {
+            var headers = window.getConsentHeaders ? window.getConsentHeaders() : {};
+            fetch('/api/psychiatry/themes', { headers: headers })
+                .then(function(r) {
+                    if (r.status === 403) {
+                        /* No consent yet or stale token — retry after token refresh */
+                        if (window.refreshConsentToken) {
+                            return window.refreshConsentToken().then(function(tok) {
+                                if (!tok) return null;
+                                /* Use the fresh token directly */
+                                var hdrs = { 'X-Requested-With': 'XMLHttpRequest' };
+                                if (tok) hdrs['X-Consent-Token'] = tok;
+                                return fetch('/api/psychiatry/themes', {
+                                    headers: hdrs
+                                }).then(function(r2) { return r2.ok ? r2.json() : null; });
+                            });
+                        }
+                        return null;
+                    }
+                    return r.json();
+                })
+                .then(function(data) {
+                    if (!data || !data.themes || !themeGrid) return;
+                    themeGrid.innerHTML = '';
+                    var themeKeys = Object.keys(data.themes);
+                    themeKeys.forEach(function(key) {
+                        var t = data.themes[key];
+                        var card = document.createElement('div');
+                        card.className = 'theme-card';
+                        card.setAttribute('role', 'button');
+                        card.setAttribute('tabindex', '0');
+                        card.innerHTML = '<div class="theme-title">' + escapeHtml(t.title) + '</div>' +
+                            '<div class="theme-desc">' + escapeHtml(t.description) + '</div>';
+                        card.addEventListener('click', function() {
+                            counselInput.value = "I'd like to explore the theme of " + t.title.toLowerCase() + ".";
+                            counselInput.focus();
+                            sendCounselMessage();
+                        });
+                        card.addEventListener('keydown', function(e) {
+                            if (e.key === 'Enter') card.click();
+                        });
+                        themeGrid.appendChild(card);
+                    });
+                })
+                .catch(function() { /* silent — themes are optional at load time */ });
+        }
+        /* Expose globally so acceptConsent can re-trigger */
+        window._loadCounselThemes = loadThemes;
+        loadThemes();
+
+        /* ---- Add message to chat ---- */
+        function addMessage(text, type, extras) {
+            var div = document.createElement('div');
+            div.className = 'counsel-msg ' + type;
+            /* Escape user messages to prevent self-XSS; counsellor/system messages
+               are server-generated and may contain safe formatting */
+            var html = (type === 'user') ? escapeHtml(text) : text;
+            if (extras) {
+                if (extras.insight) {
+                    html += '<span class="counsel-insight">' + escapeHtml(extras.insight) + '</span>';
+                }
+                if (extras.quote) {
+                    html += '<span class="counsel-source-quote">&ldquo;' + escapeHtml(extras.quote) + '&rdquo;</span>';
+                }
+            }
+            /* Add speak button to counsellor messages */
+            if (type === 'counsellor' && synthesis) {
+                html += '<button class="speak-btn" type="button" onclick="window._counselSpeakText(this.parentElement)" aria-label="Speak this response">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">' +
+                    '<path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"/>' +
+                    '</svg> Listen</button>';
+            }
+            div.innerHTML = html;
+            counselChat.appendChild(div);
+            counselChat.scrollTop = counselChat.scrollHeight;
+            return div;
+        }
+
+        /* ---- Typing animation — reveals text word-by-word ---- */
+        function addMessageAnimated(text, type, extras, onComplete) {
+            var div = document.createElement('div');
+            div.className = 'counsel-msg ' + type + ' typing-active';
+            div.textContent = '';
+            counselChat.appendChild(div);
+            counselChat.scrollTop = counselChat.scrollHeight;
+
+            /* Split into words, preserving whitespace structure */
+            var words = text.split(/(\s+)/);
+            var idx = 0;
+            var speed = 35; /* ms per word — feels like natural typing */
+
+            function typeNext() {
+                if (idx >= words.length) {
+                    /* Done typing — remove cursor, add extras */
+                    div.classList.remove('typing-active');
+                    var html = div.innerHTML;
+                    if (extras) {
+                        if (extras.insight) {
+                            html += '<span class="counsel-insight">' + escapeHtml(extras.insight) + '</span>';
+                        }
+                        if (extras.quote) {
+                            html += '<span class="counsel-source-quote">&ldquo;' + escapeHtml(extras.quote) + '&rdquo;</span>';
+                        }
+                    }
+                    if (type === 'counsellor' && synthesis) {
+                        html += '<button class="speak-btn" type="button" onclick="window._counselSpeakText(this.parentElement)" aria-label="Speak this response">' +
+                            '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">' +
+                            '<path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"/>' +
+                            '</svg> Listen</button>';
+                    }
+                    div.innerHTML = html;
+                    if (onComplete) onComplete();
+                    return;
+                }
+                var word = words[idx];
+                idx++;
+                /* Convert newlines to <br> for paragraph breaks */
+                if (/\n\s*\n/.test(word)) {
+                    div.innerHTML += '<br><br>';
+                } else if (word === '\n') {
+                    div.innerHTML += '<br>';
+                } else {
+                    div.appendChild(document.createTextNode(word));
+                }
+                counselChat.scrollTop = counselChat.scrollHeight;
+                /* Slight pause after punctuation for natural rhythm */
+                var delay = speed;
+                if (/[.!?]$/.test(word)) delay = speed * 4;
+                else if (/[,;:]$/.test(word)) delay = speed * 2;
+                setTimeout(typeNext, delay);
+            }
+
+            typeNext();
+            return div;
+        }
+
+        /* ---- Follow-up suggestion chips ---- */
+        var _currentFollowups = null;
+
+        function showFollowups(suggestions) {
+            /* Remove previous follow-up chips */
+            if (_currentFollowups && _currentFollowups.parentNode) {
+                _currentFollowups.parentNode.removeChild(_currentFollowups);
+            }
+            if (!suggestions || !suggestions.length) return;
+
+            var container = document.createElement('div');
+            container.className = 'counsel-followups';
+            suggestions.forEach(function(s) {
+                var chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'counsel-followup-chip';
+                chip.textContent = s;
+                chip.addEventListener('click', function() {
+                    counselInput.value = s;
+                    counselInput.focus();
+                    /* Remove chips once one is clicked */
+                    if (container.parentNode) container.parentNode.removeChild(container);
+                    _currentFollowups = null;
+                    sendCounselMessage();
+                });
+                container.appendChild(chip);
+            });
+            counselChat.appendChild(container);
+            counselChat.scrollTop = counselChat.scrollHeight;
+            _currentFollowups = container;
+        }
+
+        /* ---- Send message to counselling API ---- */
+        function sendCounselMessage() {
+            var message = counselInput.value.trim();
+            if (!message) return;
+
+            /* Enforce psychiatry consent gate */
+            if (!requirePsychConsent()) return;
+
+            /* Also enforce global consent if available */
+            if (typeof window.requireConsent === 'function' && !window.requireConsent()) return;
+
+            /* Unlock synthesis on this user gesture so the response
+               can auto-speak even though the fetch callback is async */
+            if (typeof _trySynthUnlock === 'function') _trySynthUnlock();
+
+            /* Remove previous follow-up chips */
+            if (_currentFollowups && _currentFollowups.parentNode) {
+                _currentFollowups.parentNode.removeChild(_currentFollowups);
+                _currentFollowups = null;
+            }
+
+            counselInput.value = '';
+            counselInput.style.height = 'auto';
+            counselSendBtn.disabled = true;
+
+            addMessage(message, 'user');
+            counsellingHistory.push({ role: 'user', text: message });
+
+            /* Show typing indicator */
+            var typingDiv = addMessage('Listening carefully...', 'system');
+
+            var _counselFetchBody = JSON.stringify({
+                message: message,
+                conversation: counsellingHistory,
+                history: _counselIndexHistory
+            });
+
+            function _doCounselFetch(overrideToken) {
+                var hdrs = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+                var tok = overrideToken || '';
+                if (!tok) {
+                    try { tok = sessionStorage.getItem('teloscopy_consent_token') || ''; } catch(_) {}
+                }
+                if (tok) hdrs['X-Consent-Token'] = tok;
+                return fetch('/api/psychiatry/counsel', {
+                    method: 'POST',
+                    headers: hdrs,
+                    body: _counselFetchBody
+                });
+            }
+
+            /* Obtain a fresh consent token by posting ALL purposes directly.
+               Does not depend on localStorage — always sends the full set. */
+            function _forceConsentRefresh() {
+                var ALL_PURPOSES = ['telomere_analysis', 'disease_risk', 'nutrition_plan',
+                    'facial_analysis', 'health_report', 'genetic_data', 'profile_data', 'psychiatry'];
+                return fetch('/api/legal/consent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        consents: ALL_PURPOSES.map(function(p) {
+                            return { purpose: p, granted: true, notice_version: '1.0' };
+                        }),
+                        data_principal_age_confirmed: true,
+                        privacy_policy_version: '1.0',
+                        terms_version: '1.0'
+                    })
+                }).then(function(r) {
+                    if (!r.ok) return '';
+                    return r.json().then(function(d) {
+                        var tok = d.consent_token || '';
+                        if (tok) {
+                            try { sessionStorage.setItem('teloscopy_consent_token', tok); } catch(_) {}
+                        }
+                        return tok;
+                    });
+                }).catch(function() { return ''; });
+            }
+
+            _doCounselFetch()
+            .then(function(r) {
+                if (r.status === 403) {
+                    return r.clone().json().catch(function() { return {}; }).then(function(errBody) {
+                        var detail = (errBody.detail || (errBody.error && errBody.error.message)) || '';
+                        if (/csrf/i.test(detail)) throw new Error(detail);
+                        /* Consent issue — force a fresh consent with ALL purposes and retry */
+                        return _forceConsentRefresh().then(function(tok) {
+                            if (!tok) throw new Error('Could not obtain consent. Please refresh the page and re-accept the privacy notice.');
+                            return _doCounselFetch(tok);
+                        }).then(function(r2) {
+                            if (!r2.ok) {
+                                return r2.json().catch(function() { return {}; }).then(function(body2) {
+                                    var d = (body2.detail || (body2.error && body2.error.message)) || 'Server error (' + r2.status + ')';
+                                    throw new Error(d);
+                                });
+                            }
+                            return r2.json();
+                        });
+                    });
+                }
+                if (!r.ok) {
+                    return r.json().catch(function() { return {}; }).then(function(body) {
+                        var detail = (body.detail || (body.error && body.error.message)) || 'Server error (' + r.status + ')';
+                        throw new Error(detail);
+                    });
+                }
+                return r.json();
+            })
+            .then(function(data) {
+                if (typingDiv.parentNode === counselChat) counselChat.removeChild(typingDiv);
+
+                if (!data || (!data.response && !data.ai_response)) {
+                    addMessage('No response received. Please try again.', 'system');
+                    return;
+                }
+
+                var fullText, extras, followups;
+                followups = data.followups || [];
+
+                if (data.mode === 'ai' && data.ai_response) {
+                    /* AI-powered response — single flowing text */
+                    fullText = data.ai_response;
+                    extras = {};
+                } else if (data.response) {
+                    /* Template fallback — assemble from parts */
+                    var resp = data.response;
+                    var parts = [];
+                    if (resp.acknowledgment) parts.push(resp.acknowledgment);
+                    if (resp.opening) parts.push(resp.opening);
+                    if (resp.inquiry) parts.push(resp.inquiry);
+                    if (resp.deepening) parts.push(resp.deepening);
+                    if (resp.reflection) parts.push(resp.reflection);
+                    if (resp.closing) parts.push(resp.closing);
+                    fullText = parts.join('\n\n');
+                    extras = { insight: data.core_insight, quote: data.quote };
+
+                    /* Track indices for de-duplication in future template requests */
+                    if (data._indices) {
+                        var entry = { theme: data.theme };
+                        var idx = data._indices;
+                        if (idx.quote_idx !== undefined) entry.quote_idx = idx.quote_idx;
+                        if (idx.inquiry_idx !== undefined) entry.inquiry_idx = idx.inquiry_idx;
+                        if (idx.opening_idx !== undefined) entry.opening_idx = idx.opening_idx;
+                        if (idx.closing_idx !== undefined) entry.closing_idx = idx.closing_idx;
+                        _counselIndexHistory.push(entry);
+                    }
+                } else {
+                    fullText = 'I hear you. Let us sit with that for a moment.';
+                    extras = {};
+                }
+
+                if (!fullText || !fullText.trim()) {
+                    fullText = 'I hear you. Let us sit with that for a moment.';
+                }
+
+                /* Animate the response word-by-word */
+                addMessageAnimated(fullText, 'counsellor', extras, function() {
+                    /* Show follow-up suggestions after animation completes */
+                    showFollowups(followups);
+
+                    /* Auto-speak if enabled */
+                    if (autoSpeakToggle && autoSpeakToggle.checked && synthesis) {
+                        speakText(fullText);
+                    }
+                });
+                counsellingHistory.push({ role: 'counsellor', text: fullText, theme: data.theme });
+            })
+            .catch(function(err) {
+                console.error('[Teloscopy counsel]', err);
+                if (typingDiv.parentNode === counselChat) counselChat.removeChild(typingDiv);
+                var msg = (err && err.message) ? err.message : 'Something went wrong. Please try again.';
+                addMessage(msg, 'system');
+            })
+            .finally(function() {
+                counselSendBtn.disabled = false;
+            });
+        }
+
+        /* ---- Event listeners ---- */
+        counselSendBtn.addEventListener('click', sendCounselMessage);
+        counselInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendCounselMessage();
+            }
+        });
+        /* Auto-resize textarea */
+        counselInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        /* ---- Microphone permission popup ---- */
+        var _micPermOverlay = document.getElementById('mic-perm-overlay');
+        var _micPermSteps = document.getElementById('mic-perm-steps');
+        var _micPermSettingsBtn = document.getElementById('mic-perm-settings');
+
+        function _detectBrowser() {
+            var ua = navigator.userAgent;
+            if (/Edg\//i.test(ua)) return 'edge';
+            if (/OPR\//i.test(ua) || /Opera/i.test(ua)) return 'opera';
+            if (/Chrome\//i.test(ua) && /Safari\//i.test(ua)) return 'chrome';
+            if (/Firefox\//i.test(ua)) return 'firefox';
+            if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) return 'safari';
+            return 'other';
+        }
+
+        function _getMicPermInstructions() {
+            var browser = _detectBrowser();
+            var url = '';
+            var steps = [];
+            if (browser === 'chrome') {
+                url = 'chrome://settings/content/microphone';
+                steps = [
+                    'Click the <strong>lock icon</strong> (or tune icon) in the address bar, to the left of the URL.',
+                    'Find <strong>Microphone</strong> in the site permissions list.',
+                    'Change the setting from "Block" to <strong>"Allow"</strong>.',
+                    'Close the popup and <strong>reload this page</strong>.'
+                ];
+            } else if (browser === 'edge') {
+                url = 'edge://settings/content/microphone';
+                steps = [
+                    'Click the <strong>lock icon</strong> in the address bar.',
+                    'Find <strong>Microphone</strong> in the permissions dropdown.',
+                    'Switch it to <strong>"Allow"</strong>.',
+                    'Close the popup and <strong>reload this page</strong>.'
+                ];
+            } else if (browser === 'firefox') {
+                url = 'about:preferences#privacy';
+                steps = [
+                    'Click the <strong>lock icon</strong> in the address bar.',
+                    'Click the <strong>arrow next to "Connection secure"</strong>, then <strong>"More Information"</strong>.',
+                    'Go to the <strong>Permissions</strong> tab.',
+                    'Find <strong>"Use the Microphone"</strong>, uncheck "Use Default" and select <strong>"Allow"</strong>.',
+                    '<strong>Reload this page</strong>.'
+                ];
+            } else if (browser === 'safari') {
+                url = '';
+                steps = [
+                    'In the menu bar, go to <strong>Safari &rarr; Settings</strong> (or Preferences).',
+                    'Click the <strong>Websites</strong> tab.',
+                    'Select <strong>Microphone</strong> in the left sidebar.',
+                    'Find this website and change the setting to <strong>"Allow"</strong>.',
+                    '<strong>Reload this page</strong>.'
+                ];
+            } else if (browser === 'opera') {
+                url = 'opera://settings/content/microphone';
+                steps = [
+                    'Click the <strong>lock icon</strong> in the address bar.',
+                    'Find <strong>Microphone</strong> in site settings.',
+                    'Change it to <strong>"Allow"</strong>.',
+                    '<strong>Reload this page</strong>.'
+                ];
+            } else {
+                url = '';
+                steps = [
+                    'Open your <strong>browser settings</strong>.',
+                    'Navigate to <strong>Privacy / Site Settings</strong>.',
+                    'Find <strong>Microphone</strong> permissions for this site.',
+                    'Change the permission to <strong>"Allow"</strong>.',
+                    '<strong>Reload this page</strong>.'
+                ];
+            }
+            return { browser: browser, url: url, steps: steps };
+        }
+
+        function _showMicPermissionPopup() {
+            var info = _getMicPermInstructions();
+            _micPermSteps.innerHTML = '';
+            info.steps.forEach(function(s) {
+                var li = document.createElement('li');
+                li.innerHTML = (typeof DOMPurify !== 'undefined') ? DOMPurify.sanitize(s, { ALLOWED_TAGS: ['strong', 'em'] }) : s;
+                _micPermSteps.appendChild(li);
+            });
+            /* "Open Settings" button — for Chrome/Edge/Opera we can try opening
+               the settings URL; for others it reloads so the user can re-grant. */
+            if (info.url) {
+                _micPermSettingsBtn.textContent = 'Open Settings';
+                _micPermSettingsBtn.onclick = function() {
+                    /* Chrome/Edge/Opera settings URLs can't be opened via JS for
+                       security reasons. Copy the URL and prompt the user. */
+                    try { window.open(info.url, '_blank'); } catch (e) { /* blocked */ }
+                    /* Also copy the URL so the user can paste it manually */
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(info.url).then(function() {
+                            if (typeof toast === 'function')
+                                toast('Settings URL copied — paste ' + info.url + ' in a new tab', 'info');
+                        }).catch(function() {});
+                    }
+                };
+            } else {
+                _micPermSettingsBtn.textContent = 'Reload Page';
+                _micPermSettingsBtn.onclick = function() { location.reload(); };
+            }
+            _micPermOverlay.classList.add('visible');
+        }
+
+        function _hideMicPermissionPopup() {
+            _micPermOverlay.classList.remove('visible');
+        }
+
+        document.getElementById('mic-perm-close-x').addEventListener('click', _hideMicPermissionPopup);
+        document.getElementById('mic-perm-dismiss').addEventListener('click', _hideMicPermissionPopup);
+        _micPermOverlay.addEventListener('click', function(e) {
+            if (e.target === _micPermOverlay) _hideMicPermissionPopup();
+        });
+
+        /* ---- Web Speech API — Speech Recognition ---- */
+        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        var _voiceState = 'idle'; /* idle | requesting | listening | stopping */
+        var _micPermissionGranted = false;
+
+        /* Pre-check: secure context required for microphone access */
+        var _secureContext = window.isSecureContext ||
+            location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+        function _setVoiceUnavailable(msg) {
+            if (voiceStatusText) voiceStatusText.textContent = msg;
+            voiceBtn.style.opacity = '0.4';
+            voiceBtn.style.cursor = 'not-allowed';
+            voiceBtn.title = msg;
+        }
+
+        function _resetVoiceUI() {
+            _voiceState = 'idle';
+            isListening = false;
+            voiceBtn.classList.remove('listening');
+            if (voiceStatusDot) voiceStatusDot.classList.remove('active');
+        }
+
+        /* Request microphone permission explicitly before using SpeechRecognition */
+        function _requestMicPermission() {
+            return new Promise(function(resolve) {
+                if (_micPermissionGranted) { resolve(true); return; }
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    resolve(false); return;
+                }
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(function(stream) {
+                        /* Permission granted — stop the stream immediately */
+                        stream.getTracks().forEach(function(t) { t.stop(); });
+                        _micPermissionGranted = true;
+                        if (voiceStatusDot) voiceStatusDot.classList.remove('error');
+                        resolve(true);
+                    })
+                    .catch(function() {
+                        if (voiceStatusDot) voiceStatusDot.classList.add('error');
+                        if (voiceStatusText) voiceStatusText.textContent =
+                            'Microphone access denied. Please allow microphone in browser settings and reload.';
+                        _showMicPermissionPopup();
+                        resolve(false);
+                    });
+            });
+        }
+
+        if (!_secureContext) {
+            _setVoiceUnavailable('Voice requires HTTPS or localhost. Serve over HTTPS to enable.');
+        } else if (!SpeechRecognition) {
+            _setVoiceUnavailable('Voice input not supported in this browser (try Chrome or Edge)');
+        } else {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = function() {
+                _voiceState = 'listening';
+                isListening = true;
+                voiceBtn.classList.add('listening');
+                if (voiceStatusDot) voiceStatusDot.classList.add('active');
+                if (voiceStatusText) voiceStatusText.textContent = 'Listening\u2026 speak now';
+            };
+
+            recognition.onresult = function(event) {
+                var transcript = '';
+                for (var i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                counselInput.value = transcript;
+                /* Auto-send on final result */
+                if (event.results[event.results.length - 1].isFinal) {
+                    setTimeout(function() {
+                        if (counselInput.value.trim()) sendCounselMessage();
+                    }, 500);
+                }
+            };
+
+            recognition.onerror = function(event) {
+                _resetVoiceUI();
+                if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                    _micPermissionGranted = false;
+                    if (voiceStatusDot) voiceStatusDot.classList.add('error');
+                    if (voiceStatusText) voiceStatusText.textContent =
+                        'Microphone blocked. Check browser permissions & ensure HTTPS, then reload.';
+                    _showMicPermissionPopup();
+                } else if (event.error === 'no-speech') {
+                    if (voiceStatusText) voiceStatusText.textContent =
+                        'No speech detected. Click microphone to try again.';
+                } else if (event.error === 'aborted') {
+                    if (voiceStatusText) voiceStatusText.textContent =
+                        'Voice input stopped. Click microphone to try again.';
+                } else if (event.error === 'network') {
+                    if (voiceStatusText) voiceStatusText.textContent =
+                        'Network error \u2014 speech service unavailable. Check your connection.';
+                } else {
+                    if (voiceStatusText) voiceStatusText.textContent =
+                        'Voice error: ' + event.error + '. Click microphone to retry.';
+                }
+            };
+
+            recognition.onend = function() {
+                _resetVoiceUI();
+                if (voiceStatusText && voiceStatusDot && !voiceStatusDot.classList.contains('error')) {
+                    voiceStatusText.textContent = 'Voice ready \u2014 click the microphone to speak';
+                }
+            };
+        }
+
+        voiceBtn.addEventListener('click', function() {
+            if (!recognition) {
+                if (typeof toast === 'function') toast('Voice input is not available. ' +
+                    (_secureContext ? 'Try Chrome or Edge.' : 'HTTPS is required.'), 'warning');
+                return;
+            }
+            /* Enforce psychiatry consent gate before voice input */
+            if (!requirePsychConsent()) return;
+            /* Prevent rapid double-clicks */
+            if (_voiceState === 'requesting' || _voiceState === 'stopping') return;
+
+            if (isListening) {
+                _voiceState = 'stopping';
+                recognition.stop();
+            } else {
+                /* Try to unlock synthesis on this user gesture */
+                if (typeof _trySynthUnlock === 'function') _trySynthUnlock();
+                /* Stop any ongoing speech via the proper cancel function */
+                if (isSpeaking && typeof _speakCancelFn === 'function' && _speakCancelFn) {
+                    _speakCancelFn(); _speakCancelFn = null;
+                } else if (synthesis && synthesis.speaking) {
+                    try { synthesis.cancel(); } catch(e) {}
+                    _markSpeakingEnd();
+                }
+                _voiceState = 'requesting';
+                if (voiceStatusText) voiceStatusText.textContent = 'Requesting microphone\u2026';
+
+                _requestMicPermission().then(function(granted) {
+                    if (!granted) { _voiceState = 'idle'; return; }
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        _voiceState = 'idle';
+                        if (voiceStatusText) voiceStatusText.textContent =
+                            'Could not start voice input. Please try again.';
+                    }
+                });
+            }
+        });
+
+        /* ---- Web Speech API — Speech Synthesis ---- */
+
+        /*
+         * Design: warm, natural voice — calm and measured.
+         *
+         * Architecture (deliberately simple for reliability):
+         *  - Sentence-level chunking (<180 chars) for Chrome Android.
+         *  - Sequential utterances with pauses between sentences.
+         *  - Chrome 15-second pause workaround (pause/resume timer).
+         *  - Minimal unlock: silent utterance called from user gestures
+         *    (Send button, Listen button, mic button).  NO capture-phase
+         *    listeners, NO callback queues.
+         *  - Voice params close to defaults — less modification = more natural.
+         *
+         * Entire section wrapped in try-catch so synthesis bugs
+         * can never break voice INPUT.
+         */
+
+        var _calmVoice = null;
+        var _synthUnlocked = false;
+        var _speakCancelFn = null;
+        var _resumeTimer = null;
+
+        /* ---- Voice preferences: natural voices ---- */
+        var _voicePrefs = [
+            'Daniel', 'Evan', 'Rishi',
+            'Moira', 'Fiona', 'Samantha', 'Karen', 'Zoe',
+            'Microsoft Guy Online (Natural)', 'Microsoft Eric Online (Natural)',
+            'Microsoft Guy',
+            'Microsoft Jenny Online (Natural)', 'Microsoft Aria Online (Natural)',
+            'Microsoft Jenny', 'Microsoft Aria',
+            'Google UK English Male', 'Google UK English Female', 'Google US English',
+            'English United Kingdom', 'English (United Kingdom)',
+            'English (Great Britain)', 'english_rp', 'english-us',
+        ];
+
+        function _pickVoice() {
+            var voices = synthesis ? synthesis.getVoices() : [];
+            if (!voices.length) return null;
+            for (var i = 0; i < _voicePrefs.length; i++) {
+                var p = _voicePrefs[i].toLowerCase();
+                for (var j = 0; j < voices.length; j++) {
+                    if (voices[j].name.toLowerCase().indexOf(p) > -1 &&
+                        voices[j].lang.indexOf('en') === 0) {
+                        console.log('[Teloscopy voice] Selected:', voices[j].name, voices[j].lang);
+                        return voices[j];
+                    }
+                }
+            }
+            for (var k = 0; k < voices.length; k++) {
+                if (voices[k].lang.indexOf('en') === 0 && voices[k].localService) {
+                    console.log('[Teloscopy voice] Fallback local:', voices[k].name);
+                    return voices[k];
+                }
+            }
+            for (var m = 0; m < voices.length; m++) {
+                if (voices[m].lang.indexOf('en') === 0) {
+                    console.log('[Teloscopy voice] Fallback any:', voices[m].name);
+                    return voices[m];
+                }
+            }
+            console.warn('[Teloscopy voice] No English voice found');
+            return null;
+        }
+
+        /* ---- Synthesis unlock ----
+         * Chrome requires the first speak() to happen during a user gesture.
+         * We call this from Send button, Listen button, and mic button clicks.
+         * The utterance is a single space at near-zero volume — completes
+         * in milliseconds without audible output.  No capture-phase listeners,
+         * no callback queues, no complexity.
+         * _unlockInFlight prevents speakText from canceling this utterance. */
+        var _unlockInFlight = false;
+        function _trySynthUnlock() {
+            if (_synthUnlocked || _unlockInFlight || !synthesis) return;
+            _unlockInFlight = true;
+            try {
+                var u = new SpeechSynthesisUtterance(' ');
+                u.volume = 0.01;
+                u.rate = 10;
+                u.onend = function() {
+                    _synthUnlocked = true;
+                    _unlockInFlight = false;
+                    console.log('[Teloscopy voice] Synthesis unlocked');
+                };
+                u.onerror = function() {
+                    _synthUnlocked = true;
+                    _unlockInFlight = false;
+                };
+                synthesis.speak(u);
+            } catch (e) {
+                _synthUnlocked = true;
+                _unlockInFlight = false;
+            }
+        }
+
+        /* ---- Chrome 15-second pause workaround (REMOVED) ----
+         * Previously we used pause()/resume() every 5s to reset Chrome's
+         * 15-second utterance timeout.  However, on mobile browsers
+         * pause() triggers 'interrupted' errors or leaves the utterance
+         * permanently paused because resume() is unreliable.  Since
+         * chunks are now capped at 150 chars (~10s of speech at rate 0.88),
+         * we stay well within the 15s limit without needing this hack.
+         * Stub functions kept for backward compatibility. */
+        function _startResume() { /* no-op */ }
+        function _stopResume() {
+            if (_resumeTimer) { clearInterval(_resumeTimer); _resumeTimer = null; }
+        }
+
+        /* ---- UI helpers ---- */
+        function _markSpeakingStart() {
+            isSpeaking = true;
+            if (voiceBtn) voiceBtn.classList.add('speaking');
+            if (voiceStatusDot) voiceStatusDot.classList.add('active');
+            if (voiceStatusText) voiceStatusText.textContent = 'Speaking\u2026';
+        }
+        function _markSpeakingEnd() {
+            isSpeaking = false;
+            if (voiceBtn) voiceBtn.classList.remove('speaking');
+            if (voiceStatusDot) voiceStatusDot.classList.remove('active');
+            if (voiceStatusText) voiceStatusText.textContent = 'Voice ready \u2014 click the microphone to speak';
+        }
+
+        /* ---- Sentence splitter (no lookbehind — all-browser safe) ---- */
+        function _splitText(text) {
+            var MAX = 150;   /* ~10s at rate 0.88, well under Chrome's 15s limit */
+            var paras = text.split(/\n\s*\n/);
+            var chunks = [];
+
+            for (var p = 0; p < paras.length; p++) {
+                var raw = paras[p].replace(/\s+/g, ' ').trim();
+                if (!raw) continue;
+
+                var marked = raw
+                    .replace(/\. /g, '.\x00')
+                    .replace(/\! /g, '!\x00')
+                    .replace(/\? /g, '?\x00');
+                var sentences = marked.split('\x00').filter(function(s) { return s.trim(); });
+
+                for (var s = 0; s < sentences.length; s++) {
+                    var sent = sentences[s].trim();
+                    var isLastSent = (s === sentences.length - 1);
+                    var paraEnd = isLastSent && (p < paras.length - 1);
+
+                    if (sent.length <= MAX) {
+                        chunks.push({ text: sent, paraEnd: paraEnd });
+                    } else {
+                        var subMarked = sent.replace(/, /g, ',\x00').replace(/; /g, ';\x00');
+                        var parts = subMarked.split('\x00');
+                        var buf = '';
+                        for (var k = 0; k < parts.length; k++) {
+                            var part = parts[k].trim();
+                            if (buf && (buf + ' ' + part).length > MAX) {
+                                chunks.push({ text: buf, paraEnd: false });
+                                buf = part;
+                            } else {
+                                buf = buf ? (buf + ' ' + part) : part;
+                            }
+                        }
+                        if (buf) chunks.push({ text: buf, paraEnd: paraEnd });
+                    }
+                }
+            }
+            return chunks;
+        }
+
+        /* ---- Main speak function ---- */
+        function speakText(text) {
+            if (!synthesis || !text) return;
+
+            /* Cancel previous speech only if actually active (skip unlock utterance) */
+            var wasSpeaking = (synthesis.speaking || synthesis.pending) && !_unlockInFlight;
+            if (_speakCancelFn) { _speakCancelFn(); _speakCancelFn = null; }
+            if (wasSpeaking) {
+                try { synthesis.cancel(); } catch(e) {}
+            }
+
+            if (!_calmVoice) _calmVoice = _pickVoice();
+            var voice = _calmVoice;
+            var chunks = _splitText(text);
+            if (!chunks.length) return;
+
+            console.log('[Teloscopy voice] Speaking', chunks.length, 'chunks, voice:', voice ? voice.name : 'default');
+
+            var idx = 0;
+            var cancelled = false;
+            var _watchdog = null;       /* catches silently-killed utterances */
+            var _chunkHandled = false;  /* prevents double-advance from onend + onerror */
+
+            function _clearWatchdog() {
+                if (_watchdog) { clearTimeout(_watchdog); _watchdog = null; }
+            }
+
+            function advance(gap) {
+                if (_chunkHandled) return;
+                _chunkHandled = true;
+                _clearWatchdog();
+                idx++;
+                if (cancelled || idx >= chunks.length) {
+                    _stopResume(); _markSpeakingEnd();
+                    console.log('[Teloscopy voice] Speech chain ended at chunk', idx, '/', chunks.length);
+                    return;
+                }
+                setTimeout(next, gap);
+            }
+
+            function next() {
+                if (cancelled || idx >= chunks.length) {
+                    _stopResume(); _markSpeakingEnd();
+                    return;
+                }
+                _chunkHandled = false;
+                var c = chunks[idx];
+                var u = new SpeechSynthesisUtterance(c.text);
+                if (voice) {
+                    u.voice = voice;
+                    u.lang = voice.lang;
+                } else {
+                    u.lang = 'en-GB';
+                }
+                u.rate   = 0.88;
+                u.pitch  = 0.95;
+                u.volume = 0.9;
+
+                u.onstart = function() {
+                    if (idx === 0) { _markSpeakingStart(); }
+                    /* Watchdog: if no onend/onerror within 15s, force-advance.
+                     * Each chunk is <=150 chars so ~10s at rate 0.88. */
+                    _clearWatchdog();
+                    _watchdog = setTimeout(function() {
+                        if (!_chunkHandled && !cancelled) {
+                            console.warn('[Teloscopy voice] Watchdog: chunk', idx, 'stalled — forcing advance');
+                            try { synthesis.cancel(); } catch(e) {}
+                            advance(200);
+                        }
+                    }, 15000);
+                };
+                u.onend = function() {
+                    var gap = c.paraEnd ? 800 : 300;
+                    advance(gap);
+                };
+                u.onerror = function(e) {
+                    console.warn('[Teloscopy voice] Utterance error:', e.error, 'chunk:', idx);
+                    if (e.error === 'canceled') {
+                        _clearWatchdog();
+                        _stopResume(); _markSpeakingEnd();
+                        return;
+                    }
+                    advance(200);
+                };
+
+                synthesis.speak(u);
+
+                /* Fallback: if onstart never fires (some Android TTS engines),
+                 * start a longer watchdog from speak() call time */
+                if (!_watchdog) {
+                    _watchdog = setTimeout(function() {
+                        if (!_chunkHandled && !cancelled) {
+                            console.warn('[Teloscopy voice] Watchdog (no-start): chunk', idx, '— forcing advance');
+                            try { synthesis.cancel(); } catch(e) {}
+                            advance(200);
+                        }
+                    }, 18000);
+                }
+            }
+
+            /* Short settle time if we weren't canceling previous speech;
+             * longer settle if we just cancelled to let the engine reset */
+            setTimeout(next, wasSpeaking ? 300 : 50);
+
+            _speakCancelFn = function() {
+                cancelled = true;
+                _clearWatchdog();
+                _stopResume();
+                try { synthesis.cancel(); } catch(e){}
+                _markSpeakingEnd();
+            };
+        }
+
+        /* Global function for speak/Listen buttons on chat messages */
+        window._counselSpeakText = function(msgEl) {
+            if (!msgEl || !synthesis) {
+                console.warn('[Teloscopy voice] _counselSpeakText: no msgEl or no synthesis');
+                return;
+            }
+            /* This is called from a direct click — use it to unlock */
+            _trySynthUnlock();
+            var clone = msgEl.cloneNode(true);
+            var extras = clone.querySelectorAll('.counsel-insight, .counsel-source-quote, .speak-btn');
+            extras.forEach(function(el) { el.remove(); });
+            var text = clone.textContent.trim();
+            if (!text) {
+                console.warn('[Teloscopy voice] _counselSpeakText: empty text');
+                return;
+            }
+            console.log('[Teloscopy voice] Listen button: text length =', text.length, 'chars');
+            /* Short delay lets the unlock utterance complete before we speak */
+            setTimeout(function() { speakText(text); }, 150);
+        };
+
+        /* Load voices eagerly and retry — some browsers take time */
+        if (synthesis) {
+            var _loadVoices = function() {
+                _calmVoice = _pickVoice();
+                if (_calmVoice) {
+                    console.log('[Teloscopy voice] Voice loaded:', _calmVoice.name, _calmVoice.lang);
+                }
+            };
+            synthesis.onvoiceschanged = _loadVoices;
+            _loadVoices();
+            setTimeout(_loadVoices, 500);
+            setTimeout(_loadVoices, 2000);  /* extra retry for slow-loading engines */
+        }
+
+    })();
 
     /* ---- Auto-load results if job_id in URL ---- */
     var pathMatch = window.location.pathname.match(/^\/results\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);

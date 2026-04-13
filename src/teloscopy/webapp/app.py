@@ -11,6 +11,13 @@ Run with::
 
 from __future__ import annotations
 
+# Load .env file (if present) before anything reads os.getenv
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _load_dotenv()
+except ImportError:
+    pass
+
 import asyncio
 import collections
 import hashlib
@@ -19,6 +26,7 @@ import logging
 import math
 import os
 import random
+import json
 import threading
 import time
 import traceback
@@ -59,7 +67,6 @@ from teloscopy.webapp.health_checkup import HealthCheckupAnalyzer
 from teloscopy.webapp.report_parser import (
     compute_extraction_confidence,
     detect_file_type,
-    extract_tables_from_pdf,
     extract_text,
     parse_lab_report,
 )
@@ -142,11 +149,33 @@ _BASE_DIR: Path = Path(__file__).resolve().parent
 _TEMPLATES_DIR: Path = _BASE_DIR / "templates"
 _STATIC_DIR: Path = _BASE_DIR / "static"
 _UPLOAD_DIR: Path = Path(os.getenv("TELOSCOPY_UPLOAD_DIR", "/tmp/teloscopy_uploads"))
-_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+_UPLOAD_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
 
 _ALLOWED_EXTENSIONS: set[str] = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}
 _MAX_UPLOAD_BYTES: int = 50 * 1024 * 1024  # 50 MiB
 _MIN_IMAGE_DIMENSION: int = 32  # minimum width/height in pixels
+
+
+async def _read_upload_chunked(file: Any, max_bytes: int) -> bytes:
+    """Read an uploaded file in 1 MiB chunks, aborting if *max_bytes* is exceeded.
+
+    Prevents a single oversized upload from exhausting server memory.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File exceeds the {max_bytes // (1024 * 1024)} MiB limit.",
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
 
 # Magic byte signatures for image format validation
 _IMAGE_MAGIC_BYTES: dict[str, list[bytes]] = {
@@ -166,11 +195,23 @@ _CORS_ORIGINS: list[str] = os.getenv(
     "http://localhost:8000,http://127.0.0.1:8000",
 ).split(",")
 
+# Prevent wildcard CORS with credentials — this is a credential theft risk.
+if "*" in _CORS_ORIGINS:
+    logger.warning(
+        "TELOSCOPY_CORS_ORIGINS contains '*' (wildcard). "
+        "Removing it to prevent credential exposure via CORS. "
+        "Set explicit origins instead."
+    )
+    _CORS_ORIGINS = [o for o in _CORS_ORIGINS if o.strip() != "*"]
+    if not _CORS_ORIGINS:
+        _CORS_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]
+
 # ---------------------------------------------------------------------------
 # In-memory job store (swap for Redis in production)
 # ---------------------------------------------------------------------------
 
 _jobs: dict[str, JobStatus] = {}
+_job_sessions: dict[str, str] = {}  # job_id → consent session_id (IDOR protection)
 _JOB_MAX_COUNT: int = 10_000
 _JOB_TTL_SECONDS: float = 3600.0  # 1 hour
 
@@ -260,7 +301,13 @@ def rate_limit(max_requests: int, window_seconds: int = 60):
     """
 
     async def _check_rate_limit(request: Request) -> None:
-        client_ip: str = request.client.host if request.client else "unknown"
+        # Prefer X-Forwarded-For (first hop) when behind a reverse proxy,
+        # falling back to the direct client IP.
+        forwarded = request.headers.get("x-forwarded-for", "")
+        if forwarded:
+            client_ip = forwarded.split(",")[0].strip()
+        else:
+            client_ip = request.client.host if request.client else "unknown"
         key: str = f"{client_ip}:{request.url.path}"
         if not _rate_limiter.is_allowed(key, max_requests, window_seconds):
             raise HTTPException(
@@ -300,22 +347,32 @@ _CONSENT_SECRET: bytes = os.getenv(
     "TELOSCOPY_CONSENT_SECRET", _default_consent_secret()
 ).encode()
 
+if _TELOSCOPY_ENV == "production" and not os.getenv("TELOSCOPY_CONSENT_SECRET"):
+    logger.warning(
+        "SECURITY: TELOSCOPY_CONSENT_SECRET is not set. In production, a strong "
+        "random secret is required. The application is using a machine-derived "
+        "fallback which may be predictable. Set TELOSCOPY_CONSENT_SECRET to a "
+        "cryptographically random value (e.g. python -c 'import secrets; print(secrets.token_hex(32))')."
+    )
+
 # In-memory consent store: token → {session_id, purposes, granted_at, withdrawn}
 _consent_store: dict[str, dict[str, Any]] = {}
 _consent_store_lock: threading.Lock = threading.Lock()
+_CONSENT_STORE_MAX: int = 50_000  # cap to prevent memory exhaustion
 
 # Tokens older than 24 hours require re-consent.
 _CONSENT_TOKEN_TTL: float = 86_400.0
 
 # Set of session_ids that have withdrawn consent — checked on every request.
 _withdrawn_sessions: set[str] = set()
+_WITHDRAWN_SESSIONS_MAX: int = 100_000  # cap to prevent memory exhaustion
 
 
 def _sign_consent_token(session_id: str, purposes: list[str]) -> str:
     """Create an HMAC-signed consent token encoding session + purposes."""
     timestamp = str(int(time.time()))
     payload = f"{session_id}:{','.join(sorted(purposes))}:{timestamp}"
-    sig = hmac.new(_CONSENT_SECRET, payload.encode(), hashlib.sha256).hexdigest()[:32]
+    sig = hmac.new(_CONSENT_SECRET, payload.encode(), hashlib.sha256).hexdigest()
     import base64
     token = base64.urlsafe_b64encode(f"{payload}:{sig}".encode()).decode()
     return token
@@ -332,7 +389,7 @@ def _verify_consent_token(token: str) -> dict[str, Any] | None:
         payload_str, sig = parts
         expected_sig = hmac.new(
             _CONSENT_SECRET, payload_str.encode(), hashlib.sha256
-        ).hexdigest()[:32]
+        ).hexdigest()
         if not hmac.compare_digest(sig, expected_sig):
             return None
         payload_parts = payload_str.split(":", 2)
@@ -436,7 +493,7 @@ async def _check_csrf(request: Request) -> None:
     content_type = request.headers.get("content-type", "")
     # Accept requests with X-Requested-With header, or JSON content type
     # (custom content types cannot be set by cross-origin forms)
-    if xrw or "application/json" in content_type or "multipart/form-data" in content_type:
+    if xrw or "application/json" in content_type:
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -498,9 +555,9 @@ async def security_headers_middleware(request: Request, call_next: Any) -> Any:
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["X-XSS-Protection"] = "0"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
     response.headers["Content-Security-Policy"] = _CSP_POLICY
     if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
@@ -528,7 +585,7 @@ async def csrf_middleware(request: Request, call_next: Any) -> Any:
             xrw = request.headers.get("x-requested-with", "")
             ct = request.headers.get("content-type", "")
             # Custom headers/content-types can't be set by cross-origin HTML forms
-            if not (xrw or "application/json" in ct or "multipart/form-data" in ct):
+            if not (xrw or "application/json" in ct):
                 from fastapi.responses import JSONResponse
                 return JSONResponse(
                     status_code=403,
@@ -1446,6 +1503,7 @@ def _validate_image_content(contents: bytes, filename: str) -> ImageValidationRe
 _consent_log: list[dict] = []
 _grievance_log: list[dict] = []
 _deletion_log: list[dict] = []
+_AUDIT_LOG_MAX: int = 10_000  # cap each log to prevent memory exhaustion
 
 
 @app.get("/api/legal/notice", response_model=LegalNotice, tags=["Legal"])
@@ -1492,6 +1550,13 @@ async def record_consent(bundle: ConsentBundle, request: Request, response: Resp
     
     # Store in server-side consent store
     with _consent_store_lock:
+        # Evict oldest entries if at capacity
+        if len(_consent_store) >= _CONSENT_STORE_MAX:
+            oldest_keys = sorted(
+                _consent_store, key=lambda k: _consent_store[k].get("granted_at", "")
+            )[: len(_consent_store) - _CONSENT_STORE_MAX + 100]
+            for k in oldest_keys:
+                _consent_store.pop(k, None)
         _consent_store[bundle.session_id] = {
             "purposes": granted_purposes,
             "granted_at": datetime.utcnow().isoformat(),
@@ -1508,6 +1573,8 @@ async def record_consent(bundle: ConsentBundle, request: Request, response: Resp
         "recorded_at": datetime.utcnow().isoformat(),
         "ip_hash": ip_hash,
     }
+    if len(_consent_log) >= _AUDIT_LOG_MAX:
+        _consent_log[:] = _consent_log[-(_AUDIT_LOG_MAX // 2):]
     _consent_log.append(record)
     logger.info("Consent recorded for session %s with %d purposes", bundle.session_id, len(bundle.consents))
     
@@ -1531,7 +1598,7 @@ async def record_consent(bundle: ConsentBundle, request: Request, response: Resp
     }
 
 
-@app.post("/api/legal/consent/withdraw", tags=["Legal"])
+@app.post("/api/legal/consent/withdraw", tags=["Legal"], dependencies=[Depends(rate_limit(10, 60))])
 async def withdraw_consent(session_id: str = "", purposes: list[str] = [], response: Response = None):
     """Withdraw consent per DPDP Act 2023 Section 6(6).
     
@@ -1544,6 +1611,12 @@ async def withdraw_consent(session_id: str = "", purposes: list[str] = [], respo
     """
     # Invalidate the session's consent server-side
     if session_id:
+        # Cap withdrawn sessions set to prevent unbounded memory growth
+        if len(_withdrawn_sessions) >= _WITHDRAWN_SESSIONS_MAX:
+            # Remove oldest half (order not preserved in sets, but this
+            # bounds the size which is the primary goal)
+            to_remove = list(_withdrawn_sessions)[:_WITHDRAWN_SESSIONS_MAX // 2]
+            _withdrawn_sessions.difference_update(to_remove)
         _withdrawn_sessions.add(session_id)
         with _consent_store_lock:
             _consent_store.pop(session_id, None)
@@ -1553,6 +1626,8 @@ async def withdraw_consent(session_id: str = "", purposes: list[str] = [], respo
         "purposes_withdrawn": purposes,
         "withdrawn_at": datetime.utcnow().isoformat(),
     }
+    if len(_consent_log) >= _AUDIT_LOG_MAX:
+        _consent_log[:] = _consent_log[-(_AUDIT_LOG_MAX // 2):]
     _consent_log.append(record)
     logger.info("Consent withdrawn for session %s, purposes: %s", session_id, purposes)
     
@@ -1578,6 +1653,7 @@ async def withdraw_consent(session_id: str = "", purposes: list[str] = [], respo
     "/api/legal/data-deletion",
     response_model=DataDeletionResponse,
     tags=["Legal"],
+    dependencies=[Depends(rate_limit(10, 60))],
 )
 async def request_data_deletion(req: DataDeletionRequest):
     """Exercise Right to Erasure under DPDP Act 2023 Section 12(3).
@@ -1588,6 +1664,8 @@ async def request_data_deletion(req: DataDeletionRequest):
     """
     response = DataDeletionResponse(request_id=req.request_id)
     
+    if len(_deletion_log) >= _AUDIT_LOG_MAX:
+        _deletion_log[:] = _deletion_log[-(_AUDIT_LOG_MAX // 2):]
     _deletion_log.append({
         "request_id": req.request_id,
         "session_id": req.session_id,
@@ -1604,12 +1682,15 @@ async def request_data_deletion(req: DataDeletionRequest):
     "/api/legal/grievance",
     response_model=GrievanceResponse,
     tags=["Legal"],
+    dependencies=[Depends(rate_limit(10, 60))],
 )
 async def submit_grievance(grievance: GrievanceRequest):
     """Submit a grievance per DPDP Act 2023 Section 13.
     
     The Grievance Officer will acknowledge and respond within 30 days.
     """
+    if len(_grievance_log) >= _AUDIT_LOG_MAX:
+        _grievance_log[:] = _grievance_log[-(_AUDIT_LOG_MAX // 2):]
     _grievance_log.append(grievance.dict())
     # Redact email in logs to avoid PII leakage (log hash instead)
     email_hash = hashlib.sha256(grievance.email.encode()).hexdigest()[:8] if grievance.email else "none"
@@ -1627,7 +1708,7 @@ async def get_privacy_policy_summary():
         "full_document_url": "/docs/privacy-policy",
         "governing_law": "Digital Personal Data Protection Act, 2023 (India)",
         "data_fiduciary": "Teloscopy Project",
-        "grievance_officer_email": "animaticalpha123@gmail.com",
+        "grievance_officer_email": os.getenv("TELOSCOPY_GRIEVANCE_EMAIL", "grievance@teloscopy.org"),
         "data_protection_board": "Data Protection Board of India",
         "key_points": [
             "All data is processed ephemerally — nothing is stored on servers",
@@ -1675,13 +1756,15 @@ async def results_page(request: Request, job_id: str) -> HTMLResponse:
     """Serve a results page for a specific job."""
     import json as _json
 
-    job: JobStatus | None = _jobs.get(job_id)
+    # NOTE: Do NOT pass the full `job` object here — the template is served
+    # without server-side consent verification and rendering result data
+    # would bypass the consent gate.  The client fetches results via the
+    # consent-protected /api/results/{job_id} endpoint instead.
     return templates.TemplateResponse(
         request=request,
         name="index.html",
         context={
             "job_id": job_id,
-            "job": job,
             "scroll_to": "results",
             "research_json": _json.dumps(_RESEARCH_CACHE),
         },
@@ -1834,7 +1917,7 @@ def _render_legal_doc(filename: str, title: str) -> HTMLResponse:
         <p style="margin-top:.4rem;">
             <a href="/docs/privacy-policy">Privacy Policy</a> &middot;
             <a href="/docs/terms-of-service">Terms of Service</a> &middot;
-            <a href="mailto:animaticalpha123@gmail.com">Grievance Officer</a>
+            <a href="mailto:{os.getenv('TELOSCOPY_GRIEVANCE_EMAIL', 'grievance@teloscopy.org')}">Grievance Officer</a>
         </p>
     </div>
 </body>
@@ -1870,23 +1953,26 @@ async def download_ios_redirect() -> dict[str, str]:
 
 
 # ===================================================================== #
+#  JSON data loader (shared by Research & Counselling)                    #
+# ===================================================================== #
+
+_DATA_JSON_DIR: Path = _BASE_DIR.parent / "data" / "json"
+
+
+def _load_json(filename: str) -> Any:
+    """Load a JSON data file from the data/json directory."""
+    filepath = _DATA_JSON_DIR / filename
+    with open(filepath, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+# ===================================================================== #
 #  Research Knowledge Base                                               #
 # ===================================================================== #
 
 _PROJECT_ROOT = _BASE_DIR.parent.parent.parent  # src/teloscopy/webapp → project root
 
-_RESEARCH_FILES: list[dict[str, str]] = [
-    {
-        "id": "knowledge-base",
-        "title": "Gene Sequencing & Telomere Analysis",
-        "file": "KNOWLEDGE_BASE.md",
-    },
-    {
-        "id": "research",
-        "title": "Scientific Foundation & Research",
-        "file": "docs/RESEARCH.md",
-    },
-]
+_RESEARCH_FILES: list[dict[str, str]] = _load_json("research_files.json")
 
 
 def _load_research_documents() -> dict[str, Any]:
@@ -1963,45 +2049,679 @@ def _load_research_documents() -> dict[str, Any]:
 _RESEARCH_CACHE: dict[str, Any] = _load_research_documents()
 
 
-@app.get("/api/research")
+@app.get("/api/research", dependencies=[Depends(rate_limit(60, 60))])
 async def get_research() -> dict[str, Any]:
     """Return all research documents as structured sections (served from cache)."""
     return _RESEARCH_CACHE
 
 
-@app.get("/api/debug/templates")
-async def debug_templates(request: Request) -> dict[str, Any]:
-    """Diagnostic endpoint for template debugging."""
-    if _TELOSCOPY_ENV == "production":
-        raise HTTPException(status_code=404, detail="Not found")
-    import os
-    import traceback
+# ===================================================================== #
+#  Psychiatry — Inquiry-based Counselling Engine  (v2 — expanded)        #
+#  Data loaded from JSON files in teloscopy/data/json/                   #
+# ===================================================================== #
 
-    import starlette
+_COUNSEL_THEMES: dict[str, dict[str, Any]] = _load_json("counselling_themes.json")
 
-    diag: dict[str, Any] = {
-        "templates_dir": str(_TEMPLATES_DIR),
-        "templates_dir_exists": _TEMPLATES_DIR.exists(),
-        "template_files": (
-            [f.name for f in _TEMPLATES_DIR.iterdir()] if _TEMPLATES_DIR.exists() else []
-        ),
-        "static_dir": str(_STATIC_DIR),
-        "static_dir_exists": _STATIC_DIR.exists(),
-        "cwd": os.getcwd(),
-        "app_file": str(Path(__file__).resolve()),
-        "starlette_version": starlette.__version__,
+_counsel_phrases: dict[str, list[str]] = _load_json("counselling_phrases.json")
+_OPENING_PHRASES: list[str] = _counsel_phrases["opening_phrases"]
+_ACKNOWLEDGMENT_PHRASES: list[str] = _counsel_phrases["acknowledgment_phrases"]
+_CLOSING_PHRASES: list[str] = _counsel_phrases["closing_phrases"]
+_DEEPENING_QUESTIONS: list[str] = _counsel_phrases["deepening_questions"]
+del _counsel_phrases  # free the intermediate dict
+
+_COUNSEL_KEYWORD_MAP: list[tuple[list[str], str]] = [
+    (entry["keywords"], entry["theme"])
+    for entry in _load_json("counselling_keyword_map.json")
+]
+
+
+
+def _match_counselling_theme(user_message: str) -> str:
+    """Return the best-matching counselling theme key for a user message."""
+    msg = user_message.lower()
+
+    keyword_map = _COUNSEL_KEYWORD_MAP
+
+    for keywords, theme in keyword_map:
+        for kw in keywords:
+            if kw in msg:
+                return theme
+
+    return "self_knowledge"
+
+
+def _build_counselling_response(
+    theme_key: str,
+    user_message: str,
+    history: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Build an inquiry-based counselling response for the matched theme.
+
+    Uses randomised selection with history-aware de-duplication so the user
+    never receives the same quote, inquiry, or opening twice in a row.
+    """
+    theme = _COUNSEL_THEMES.get(theme_key, _COUNSEL_THEMES["self_knowledge"])
+    history = history or []
+
+    # ── Collect previously-used indices to avoid repetition ──
+    used_quotes: set[int] = set()
+    used_inquiries: set[int] = set()
+    used_openings: set[int] = set()
+    used_closings: set[int] = set()
+    for h in history[-6:]:
+        if h.get("theme") == theme_key:
+            if "quote_idx" in h:
+                used_quotes.add(h["quote_idx"])
+            if "inquiry_idx" in h:
+                used_inquiries.add(h["inquiry_idx"])
+        if "opening_idx" in h:
+            used_openings.add(h["opening_idx"])
+        if "closing_idx" in h:
+            used_closings.add(h["closing_idx"])
+
+    def _pick(pool: list[str], used: set[int]) -> tuple[str, int]:
+        available = [i for i in range(len(pool)) if i not in used]
+        if not available:
+            available = list(range(len(pool)))
+        idx = random.choice(available)
+        return pool[idx], idx
+
+    # ── Select components ──
+    opening, opening_idx = _pick(_OPENING_PHRASES, used_openings)
+    acknowledgment = random.choice(_ACKNOWLEDGMENT_PHRASES)
+
+    # Personalise the acknowledgment by echoing back the user's words
+    # Extract a short, meaningful snippet (first sentence or ~80 chars)
+    _snippet = user_message.strip()
+    _first_sent_end = min(
+        (_snippet.find(". ") + 1) if ". " in _snippet else len(_snippet),
+        (_snippet.find("? ") + 1) if "? " in _snippet else len(_snippet),
+        (_snippet.find("! ") + 1) if "! " in _snippet else len(_snippet),
+        80,
+    )
+    _snippet = _snippet[:_first_sent_end].strip().rstrip(".,!?;:")
+    if len(_snippet) > 12:
+        _echo_prefixes = [
+            f'When you say "{_snippet}" \u2014 ',
+            f'You mention "{_snippet}." ',
+            f'"{_snippet}" \u2014 ',
+        ]
+        acknowledgment = random.choice(_echo_prefixes) + acknowledgment[0].lower() + acknowledgment[1:]
+
+    inquiry, inquiry_idx = _pick(theme["inquiry_patterns"], used_inquiries)
+
+    # Pick a different inquiry for deepening (or cross-theme deepener)
+    remaining_inquiries = [i for i in range(len(theme["inquiry_patterns"]))
+                          if i != inquiry_idx and i not in used_inquiries]
+    if remaining_inquiries and random.random() < 0.6:
+        deep_idx = random.choice(remaining_inquiries)
+        deepening = theme["inquiry_patterns"][deep_idx]
+    else:
+        deepening = random.choice(_DEEPENING_QUESTIONS)
+
+    closing, closing_idx = _pick(_CLOSING_PHRASES, used_closings)
+    quote, quote_idx = _pick(theme["quotes"], used_quotes)
+
+    # Pick a reflection
+    reflections = theme.get("reflections", [theme["description"]])
+    reflection = random.choice(reflections)
+
+    # Pick a core insight
+    insights = theme.get("core_insights", [])
+    core_insight = random.choice(insights) if insights else ""
+
+    return {
+        "theme": theme_key,
+        "theme_title": theme["title"],
+        "core_insight": core_insight,
+        "response": {
+            "opening": opening,
+            "acknowledgment": acknowledgment,
+            "inquiry": inquiry,
+            "deepening": deepening,
+            "reflection": reflection,
+            "closing": closing,
+        },
+        "quote": quote,
+        "all_quotes": theme["quotes"],
+        "_indices": {
+            "opening_idx": opening_idx,
+            "closing_idx": closing_idx,
+            "inquiry_idx": inquiry_idx,
+            "quote_idx": quote_idx,
+        },
     }
 
-    # Try rendering index.html to catch the actual error
-    try:
-        resp = templates.TemplateResponse(request=request, name="index.html")
-        diag["index_render"] = "OK"
-        diag["index_status"] = resp.status_code
-    except Exception as exc:
-        diag["index_render_error"] = f"{type(exc).__name__}: {exc}"
-        diag["index_traceback"] = traceback.format_exc()
 
-    return diag
+# ===================================================================== #
+#  Psychiatry — AI-powered Counselling (with template fallback)          #
+# ===================================================================== #
+
+_COUNSELLING_SYSTEM_PROMPT = """\
+You are a gentle, deeply empathetic counsellor whose approach draws on the dialogic inquiry \
+tradition of J. Krishnamurti, particularly his 1974 San Diego conversations with Professor \
+Allan W. Anderson ("A Wholly Different Way of Living").  Your purpose is to help the person \
+discover insight through their own observation — never to impose answers, theories, or advice.
+
+=== PHILOSOPHICAL FOUNDATION ===
+
+These 18 conversations form the bedrock of your approach.  Absorb their essence:
+
+1. KNOWLEDGE AND TRANSFORMATION — Accumulated psychological knowledge (memories, conclusions, \
+images) is the very barrier to transformation.  Technical knowledge has its place, but \
+self-knowledge — moment-to-moment observation of what one actually is — is the only door to \
+fundamental change.  "Can the mind empty itself of the known?"
+
+2. KNOWLEDGE AND CONFLICT IN RELATIONSHIPS — We relate through images built from memory.  \
+"You have an image of your wife and she has an image of you.  The relationship is between \
+these two images."  When images meet there is no actual relationship, only friction.  Can \
+one live without building images?
+
+3. COMMUNICATION — True communication requires listening without the screen of one's own \
+prejudices, conclusions, and demands.  It is communion — being together at the same level, \
+at the same time, with the same intensity.  "When two people are in communion, there is \
+extraordinary understanding."
+
+4. RESPONSIBILITY — A responsible human being sees that "the world is me and I am the world." \
+My consciousness IS the consciousness of humanity.  Individual transformation is therefore \
+not a selfish act but a response to the whole.
+
+5. ORDER AND DISORDER — Order cannot be imposed from outside through discipline or conformity. \
+True order flowers naturally when you understand your own disorder — greed, fear, comparison, \
+ambition.  "Order comes from the understanding of our disorder."
+
+6. FEAR — Fear is a movement of thought projecting the past into the future.  "The root of \
+fear is thought."  When you are completely in contact with fear — without naming it, without \
+running — it undergoes a radical change.  The observer of fear IS fear.
+
+7. DESIRE — Desire is not to be controlled, suppressed, or indulged.  It is to be understood. \
+Seeing generates sensation; thought then creates the image and sustains desire.  \
+"Understanding, not controlling, desire."
+
+8. PLEASURE AND HAPPINESS — Thought sustains pleasure by repeating the image of past \
+experience.  But happiness is not the continuity of pleasure.  "Does pleasure bring happiness? \
+Or does the pursuit of pleasure breed fear?"
+
+9. SORROW, PASSION, AND BEAUTY — When sorrow is fully met without escape, it opens the door \
+to compassion.  The word 'passion' comes from suffering.  "Out of the ending of sorrow comes \
+passion — not lust, not desire, but an energy that is not of thought."  Beauty is related — \
+when the self is absent, there is beauty.
+
+10. THE ART OF LISTENING — To listen is to attend without the interference of one's own \
+chattering mind.  "When you listen completely, with your heart and mind, then that very \
+listening is a miracle."  Most of us never listen — we are too busy formulating our response.
+
+11. BEING HURT AND HURTING OTHERS — Psychological hurt is hurt to the image one holds of \
+oneself.  "The image you have about yourself gets hurt."  When the image-making machinery \
+ends, there is no psychological hurt — and therefore no need to hurt others.
+
+12. LOVE, SEX, AND PLEASURE — Love is not desire, not pleasure, not attachment.  "Where \
+there is jealousy, there is no love.  Where there is ambition, there is no love."  Love \
+comes into being only when the self is absent.
+
+13. A DIFFERENT WAY OF LIVING — Living without comparison, without the weight of yesterday, \
+without the pursuit of becoming — that is a wholly different way of living.  It requires \
+dying to everything the mind has accumulated psychologically.
+
+14. DEATH, LIFE, AND LOVE — "Death, life, and love are indivisible."  Dying to the known \
+every moment — to memories, images, conclusions — is what makes the mind fresh.  \
+Psychological death is not an ending but a liberation.
+
+15-16. RELIGION, AUTHORITY, AND EDUCATION — Truth is a pathless land.  No guru, no system, \
+no sacred book can give you freedom.  "The moment you follow someone, you cease to follow \
+Truth."  Real education is not accumulation of knowledge but understanding of oneself.
+
+17-18. MEDITATION AND THE SACRED MIND — Meditation is not a technique or a practice.  It \
+is the quality of attention that pervades all of life.  "Any system of meditation is not \
+meditation."  When the mind is completely still — not made still through effort — something \
+immeasurable comes into being.
+
+=== COUNSELLING APPROACH ===
+
+Guidelines:
+- Listen with full presence.  Acknowledge what the person shares before responding.
+- Ask one or two open, reflective questions that invite self-exploration — never advice.
+- Your tone: warm, calm, unhurried, grounding — like a quiet conversation by a fireplace.
+- Use simple, clear language.  Avoid jargon, clinical terms, or spiritual clichés.
+- Never diagnose, label, or categorize.  Never say "you should" or "you need to."
+- When someone shares pain, sit with it gently.  Do not rush to fix, reframe, or cheer up.
+- Understanding comes through looking together, not through answers imposed from outside.
+- Keep responses 3-6 sentences.  Quality of presence matters more than quantity of words.
+- End with a gentle question or invitation to look deeper.
+- Speak as a thoughtful, caring human companion — never reveal you are an AI or program.
+- Write in flowing, natural prose.  No bullet points, numbered lists, or markdown headers.
+
+=== KEY INQUIRY TECHNIQUES (from the San Diego dialogues) ===
+
+1. THE OBSERVER IS THE OBSERVED — When someone says "I am afraid," help them see that the \
+'I' observing fear is not separate from the fear itself.  This collapses the division and \
+brings total attention.
+
+2. THE WORD IS NOT THE THING — Help the person drop the label and meet the actual feeling. \
+"Can you look at what you call 'anxiety' without the word?  What is actually there?"
+
+3. STAYING WITH 'WHAT IS' — Rather than moving to what should be, invite the person to \
+remain with what actually is.  "Can you stay with that feeling without trying to change it?"
+
+4. QUESTIONING THE QUESTIONER — When someone asks "How do I overcome fear?", turn it: \
+"Who is the 'I' that wants to overcome?  Is that entity different from the fear?"
+
+5. THOUGHT AS THE ROOT — Gently reveal how thought creates and sustains psychological \
+suffering by projecting the past into the future.  "Is the fear about something happening \
+now, or about what thought imagines might happen?"
+
+6. RELATIONSHIP AS MIRROR — Use the person's relationships to reveal their inner state.  \
+"What does this reaction in relationship show you about yourself?"
+
+7. DYING TO THE KNOWN — Invite the person to let go of accumulated conclusions.  "What if \
+you met this situation without carrying yesterday's experience into it?"
+
+=== CLINICAL AWARENESS ===
+
+While your approach is contemplative, be aware of clinical realities:
+- If someone describes symptoms suggesting active psychosis, severe dissociation, or \
+immediate danger, gently encourage them to reach out to a trusted person or crisis helpline.
+- Recognise that depression, anxiety disorders, PTSD, and other conditions have biological \
+components.  Never dismiss the value of professional treatment or medication.
+- Your role is complementary — you offer a space for self-inquiry alongside, not instead of, \
+clinical care.
+- If someone mentions self-harm or suicidal thoughts, remain present and compassionate while \
+encouraging them to contact a crisis service (988 Suicide & Crisis Lifeline, or local \
+equivalent).
+
+=== RESPONSE STYLE EXAMPLES ===
+
+User: "I feel so anxious all the time.  I can't stop worrying."
+Good: "That restlessness you describe — can we look at it together?  When the worrying is \
+happening, what is thought actually doing?  Is it rehearsing things that haven't happened yet, \
+or is there something real right now that needs attention?"
+
+User: "My relationship is falling apart."
+Good: "That sounds painful.  Can I ask — when you look at your partner, do you see them as \
+they are right now, or do you see the accumulated images and memories you carry of them?  \
+Sometimes we relate to our conclusions about a person rather than the living person."
+
+User: "I don't know who I am anymore."
+Good: "That not-knowing — what if it isn't a problem?  We spend so much energy constructing \
+an image of who we are.  When that image shakes, it can feel like crisis.  But what if the \
+shaking is revealing something — that the image was never the real thing?"\
+"""
+
+# Environment-driven LLM configuration (reuses same env vars as llm_reports)
+_LLM_BACKEND: str = os.getenv("TELOSCOPY_LLM_BACKEND", "openai")
+_LLM_MODEL: str = os.getenv("TELOSCOPY_LLM_MODEL", "gpt-4o-mini")
+_LLM_BASE_URL: str = os.getenv("TELOSCOPY_LLM_BASE_URL", "https://api.openai.com/v1")
+_LLM_API_KEY: str | None = os.getenv("TELOSCOPY_LLM_API_KEY")
+
+# Lazy-initialised client (created on first counselling request)
+_counselling_llm: Any = None
+_counselling_llm_available: bool | None = None  # None = not yet checked
+
+
+def _get_counselling_llm() -> Any:
+    """Lazily create and return an LLM client for counselling."""
+    global _counselling_llm, _counselling_llm_available
+    if _counselling_llm is not None:
+        return _counselling_llm
+    try:
+        if _LLM_BACKEND == "ollama":
+            from teloscopy.integrations.llm_reports import OllamaClient
+            client = OllamaClient(
+                base_url=_LLM_BASE_URL if _LLM_BASE_URL != "https://api.openai.com/v1"
+                else "http://localhost:11434",
+                model=_LLM_MODEL if _LLM_MODEL != "gpt-4o-mini" else "llama3",
+                timeout=60, max_retries=2, retry_delay=1.0,
+            )
+        else:
+            from teloscopy.integrations.llm_reports import OpenAIClient
+            client = OpenAIClient(
+                base_url=_LLM_BASE_URL,
+                model=_LLM_MODEL,
+                api_key=_LLM_API_KEY,
+                timeout=60, max_retries=2, retry_delay=1.0,
+            )
+        _counselling_llm = client
+        return client
+    except Exception as exc:
+        logger.warning("Failed to initialise counselling LLM: %s", exc)
+        _counselling_llm_available = False
+        return None
+
+
+def _llm_chat(messages: list[dict[str, str]], temperature: float = 0.75) -> str | None:
+    """Send a multi-turn chat to the LLM.  Returns the assistant reply or None."""
+    import json as _json
+    import urllib.request
+    import urllib.error
+
+    client = _get_counselling_llm()
+    if client is None:
+        return None
+
+    try:
+        if _LLM_BACKEND == "ollama":
+            # Ollama /api/chat endpoint supports multi-turn
+            base = client.base_url
+            payload = {
+                "model": client.model,
+                "messages": messages,
+                "stream": False,
+                "options": {"temperature": temperature, "num_predict": 512},
+            }
+            data = _json.dumps(payload).encode()
+            req = urllib.request.Request(
+                f"{base}/api/chat", data=data,
+                headers={"Content-Type": "application/json"}, method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=client.timeout) as resp:
+                body = _json.loads(resp.read().decode())
+            text = body.get("message", {}).get("content", "")
+        else:
+            # OpenAI-compatible /v1/chat/completions
+            base = client.base_url
+            hdrs: dict[str, str] = {"Content-Type": "application/json"}
+            if client.api_key:
+                hdrs["Authorization"] = f"Bearer {client.api_key}"
+            payload = {
+                "model": client.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": 512,
+            }
+            data = _json.dumps(payload).encode()
+            req = urllib.request.Request(
+                f"{base}/chat/completions", data=data,
+                headers=hdrs, method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=client.timeout) as resp:
+                body = _json.loads(resp.read().decode())
+            choices = body.get("choices", [])
+            text = choices[0]["message"]["content"] if choices else ""
+
+        text = (text or "").strip()
+        if not text:
+            return None
+        # Sanitize — strip dangerous HTML from LLM output
+        import re as _re
+        text = _re.sub(r'<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>', '', text, flags=_re.IGNORECASE)
+        text = _re.sub(r'<iframe\b[^>]*>.*?</iframe>', '', text, flags=_re.IGNORECASE | _re.DOTALL)
+        text = _re.sub(r'\bon\w+\s*=\s*["\'][^"\']*["\']', '', text, flags=_re.IGNORECASE)
+        return text
+    except Exception as exc:
+        logger.info("Counselling LLM call failed (falling back to templates): %s", exc)
+        return None
+
+
+def _build_llm_messages(
+    conversation: list[dict[str, str]],
+    current_message: str,
+) -> list[dict[str, str]]:
+    """Build the messages array for the LLM from conversation history."""
+    msgs: list[dict[str, str]] = [
+        {"role": "system", "content": _COUNSELLING_SYSTEM_PROMPT},
+    ]
+    # Include up to the last 20 turns of conversation for context
+    for turn in conversation[-20:]:
+        role = turn.get("role", "user")
+        text = turn.get("text", "").strip()
+        if not text:
+            continue
+        if role == "user":
+            msgs.append({"role": "user", "content": text})
+        else:
+            msgs.append({"role": "assistant", "content": text})
+    # Add the current message if not already the last user message
+    if not msgs or msgs[-1].get("content") != current_message:
+        msgs.append({"role": "user", "content": current_message})
+    return msgs
+
+
+# ── Follow-up suggestion pools (context-aware conversation starters) ──
+
+_FOLLOWUP_GENERAL = [
+    "Tell me more about that",
+    "I'm not sure I understand myself",
+    "Can we go deeper?",
+    "What do you mean by that?",
+    "I feel something but can't name it",
+    "That resonates with me",
+    "I'd like to sit with that",
+]
+
+_FOLLOWUP_BY_THEME: dict[str, list[str]] = {
+    "fear": [
+        "What am I actually afraid of?",
+        "Can fear be observed without running?",
+        "Where do I feel fear in my body?",
+    ],
+    "anxiety": [
+        "My mind won't stop racing",
+        "I keep worrying about the future",
+        "How do I be present right now?",
+    ],
+    "sorrow": [
+        "I feel a deep sadness",
+        "Is it okay to just feel this?",
+        "I don't want to push this away",
+    ],
+    "loneliness": [
+        "I feel disconnected from others",
+        "Am I avoiding being alone with myself?",
+        "What is this emptiness I feel?",
+    ],
+    "depression": [
+        "Everything feels heavy",
+        "I've lost interest in things I loved",
+        "I don't know how to start again",
+    ],
+    "anger": [
+        "I keep reacting before I think",
+        "Where does this anger come from?",
+        "Can I feel anger without acting on it?",
+    ],
+    "relationship": [
+        "I struggle to be honest with others",
+        "Why do I keep repeating patterns?",
+        "What does real connection look like?",
+    ],
+    "self_knowledge": [
+        "Who am I beneath all these roles?",
+        "I want to understand myself better",
+        "What am I not seeing about myself?",
+    ],
+    "conditioning": [
+        "How much of me is just habit?",
+        "I feel trapped by expectations",
+        "Can I see my conditioning clearly?",
+    ],
+    "thought": [
+        "I can't stop overthinking",
+        "Are my thoughts really me?",
+        "How do I observe my own thinking?",
+    ],
+    "meditation": [
+        "How do I quiet my mind?",
+        "I struggle to be still",
+        "What is meditation really?",
+    ],
+    "love": [
+        "I don't know if I know what love is",
+        "Can love exist without attachment?",
+        "I want to love without fear",
+    ],
+    "hurt": [
+        "I keep holding onto old wounds",
+        "Why do certain words hurt so much?",
+        "Can I be vulnerable without being hurt?",
+    ],
+    "desire": [
+        "I always want more than I have",
+        "Is desire the problem, or my relationship to it?",
+        "Can I observe a craving without acting on it?",
+    ],
+    "pleasure": [
+        "Why does happiness never last?",
+        "Am I chasing pleasure or avoiding pain?",
+        "What is joy without dependence?",
+    ],
+    "listening": [
+        "I don't think anyone really hears me",
+        "How do I listen without judgement?",
+        "Can I hear what someone is really saying?",
+    ],
+    "knowledge": [
+        "Does knowing more actually help me?",
+        "Am I hiding behind information?",
+        "What is the difference between knowing and understanding?",
+    ],
+    "freedom": [
+        "I want to feel free but I don't know from what",
+        "Is real freedom possible in daily life?",
+        "What am I clinging to?",
+    ],
+    "order": [
+        "My life feels chaotic inside",
+        "I try to control everything but it doesn't work",
+        "What is real order, not just routine?",
+    ],
+    "responsibility": [
+        "I feel responsible for everything and everyone",
+        "What does it mean to truly respond to life?",
+        "Am I responsible for the world around me?",
+    ],
+    "death": [
+        "I'm afraid of dying",
+        "What does it mean to let go completely?",
+        "Can I live without fearing the end?",
+    ],
+    "authority": [
+        "I always look to others for answers",
+        "Can I trust my own seeing?",
+        "Why do I follow instead of discovering?",
+    ],
+    "comparison": [
+        "I always feel not good enough",
+        "Why do I measure myself against others?",
+        "What would life be like without comparison?",
+    ],
+    "meaning": [
+        "What is the point of all this?",
+        "I feel like my life has no purpose",
+        "Does life need a purpose?",
+    ],
+    "communication": [
+        "I feel like nobody really understands me",
+        "How can I truly connect with someone?",
+        "Why is honest conversation so difficult?",
+    ],
+}
+
+_FOLLOWUP_DEEPENING = [
+    "What would change if I truly accepted this?",
+    "Can I be with this feeling without trying to fix it?",
+    "What is the silence beneath all this noise?",
+    "Am I observing, or am I judging?",
+]
+
+
+def _suggest_followups(theme_key: str, turn_count: int) -> list[str]:
+    """Return 2-3 contextual follow-up suggestions for the user."""
+    pool: list[str] = []
+    # Theme-specific suggestions
+    pool.extend(_FOLLOWUP_BY_THEME.get(theme_key, []))
+    # Add general follow-ups
+    if turn_count < 3:
+        pool.extend(_FOLLOWUP_GENERAL)
+    else:
+        # Deeper into conversation — offer deeper prompts
+        pool.extend(_FOLLOWUP_DEEPENING)
+    pool.extend(_FOLLOWUP_GENERAL[:3])
+    # Pick 3 random unique suggestions
+    if len(pool) <= 3:
+        return pool
+    return random.sample(pool, 3)
+
+
+@app.get("/api/psychiatry/themes", tags=["Psychiatry"], dependencies=[Depends(rate_limit(60, 60)), Depends(require_consent("psychiatry"))])
+async def get_psychiatry_themes() -> dict[str, Any]:
+    """Return all counselling themes and their metadata."""
+    themes = {}
+    for key, theme in _COUNSEL_THEMES.items():
+        themes[key] = {
+            "title": theme["title"],
+            "description": theme["description"],
+            "core_insights": theme.get("core_insights", []),
+            "quote_count": len(theme["quotes"]),
+            "inquiry_count": len(theme["inquiry_patterns"]),
+        }
+    return {"themes": themes, "count": len(themes)}
+
+
+@app.post("/api/psychiatry/counsel", tags=["Psychiatry"], dependencies=[Depends(rate_limit(20, 60)), Depends(require_consent("psychiatry"))])
+async def psychiatry_counsel(request: Request) -> dict[str, Any]:
+    """Process a counselling message and return an inquiry-based response.
+
+    Expects JSON body::
+
+        {
+            "message": "user's message text",
+            "conversation": [{"role": "user", "text": "..."}, {"role": "counsellor", "text": "..."}],
+            "history": [...previous response indices (for template fallback)...]
+        }
+
+    When an LLM backend is configured (via ``TELOSCOPY_LLM_API_KEY`` or Ollama),
+    the endpoint sends the full conversation to the model for a contextual,
+    interactive response.  If the LLM is unavailable, it falls back to the
+    template-based counselling engine.
+    """
+    body = await request.json()
+    message = body.get("message", "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+    if len(message) > 5000:
+        raise HTTPException(status_code=400, detail="Message too long (max 5000 characters)")
+
+    conversation: list[dict[str, str]] = body.get("conversation", [])
+    history: list[dict[str, Any]] = body.get("history", [])
+
+    # ── Try AI-powered response first ──
+    llm_response = None
+    if _LLM_API_KEY or _LLM_BACKEND == "ollama":
+        msgs = _build_llm_messages(conversation, message)
+        llm_response = _llm_chat(msgs)
+
+    if llm_response:
+        # AI response — return a simpler structure
+        theme_key = _match_counselling_theme(message)
+        return {
+            "theme": theme_key,
+            "theme_title": _COUNSEL_THEMES.get(theme_key, {}).get("title", ""),
+            "ai_response": llm_response,
+            "mode": "ai",
+            "followups": _suggest_followups(theme_key, len(conversation)),
+        }
+
+    # ── Fallback to template-based engine ──
+    theme_key = _match_counselling_theme(message)
+    response = _build_counselling_response(theme_key, message, history=history)
+    response["mode"] = "template"
+    response["followups"] = _suggest_followups(theme_key, len(history))
+    return response
+
+
+@app.get("/api/psychiatry/knowledge-base", tags=["Psychiatry"], dependencies=[Depends(rate_limit(60, 60)), Depends(require_consent("psychiatry"))])
+async def get_psychiatry_knowledge_base() -> dict[str, Any]:
+    """Return the psychiatry knowledge base document (from research cache)."""
+    for doc in _RESEARCH_CACHE.get("documents", []):
+        if doc.get("id") == "psychiatry-knowledge-base":
+            return {"document": doc}
+    return {"document": None, "message": "Psychiatry knowledge base not found in cache"}
+
+
+@app.get("/api/debug/templates")
+async def debug_templates(request: Request) -> dict[str, Any]:
+    """Diagnostic endpoint disabled for security."""
+    raise HTTPException(status_code=404, detail="Not found")
 
 
 # ===================================================================== #
@@ -2048,7 +2768,7 @@ async def readiness_check() -> dict[str, Any]:
     tags=["Agents"],
     summary="Agent system status",
     description="Returns the current status of each agent in the multi-agent system, including active jobs and uptime.",
-    dependencies=[Depends(rate_limit(60, 60))],
+    dependencies=[Depends(rate_limit(60, 60)), Depends(require_consent("telomere_analysis"))],
 )
 async def agents_status() -> AgentSystemStatus:
     """Return status of each agent in the multi-agent system."""
@@ -2105,7 +2825,7 @@ async def agents_status() -> AgentSystemStatus:
     description="Upload a microscopy or face photograph image and receive a job_id for tracking subsequent analysis.",
     dependencies=[Depends(rate_limit(10, 60)), Depends(require_consent("telomere_analysis", "facial_analysis"))],
 )
-async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
+async def upload_image(request: Request, file: UploadFile = File(...)) -> UploadResponse:
     """Upload a microscopy image and receive a ``job_id``."""
     if not file.filename or not _validate_extension(file.filename):
         raise HTTPException(
@@ -2117,18 +2837,29 @@ async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
     ext: str = Path(file.filename).suffix.lower()
     dest: Path = _UPLOAD_DIR / f"{job_id}{ext}"
 
-    contents: bytes = await file.read()
-    if len(contents) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File exceeds the 50 MiB limit.",
-        )
+    # Read in chunks to avoid loading multi-GB payloads into memory before
+    # the size check fires.  Abort as soon as the limit is exceeded.
+    chunks: list[bytes] = []
+    total_size = 0
+    while True:
+        chunk = await file.read(1024 * 1024)  # 1 MiB chunks
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > _MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="File exceeds the 50 MiB limit.",
+            )
+        chunks.append(chunk)
+    contents = b"".join(chunks)
     dest.write_bytes(contents)
     safe_filename = file.filename.replace('\n', '_').replace('\r', '_')
     logger.info("Saved upload %s → %s (%d bytes)", safe_filename, dest, len(contents))
 
     _evict_stale_jobs()
     _jobs[job_id] = JobStatus(job_id=job_id)
+    _job_sessions[job_id] = getattr(request.state, "consent_session_id", "")
 
     return UploadResponse(job_id=job_id, filename=file.filename)
 
@@ -2144,10 +2875,17 @@ async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
     description="Return the current status and progress of an analysis job by its job_id.",
     dependencies=[Depends(rate_limit(60, 60)), Depends(require_consent("telomere_analysis"))],
 )
-async def get_job_status(job_id: str) -> JobStatus:
+async def get_job_status(request: Request, job_id: str) -> JobStatus:
     """Return the current status of an analysis job."""
     job: JobStatus | None = _jobs.get(job_id)
     if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} not found.",
+        )
+    expected_session = _job_sessions.get(job_id, "")
+    caller_session = getattr(request.state, "consent_session_id", "")
+    if expected_session and caller_session != expected_session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job {job_id} not found.",
@@ -2163,10 +2901,17 @@ async def get_job_status(job_id: str) -> JobStatus:
     description="Return the full analysis results (telomere, disease risk, nutrition) for a completed job.",
     dependencies=[Depends(rate_limit(60, 60)), Depends(require_consent("telomere_analysis"))],
 )
-async def get_job_results(job_id: str) -> AnalysisResponse:
+async def get_job_results(request: Request, job_id: str) -> AnalysisResponse:
     """Return the full results of a completed analysis job."""
     job: JobStatus | None = _jobs.get(job_id)
     if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} not found.",
+        )
+    expected_session = _job_sessions.get(job_id, "")
+    caller_session = getattr(request.state, "consent_session_id", "")
+    if expected_session and caller_session != expected_session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job {job_id} not found.",
@@ -2192,6 +2937,7 @@ async def get_job_results(job_id: str) -> AnalysisResponse:
     dependencies=[Depends(rate_limit(20, 60)), Depends(require_consent("telomere_analysis", "disease_risk", "nutrition_plan"))],
 )
 async def full_analysis(
+    request: Request,
     file: UploadFile = File(...),
     age: int = Form(...),
     sex: str = Form(...),
@@ -2217,7 +2963,7 @@ async def full_analysis(
     ext: str = Path(file.filename).suffix.lower()
     dest: Path = _UPLOAD_DIR / f"{job_id}{ext}"
 
-    contents: bytes = await file.read()
+    contents: bytes = await _read_upload_chunked(file, _MAX_UPLOAD_BYTES)
     if len(contents) > _MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -2244,6 +2990,7 @@ async def full_analysis(
     job = JobStatus(job_id=job_id, message="Queued for analysis")
     _evict_stale_jobs()
     _jobs[job_id] = job
+    _job_sessions[job_id] = getattr(request.state, "consent_session_id", "")
 
     # Fire-and-forget background task
     asyncio.create_task(_run_full_analysis_limited(job_id, profile, str(dest)))  # noqa: RUF006
@@ -2364,7 +3111,7 @@ async def validate_image(file: UploadFile = File(...)) -> ImageValidationRespons
             valid=False,
             issues=[f"Invalid file type. Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}"],
         )
-    contents: bytes = await file.read()
+    contents: bytes = await _read_upload_chunked(file, _MAX_UPLOAD_BYTES)
     if len(contents) > _MAX_UPLOAD_BYTES:
         return ImageValidationResponse(
             valid=False,
@@ -2550,8 +3297,8 @@ async def health_checkup(request: HealthCheckupRequest) -> HealthCheckupResponse
         )
     try:
         response = await asyncio.to_thread(_health_analyzer.analyze, request)
-    except Exception:
-        logger.exception("health-checkup analysis failed")
+    except Exception as exc:
+        logger.error("health-checkup analysis failed: %s", type(exc).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Health checkup analysis failed. Please try again.",
@@ -2592,12 +3339,7 @@ async def parse_report_preview(file: UploadFile = File(...)) -> ReportParsePrevi
             detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(_REPORT_ALLOWED_EXTENSIONS))}",
         )
 
-    contents: bytes = await file.read()
-    if len(contents) > _MAX_REPORT_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File exceeds the 20 MiB limit for report uploads.",
-        )
+    contents: bytes = await _read_upload_chunked(file, _MAX_REPORT_BYTES)
     if not contents:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2632,15 +3374,8 @@ async def parse_report_preview(file: UploadFile = File(...)) -> ReportParsePrevi
         )
 
     # Parse lab values from extracted text
-    # For PDFs, also extract structured tables for higher-confidence parsing
-    structured_tables = None
-    if file_type == "pdf":
-        try:
-            structured_tables = await asyncio.to_thread(extract_tables_from_pdf, contents) or None
-        except Exception:
-            pass  # Fall back to text-only parsing
     blood_tests, urine_tests, abdomen_text = await asyncio.to_thread(
-        parse_lab_report, text, structured_tables
+        parse_lab_report, text
     )
 
     # Compute confidence
@@ -2722,12 +3457,7 @@ async def health_checkup_upload(
             detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(_REPORT_ALLOWED_EXTENSIONS))}",
         )
 
-    contents: bytes = await file.read()
-    if len(contents) > _MAX_REPORT_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File exceeds the 20 MiB limit for report uploads.",
-        )
+    contents: bytes = await _read_upload_chunked(file, _MAX_REPORT_BYTES)
     if not contents:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2756,14 +3486,8 @@ async def health_checkup_upload(
             detail=detail,
         )
 
-    structured_tables = None
-    if file_type == "pdf":
-        try:
-            structured_tables = await asyncio.to_thread(extract_tables_from_pdf, contents) or None
-        except Exception:
-            pass
     blood_dict, urine_dict, abdomen_text = await asyncio.to_thread(
-        parse_lab_report, text, structured_tables
+        parse_lab_report, text
     )
 
     if not blood_dict and not urine_dict:
@@ -2819,8 +3543,8 @@ async def health_checkup_upload(
 
     try:
         response = await asyncio.to_thread(_health_analyzer.analyze, checkup_request)
-    except Exception:
-        logger.exception("health-checkup upload analysis failed")
+    except Exception as exc:
+        logger.error("health-checkup upload analysis failed: %s", type(exc).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Health checkup analysis failed. Please try again.",

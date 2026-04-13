@@ -39,6 +39,59 @@
             --glass-blur:    16px;
         }
 
+        /* ---- Consent overlay (DPDP Act 2023) ---- */
+        .consent-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.75);
+            backdrop-filter: blur(6px);
+            z-index: 10000;
+            justify-content: center; align-items: center;
+        }
+        .consent-overlay.visible { display: flex; }
+        body.consent-pending .sidebar,
+        body.consent-pending .main-content {
+            pointer-events: none;
+            user-select: none;
+            opacity: 0.35;
+            filter: blur(2px);
+            transition: opacity .3s, filter .3s;
+        }
+        body.consent-pending .consent-overlay { pointer-events: auto; }
+        .consent-modal {
+            background: var(--bg-card-solid, #1a2035);
+            border: 1px solid var(--border, #2e3a59);
+            border-radius: 14px;
+            max-width: 540px; width: 92vw;
+            max-height: 85vh; overflow-y: auto;
+            padding: 2rem;
+            color: var(--text, #e0e6ed);
+        }
+        .consent-modal h2 { margin-bottom: 1rem; font-size: 1.25rem; }
+        .consent-modal p { margin-bottom: .75rem; font-size: .88rem; line-height: 1.5; color: var(--text-dim, #8f9bb3); }
+        .consent-modal .btn-primary {
+            display: inline-block; padding: .6rem 1.5rem; border: none; border-radius: 8px;
+            background: var(--accent, #00d4aa); color: #0b0f19; font-weight: 600;
+            cursor: pointer; font-size: .9rem; margin-top: .5rem;
+        }
+        .consent-modal .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+        .consent-modal .btn-secondary {
+            display: inline-block; padding: .6rem 1.5rem; border: 1px solid var(--border, #2e3a59);
+            border-radius: 8px; background: transparent; color: var(--text-dim, #8f9bb3);
+            cursor: pointer; font-size: .9rem; margin-top: .5rem; margin-left: .5rem;
+        }
+        .consent-check { display: flex; align-items: flex-start; gap: .5rem; margin: .5rem 0; font-size: .85rem; }
+        .consent-check input[type="checkbox"] { margin-top: .2rem; }
+        /* noscript fallback */
+        .noscript-block {
+            background: var(--bg-card-solid, #1a2035); color: var(--text, #e0e6ed);
+            padding: 3rem 2rem; text-align: center; min-height: 100vh;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .noscript-block h2 { margin-bottom: 1rem; }
+        .noscript-block p { max-width: 500px; line-height: 1.6; color: var(--text-dim, #8f9bb3); }
+        .noscript-block a { color: var(--accent, #00d4aa); }
+
         html { scroll-behavior: smooth; overflow-x: hidden; }
         body {
             font-family: var(--font);
@@ -834,6 +887,45 @@
 </head>
 <body>
 
+<noscript>
+<div class="noscript-block">
+    <h2>JavaScript Required</h2>
+    <p>Teloscopy requires JavaScript to function, including displaying the mandatory data consent notice
+       required by the Digital Personal Data Protection Act, 2023. Please enable JavaScript and reload this page.</p>
+    <p style="margin-top:1rem;">
+        <a href="/docs/privacy-policy">Privacy Policy</a> &middot;
+        <a href="/docs/terms-of-service">Terms of Service</a>
+    </p>
+</div>
+</noscript>
+
+<!-- ================================================================
+     CONSENT & LEGAL NOTICE MODAL (DPDP Act 2023 Section 5 & 6)
+     ================================================================ -->
+<div class="consent-overlay" id="consent-overlay" role="dialog" aria-modal="true" aria-label="Data consent and privacy notice">
+    <div class="consent-modal">
+        <h2>Privacy Notice &amp; Data Consent</h2>
+        <p>Before using the Teloscopy dashboard, please review this notice and provide your consent.
+           Your consent is free, specific, and can be withdrawn at any time.</p>
+        <p style="font-size:.78rem;">Required under the Digital Personal Data Protection Act, 2023 (Sections 5 &amp; 6).</p>
+        <div style="margin:1rem 0;">
+            <label class="consent-check"><input type="checkbox" id="dash-consent-age"> I am 18 years or older, or have verifiable parental consent (DPDP Act Section 9).</label>
+            <label class="consent-check"><input type="checkbox" id="dash-consent-privacy"> I have read the <a href="/docs/privacy-policy" target="_blank">Privacy Policy</a>.</label>
+            <label class="consent-check"><input type="checkbox" id="dash-consent-terms"> I agree to the <a href="/docs/terms-of-service" target="_blank">Terms of Service</a> and medical disclaimers.</label>
+            <label class="consent-check"><input type="checkbox" id="dash-consent-processing"> I consent to processing of my personal data for analysis purposes.</label>
+        </div>
+        <div>
+            <button class="btn-primary" id="dash-consent-accept-btn" disabled onclick="window.dashAcceptConsent()">I Agree &amp; Continue</button>
+            <button class="btn-secondary" onclick="window.dashDeclineConsent()">Decline &amp; Exit</button>
+        </div>
+        <div style="margin-top:1rem;font-size:.75rem;color:var(--text-dim,#8f9bb3);">
+            <a href="/docs/privacy-policy" target="_blank">Privacy Policy</a> &middot;
+            <a href="/docs/terms-of-service" target="_blank">Terms of Service</a> &middot;
+            <a href="mailto:animaticalpha123@gmail.com">Grievance Officer</a>
+        </div>
+    </div>
+</div>
+
 <!-- ================================================================
      SIDEBAR
      ================================================================ -->
@@ -1162,6 +1254,102 @@
      JAVASCRIPT
      ================================================================ -->
 <script>
+/* ---- Consent Gate (DPDP Act 2023) ---- */
+(function () {
+    'use strict';
+    var CONSENT_KEY = 'teloscopy_consent_v1';
+    var DASH_REQUIRED = ['dash-consent-age', 'dash-consent-privacy', 'dash-consent-terms', 'dash-consent-processing'];
+
+    function hasValidConsent() {
+        try {
+            var raw = localStorage.getItem(CONSENT_KEY);
+            if (!raw) return false;
+            var data = JSON.parse(raw);
+            if (!data.accepted || !data.timestamp) return false;
+            var daysSince = (Date.now() - data.timestamp) / (1000 * 60 * 60 * 24);
+            return daysSince < 1;
+        } catch (_) { return false; }
+    }
+
+    function updateBtn() {
+        var btn = document.getElementById('dash-consent-accept-btn');
+        if (!btn) return;
+        btn.disabled = !DASH_REQUIRED.every(function (id) {
+            var el = document.getElementById(id);
+            return el && el.checked;
+        });
+    }
+
+    function enforceConsentGate() {
+        if (!hasValidConsent()) {
+            document.body.classList.add('consent-pending');
+            document.getElementById('consent-overlay').classList.add('visible');
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+        enforceConsentGate();
+        DASH_REQUIRED.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('change', updateBtn);
+        });
+    });
+
+    window.dashAcceptConsent = async function () {
+        var consentData = {
+            accepted: true,
+            timestamp: Date.now(),
+            purposes: ['telomere_analysis', 'disease_risk', 'nutrition_plan', 'facial_analysis',
+                        'health_report', 'genetic_data', 'profile_data'],
+            research_consent: false,
+            age_confirmed: true,
+            privacy_policy_version: '1.0',
+            terms_version: '1.0'
+        };
+        try { localStorage.setItem(CONSENT_KEY, JSON.stringify(consentData)); } catch (_) {}
+        try {
+            var r = await fetch('/api/legal/consent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    consents: consentData.purposes.map(function (p) {
+                        return { purpose: p, granted: true, notice_version: '1.0' };
+                    }),
+                    data_principal_age_confirmed: true,
+                    privacy_policy_version: '1.0',
+                    terms_version: '1.0'
+                })
+            });
+            var data = await r.json();
+            if (data.consent_token) {
+                try { localStorage.setItem('teloscopy_consent_token', data.consent_token); } catch (_) {}
+            }
+        } catch (_) {}
+        document.body.classList.remove('consent-pending');
+        document.getElementById('consent-overlay').classList.remove('visible');
+    };
+
+    window.dashDeclineConsent = function () {
+        var main = document.querySelector('.main-content');
+        if (main) {
+            main.innerHTML = '<div style="text-align:center;padding:4rem 2rem;max-width:600px;margin:0 auto;">' +
+                '<h2 style="color:var(--text);margin-bottom:1rem;">Consent Required</h2>' +
+                '<p style="color:var(--text-dim);line-height:1.6;">Teloscopy requires your consent to display data as mandated by the ' +
+                'Digital Personal Data Protection Act, 2023.</p>' +
+                '<button class="btn-primary" onclick="location.reload()" style="margin-top:1rem;">Review &amp; Try Again</button></div>';
+        }
+    };
+
+    window.getConsentHeaders = function () {
+        var token = '';
+        try { token = localStorage.getItem('teloscopy_consent_token') || ''; } catch (_) {}
+        var headers = {};
+        if (token) headers['X-Consent-Token'] = token;
+        return headers;
+    };
+})();
+</script>
+<script>
 (function () {
     'use strict';
 
@@ -1435,8 +1623,18 @@
     /* ---- Main Dashboard Load ---- */
     async function loadDashboard() {
         try {
-            /* Agent & system status */
-            const res = await fetch('/api/agents/status');
+            /* Agent & system status (requires consent token) */
+            var consentHeaders = (typeof window.getConsentHeaders === 'function') ? window.getConsentHeaders() : {};
+            const res = await fetch('/api/agents/status', { headers: consentHeaders });
+            if (res.status === 403) {
+                /* Consent token expired or missing — re-show consent overlay */
+                document.body.classList.add('consent-pending');
+                var ov = document.getElementById('consent-overlay');
+                if (ov) ov.classList.add('visible');
+                addLog('warn', 'Consent required — please accept the privacy notice');
+                renderLogs();
+                return;
+            }
             const data = await res.json();
 
             /* Metrics */

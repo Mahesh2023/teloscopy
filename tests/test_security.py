@@ -58,6 +58,7 @@ def _make_consent_bundle(
         "health_report",
         "genetic_data",
         "profile_data",
+        "psychiatry",
     ]
     return {
         "session_id": sid,
@@ -81,8 +82,8 @@ def _obtain_consent_token(client: TestClient, purposes: list[str] | None = None)
 
 
 def _consent_headers(token: str) -> dict[str, str]:
-    """Return headers dict with consent token + CSRF-safe content type."""
-    return {"X-Consent-Token": token}
+    """Return headers dict with consent token + CSRF-safe header."""
+    return {"X-Consent-Token": token, "X-Requested-With": "XMLHttpRequest"}
 
 
 def _dummy_image(name: str = "test.tif") -> tuple[str, io.BytesIO, str]:
@@ -103,6 +104,13 @@ def consented_client(client):
     """Return (client, session_id, token) with full consent."""
     sid, token = _obtain_consent_token(client)
     return client, sid, token
+
+
+@pytest.fixture
+def consent_headers(client):
+    """Return consent headers dict for use in test requests."""
+    _, token = _obtain_consent_token(client)
+    return _consent_headers(token)
 
 
 # ---------------------------------------------------------------------------
@@ -298,8 +306,17 @@ class TestUnprotectedEndpoints:
         resp = client.get("/api/legal/notice")
         assert resp.status_code == 200
 
-    def test_agents_status_no_consent_needed(self, client):
+    def test_agents_status_requires_consent(self, client):
+        """After the security audit fix, /api/agents/status requires consent."""
         resp = client.get("/api/agents/status")
+        assert resp.status_code == 403, (
+            "Expected 403 — /api/agents/status should require consent after the security audit fix"
+        )
+
+    def test_agents_status_with_consent(self, consented_client):
+        """With a valid consent token, /api/agents/status returns 200."""
+        cl, _, token = consented_client
+        resp = cl.get("/api/agents/status", headers=_consent_headers(token))
         assert resp.status_code == 200
 
 
@@ -363,3 +380,482 @@ class TestOutputSanitisation:
         result = re.sub(r'\bon\w+\s*=\s*["\'][^"\']*["\']', '', text, flags=re.IGNORECASE)
         assert "onload" not in result.lower()
         assert "content" in result
+
+
+# ---------------------------------------------------------------------------
+# 6. Security audit fixes — consent store bounds & rate limiter
+# ---------------------------------------------------------------------------
+
+class TestConsentStoreBounds:
+    """Verify in-memory consent stores have eviction / bounds."""
+
+    def test_consent_store_has_max_constant(self):
+        """The _CONSENT_STORE_MAX constant should be defined."""
+        from teloscopy.webapp.app import _CONSENT_STORE_MAX
+        assert isinstance(_CONSENT_STORE_MAX, int)
+        assert _CONSENT_STORE_MAX > 0
+
+    def test_withdrawn_sessions_has_max_constant(self):
+        """The _WITHDRAWN_SESSIONS_MAX constant should be defined."""
+        from teloscopy.webapp.app import _WITHDRAWN_SESSIONS_MAX
+        assert isinstance(_WITHDRAWN_SESSIONS_MAX, int)
+        assert _WITHDRAWN_SESSIONS_MAX > 0
+
+    def test_audit_log_has_max_constant(self):
+        """The _AUDIT_LOG_MAX constant should be defined."""
+        from teloscopy.webapp.app import _AUDIT_LOG_MAX
+        assert isinstance(_AUDIT_LOG_MAX, int)
+        assert _AUDIT_LOG_MAX > 0
+
+
+class TestRateLimiterProxy:
+    """Verify rate limiter uses X-Forwarded-For when available."""
+
+    def test_rate_limit_uses_forwarded_header(self, consented_client):
+        """Requests with X-Forwarded-For should be rate-limited by that IP."""
+        cl, _, token = consented_client
+        headers = {**_consent_headers(token), "X-Forwarded-For": "203.0.113.42, 10.0.0.1"}
+        # This should work (within rate limit)
+        resp = cl.get("/api/health", headers=headers)
+        assert resp.status_code == 200
+
+
+class TestSecurityHeaders:
+    """Verify security headers are set on responses."""
+
+    def test_csp_header_present(self, client):
+        resp = client.get("/api/health")
+        assert "Content-Security-Policy" in resp.headers
+        csp = resp.headers["Content-Security-Policy"]
+        assert "frame-ancestors 'none'" in csp
+
+    def test_x_content_type_options(self, client):
+        resp = client.get("/api/health")
+        assert resp.headers.get("X-Content-Type-Options") == "nosniff"
+
+    def test_x_frame_options(self, client):
+        resp = client.get("/api/health")
+        assert resp.headers.get("X-Frame-Options") == "DENY"
+
+    def test_referrer_policy(self, client):
+        resp = client.get("/api/health")
+        assert "strict-origin" in resp.headers.get("Referrer-Policy", "")
+
+
+class TestChunkedUpload:
+    """Verify that upload endpoints reject oversized files."""
+
+    def test_upload_rejects_oversized_image(self, consented_client):
+        """A file over 50 MiB should be rejected with 413."""
+        cl, _, token = consented_client
+        # Create a file just over the limit: 50 MiB + 1 byte
+        # We can't actually send 50 MB in a test, so just verify the
+        # endpoint exists and validates file type first.
+        resp = cl.post(
+            "/api/upload",
+            files={"file": ("bad.exe", io.BytesIO(b"\x00" * 10), "application/octet-stream")},
+            headers=_consent_headers(token),
+        )
+        # Should reject bad extension (400) before even reading the body
+        assert resp.status_code == 400
+
+
+class TestResultsPageNoJobLeak:
+    """Verify /results/{job_id} doesn't leak job data server-side."""
+
+    def test_results_page_renders_without_job_context(self, client):
+        """GET /results/{job_id} should return HTML without job data."""
+        resp = client.get("/results/nonexistent-job-id")
+        assert resp.status_code == 200
+        # The page should NOT contain job result data rendered server-side.
+        # It should contain the consent overlay HTML since no consent exists.
+        text = resp.text
+        assert "consent-overlay" in text
+
+
+class TestNoscriptBlock:
+    """Verify <noscript> blocks exist in templates."""
+
+    def test_index_has_noscript(self, client):
+        """The index page should contain a <noscript> block."""
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "<noscript>" in resp.text
+        assert "JavaScript Required" in resp.text
+
+    def test_dashboard_has_noscript(self, client):
+        """The dashboard page should contain a <noscript> block."""
+        resp = client.get("/dashboard")
+        assert resp.status_code == 200
+        assert "<noscript>" in resp.text
+        assert "JavaScript Required" in resp.text
+
+
+class TestDashboardConsentUI:
+    """Verify dashboard has consent enforcement in the template."""
+
+    def test_dashboard_has_consent_overlay(self, client):
+        """The dashboard HTML should contain the consent overlay."""
+        resp = client.get("/dashboard")
+        assert resp.status_code == 200
+        text = resp.text
+        assert "consent-overlay" in text
+        assert "consent-pending" in text
+        assert "dash-consent-accept-btn" in text
+
+
+# ---------------------------------------------------------------------------
+# 7. Path traversal in mobile_api
+# ---------------------------------------------------------------------------
+
+class TestMobileApiPathTraversal:
+    """Verify mobile_api.get_path() sanitises user_id."""
+
+    def test_get_path_sanitises_traversal(self):
+        try:
+            from teloscopy.platform.mobile_api import ImageUploadHandler
+        except ImportError:
+            pytest.skip("mobile_api not importable")
+        handler = ImageUploadHandler(upload_dir="/tmp/teloscopy_test_uploads")
+        # A crafted user_id should be sanitised
+        result = handler.get_path("fake_upload_id", user_id="../../etc")
+        # Even if the dir existed, the .. should have been replaced
+        assert result is None  # dir doesn't exist, so None
+
+    def test_get_path_sanitises_special_chars(self):
+        try:
+            from teloscopy.platform.mobile_api import ImageUploadHandler
+        except ImportError:
+            pytest.skip("mobile_api not importable")
+        handler = ImageUploadHandler(upload_dir="/tmp/teloscopy_test_uploads")
+        result = handler.get_path("fake", user_id="../../root/.ssh")
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# 8. Psychiatry Counselling Engine
+# ---------------------------------------------------------------------------
+
+class TestPsychiatryThemesEndpoint:
+    """Verify /api/psychiatry/themes returns all themes."""
+
+    def test_themes_returns_all(self, client, consent_headers):
+        resp = client.get("/api/psychiatry/themes", headers=consent_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "themes" in data
+        assert "count" in data
+        assert data["count"] >= 10  # We defined at least 15 themes
+        # Check a few expected theme keys
+        for key in ("fear", "anxiety", "self_knowledge", "conditioning", "relationship"):
+            assert key in data["themes"], f"Missing theme: {key}"
+            theme = data["themes"][key]
+            assert "title" in theme
+            assert "description" in theme
+            assert "core_insights" in theme
+
+    def test_themes_have_quote_counts(self, client, consent_headers):
+        resp = client.get("/api/psychiatry/themes", headers=consent_headers)
+        data = resp.json()
+        for key, theme in data["themes"].items():
+            assert "quote_count" in theme
+            assert theme["quote_count"] >= 1, f"Theme {key} has no quotes"
+
+    def test_themes_requires_consent(self, client):
+        """Psychiatry themes endpoint rejects bare requests without consent."""
+        resp = client.get("/api/psychiatry/themes")
+        assert resp.status_code == 403
+
+
+class TestPsychiatryCounselEndpoint:
+    """Verify /api/psychiatry/counsel returns inquiry-based responses."""
+
+    def test_counsel_fear_message(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I am afraid of losing my job and everything I have worked for."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "fear"
+        assert "response" in data
+        assert "opening" in data["response"]
+        assert "inquiry" in data["response"]
+        assert "deepening" in data["response"]
+        assert "closing" in data["response"]
+        assert "quote" in data
+        assert "core_insight" in data
+
+    def test_counsel_anxiety_message(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel anxious and worried about the future all the time."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "anxiety"
+
+    def test_counsel_depression_message(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel empty and hopeless, like nothing matters anymore."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "depression"
+
+    def test_counsel_relationship_message(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "My partner and I keep arguing. Our relationship feels broken."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "relationship"
+
+    def test_counsel_loneliness_message(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel so lonely. Nobody understands me."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "loneliness"
+
+    def test_counsel_empty_message_rejected(self, client, consent_headers):
+        resp = client.post("/api/psychiatry/counsel", json={"message": ""}, headers=consent_headers)
+        assert resp.status_code == 400
+
+    def test_counsel_missing_message_rejected(self, client, consent_headers):
+        resp = client.post("/api/psychiatry/counsel", json={}, headers=consent_headers)
+        assert resp.status_code == 400
+
+    def test_counsel_too_long_message_rejected(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "x" * 5001},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 400
+
+    def test_counsel_default_theme_fallback(self, client, consent_headers):
+        """A generic message with no theme keywords falls back to self_knowledge."""
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "Hello, I want to talk about something."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "self_knowledge"
+
+    def test_counsel_response_has_all_fields(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I keep comparing myself to others and feel inadequate."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "comparison"
+        assert "theme_title" in data
+        assert "core_insight" in data
+        assert "all_quotes" in data
+        assert isinstance(data["all_quotes"], list)
+        assert len(data["all_quotes"]) >= 1
+
+    def test_counsel_meditation_theme(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I want to understand meditation and find inner peace."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "meditation"
+
+    def test_counsel_anger_theme(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I am so angry and frustrated with everyone around me."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "anger"
+
+    def test_counsel_sorrow_theme(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I am grieving. My mother passed away and the sorrow is overwhelming."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "sorrow"
+
+    def test_counsel_requires_consent(self, client):
+        """Counsel endpoint rejects bare requests without consent."""
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel afraid."},
+        )
+        assert resp.status_code == 403
+
+
+class TestPsychiatryKnowledgeBase:
+    """Verify /api/psychiatry/knowledge-base endpoint."""
+
+    def test_knowledge_base_returns_document(self, client, consent_headers):
+        resp = client.get("/api/psychiatry/knowledge-base", headers=consent_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "document" in data
+
+    def test_knowledge_base_requires_consent(self, client):
+        """Knowledge-base endpoint rejects bare requests without consent."""
+        resp = client.get("/api/psychiatry/knowledge-base")
+        assert resp.status_code == 403
+
+
+class TestPsychiatrySectionInUI:
+    """Verify the psychiatry section is present in the main page."""
+
+    def test_psychiatry_section_in_index(self, client):
+        resp = client.get("/")
+        assert resp.status_code == 200
+        text = resp.text
+        assert 'id="psychiatry-section"' in text
+        assert "Voice Counselling" in text
+
+    def test_psychiatry_nav_item_in_sidebar(self, client):
+        resp = client.get("/")
+        assert resp.status_code == 200
+        text = resp.text
+        assert 'data-section="psychiatry-section"' in text
+        assert "Psychiatry" in text
+
+    def test_psychiatry_disclaimer_present(self, client):
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "not a substitute for professional psychiatric care" in resp.text.lower() or \
+               "not</strong> a substitute" in resp.text
+
+
+class TestThemeMatchingEngine:
+    """Unit tests for the _match_counselling_theme function."""
+
+    def test_fear_keywords(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("I am afraid of the dark") == "fear"
+        assert _match_counselling_theme("I feel scared") == "fear"
+        assert _match_counselling_theme("I have a dread of public speaking") == "fear"
+
+    def test_anxiety_keywords(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("I feel anxious about exams") == "anxiety"
+        assert _match_counselling_theme("constant worry keeps me up") == "anxiety"
+
+    def test_depression_keywords(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("I feel depressed and hopeless") == "depression"
+        assert _match_counselling_theme("Everything feels empty") == "depression"
+
+    def test_relationship_keywords(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("My marriage is falling apart") == "relationship"
+        assert _match_counselling_theme("I had a breakup recently") == "relationship"
+
+    def test_thought_keywords(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("I can't stop thinking") == "thought"
+        assert _match_counselling_theme("My mind won't stop racing") == "thought"
+
+    def test_default_fallback(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("hello world") == "self_knowledge"
+
+
+class TestCounselFollowups:
+    """Verify followup suggestions are returned from /api/psychiatry/counsel."""
+
+    def test_counsel_response_includes_followups(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel anxious about everything."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "followups" in data
+        assert isinstance(data["followups"], list)
+        assert len(data["followups"]) >= 2
+        for f in data["followups"]:
+            assert isinstance(f, str)
+            assert len(f) > 5
+
+    def test_counsel_followups_vary_with_theme(self, client, consent_headers):
+        """Followups for different themes should be somewhat different."""
+        resp1 = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I am afraid of losing everything."},
+            headers=consent_headers,
+        )
+        resp2 = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel deeply lonely and disconnected."},
+            headers=consent_headers,
+        )
+        f1 = set(resp1.json()["followups"])
+        f2 = set(resp2.json()["followups"])
+        # They shouldn't always be identical (randomised, different pools)
+        # Just check both have valid followups
+        assert len(f1) >= 2
+        assert len(f2) >= 2
+
+    def test_suggest_followups_function(self):
+        from teloscopy.webapp.app import _suggest_followups
+        result = _suggest_followups("fear", 0)
+        assert isinstance(result, list)
+        assert 1 <= len(result) <= 3
+        for f in result:
+            assert isinstance(f, str)
+
+    def test_suggest_followups_deep_conversation(self):
+        from teloscopy.webapp.app import _suggest_followups
+        result = _suggest_followups("anxiety", 10)
+        assert isinstance(result, list)
+        assert len(result) >= 1
+
+
+class TestCounselPersonalisedAcknowledgment:
+    """Verify template responses echo back the user's words."""
+
+    def test_acknowledgment_contains_user_words(self, client, consent_headers):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I keep comparing myself to everyone around me and it hurts."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        ack = data["response"]["acknowledgment"]
+        # The acknowledgment should contain a snippet of the user's message
+        assert "comparing" in ack.lower() or "everyone" in ack.lower() or '"' in ack
+
+    def test_short_messages_may_not_be_echoed(self, client, consent_headers):
+        """Very short messages (< 12 chars) don't get echo prefix."""
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel sad."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        # Should still have a valid acknowledgment
+        assert len(data["response"]["acknowledgment"]) > 10

@@ -68,8 +68,8 @@ def _obtain_consent(client: TestClient) -> str:
 
 
 def _ch(token: str) -> dict[str, str]:
-    """Return consent headers dict."""
-    return {"X-Consent-Token": token}
+    """Return consent headers dict (includes CSRF header for multipart uploads)."""
+    return {"X-Consent-Token": token, "X-Requested-With": "XMLHttpRequest"}
 
 
 # ---------------------------------------------------------------------------
@@ -320,16 +320,23 @@ class TestDietPlanEndpoint:
 
 
 class TestAgentsStatusEndpoint:
-    """Tests for GET /api/agents/status."""
+    """Tests for GET /api/agents/status (consent-protected since security audit)."""
 
     def test_agents_status_returns_200(self, client):
-        """Agents status endpoint should return 200."""
-        resp = client.get("/api/agents/status")
+        """Agents status endpoint should return 200 with consent."""
+        token = _obtain_consent(client)
+        resp = client.get("/api/agents/status", headers=_ch(token))
         assert resp.status_code == 200
+
+    def test_agents_status_requires_consent(self, client):
+        """Agents status endpoint should return 403 without consent."""
+        resp = client.get("/api/agents/status")
+        assert resp.status_code == 403
 
     def test_agents_status_structure(self, client):
         """Response should contain a list of agents and aggregate metrics."""
-        data = client.get("/api/agents/status").json()
+        token = _obtain_consent(client)
+        data = client.get("/api/agents/status", headers=_ch(token)).json()
         assert "agents" in data
         assert isinstance(data["agents"], list)
         assert len(data["agents"]) >= 4
@@ -339,7 +346,8 @@ class TestAgentsStatusEndpoint:
 
     def test_agent_info_fields(self, client):
         """Each agent entry should have name and status."""
-        data = client.get("/api/agents/status").json()
+        token = _obtain_consent(client)
+        data = client.get("/api/agents/status", headers=_ch(token)).json()
         for agent in data["agents"]:
             assert "name" in agent
             assert "status" in agent
