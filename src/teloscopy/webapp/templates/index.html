@@ -6558,20 +6558,49 @@ function escapeHtml(str) {
             /* Show typing indicator */
             var typingDiv = addMessage('Listening carefully...', 'system');
 
-            fetch('/api/psychiatry/counsel', {
-                method: 'POST',
-                headers: window.withConsent
-                    ? window.withConsent({ 'Content-Type': 'application/json' })
-                    : { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: message,
-                    conversation: counsellingHistory,
-                    history: _counselIndexHistory
-                })
+            var _counselFetchBody = JSON.stringify({
+                message: message,
+                conversation: counsellingHistory,
+                history: _counselIndexHistory
+            });
+
+            function _doCounselFetch() {
+                return fetch('/api/psychiatry/counsel', {
+                    method: 'POST',
+                    headers: window.withConsent
+                        ? window.withConsent({ 'Content-Type': 'application/json' })
+                        : { 'Content-Type': 'application/json' },
+                    body: _counselFetchBody
+                });
+            }
+
+            _doCounselFetch()
+            .then(function(r) {
+                if (r.status === 403 && window.refreshConsentToken) {
+                    /* Consent token may have expired — try silent refresh + retry */
+                    return window.refreshConsentToken().then(function(tok) {
+                        if (tok) return _doCounselFetch();
+                        throw new Error('Session expired. Please refresh the page and accept the consent notice.');
+                    }).then(function(r2) {
+                        if (!r2 || !r2.ok) throw new Error('Unable to reach the counselling service. Please try again.');
+                        return r2.json();
+                    });
+                }
+                if (!r.ok) {
+                    return r.json().catch(function() { return {}; }).then(function(body) {
+                        var detail = (body.detail || (body.error && body.error.message)) || 'Server error (' + r.status + ')';
+                        throw new Error(detail);
+                    });
+                }
+                return r.json();
             })
-            .then(function(r) { return r.json(); })
             .then(function(data) {
-                counselChat.removeChild(typingDiv);
+                if (typingDiv.parentNode === counselChat) counselChat.removeChild(typingDiv);
+
+                if (!data || (!data.response && !data.ai_response)) {
+                    addMessage('No response received. Please try again.', 'system');
+                    return;
+                }
 
                 var fullText, extras, followups;
                 followups = data.followups || [];
@@ -6580,10 +6609,13 @@ function escapeHtml(str) {
                     /* AI-powered response — single flowing text */
                     fullText = data.ai_response;
                     extras = {};
-                } else {
+                } else if (data.response) {
                     /* Template fallback — assemble from parts */
                     var resp = data.response;
-                    var parts = [resp.acknowledgment, resp.opening, resp.inquiry];
+                    var parts = [];
+                    if (resp.acknowledgment) parts.push(resp.acknowledgment);
+                    if (resp.opening) parts.push(resp.opening);
+                    if (resp.inquiry) parts.push(resp.inquiry);
                     if (resp.deepening) parts.push(resp.deepening);
                     if (resp.reflection) parts.push(resp.reflection);
                     if (resp.closing) parts.push(resp.closing);
@@ -6600,6 +6632,13 @@ function escapeHtml(str) {
                         if (idx.closing_idx !== undefined) entry.closing_idx = idx.closing_idx;
                         _counselIndexHistory.push(entry);
                     }
+                } else {
+                    fullText = 'I hear you. Let us sit with that for a moment.';
+                    extras = {};
+                }
+
+                if (!fullText || !fullText.trim()) {
+                    fullText = 'I hear you. Let us sit with that for a moment.';
                 }
 
                 /* Animate the response word-by-word */
@@ -6615,8 +6654,10 @@ function escapeHtml(str) {
                 counsellingHistory.push({ role: 'counsellor', text: fullText, theme: data.theme });
             })
             .catch(function(err) {
+                console.error('[Teloscopy counsel]', err);
                 if (typingDiv.parentNode === counselChat) counselChat.removeChild(typingDiv);
-                addMessage('Something went wrong. Please try again.', 'system');
+                var msg = (err && err.message) ? err.message : 'Something went wrong. Please try again.';
+                addMessage(msg, 'system');
             })
             .finally(function() {
                 counselSendBtn.disabled = false;
