@@ -1950,6 +1950,11 @@ _RESEARCH_FILES: list[dict[str, str]] = [
         "title": "Scientific Foundation & Research",
         "file": "docs/RESEARCH.md",
     },
+    {
+        "id": "psychiatry-knowledge-base",
+        "title": "Modern Psychiatry — Comprehensive Knowledge Base",
+        "file": "PSYCHIATRY_KNOWLEDGE_BASE.md",
+    },
 ]
 
 
@@ -2031,6 +2036,359 @@ _RESEARCH_CACHE: dict[str, Any] = _load_research_documents()
 async def get_research() -> dict[str, Any]:
     """Return all research documents as structured sections (served from cache)."""
     return _RESEARCH_CACHE
+
+
+# ===================================================================== #
+#  Psychiatry — Krishnamurti-inspired Counselling Engine                 #
+# ===================================================================== #
+
+# Krishnamurti dialogue themes: each maps to inquiry patterns
+_KRISHNAMURTI_THEMES: dict[str, dict[str, Any]] = {
+    "fear": {
+        "title": "Fear and Its Roots",
+        "description": "Exploring the nature of fear — how thought creates it by projecting into the future or carrying memory from the past.",
+        "core_insight": "Fear is never an actuality in the active present. It is thought moving away from 'what is.'",
+        "quotes": [
+            "The root of fear is thought. Thought breeds fear; thought also cultivates pleasure.",
+            "When there is fear in the active present, is it fear? It is there and there is no escape from it.",
+            "The moment you observe fear, it is no longer there — when you are completely in contact with it.",
+        ],
+        "inquiry_patterns": [
+            "What is the actual danger right now? Or is thought creating scenarios about the future?",
+            "Can you stay with that fear for a moment, without trying to resolve it? What is the actual feeling — not the story, but the sensation itself?",
+            "Who is it that is afraid? Is the fearful one separate from the fear, or are they the same movement?",
+            "You say you are afraid. Of what, exactly? And is that 'what' happening now, or is it a projection?",
+        ],
+    },
+    "anxiety": {
+        "title": "Anxiety and the Movement of Thought",
+        "description": "Anxiety as thought projecting scenarios, creating a gap between what is and what might be.",
+        "core_insight": "Anxiety is thought rehearsing futures that have not arrived. The present moment has no anxiety — only thought about the present does.",
+        "quotes": [
+            "We are afraid of the known and afraid of the unknown. That is our daily life and in that there is no hope.",
+            "It is no measure of health to be well adjusted to a profoundly sick society.",
+        ],
+        "inquiry_patterns": [
+            "What is thought doing right now as you feel anxious? Is it projecting, rehearsing, imagining?",
+            "Can we separate the actual situation from what thought is adding to it?",
+            "You say you are anxious. Is the anxiety about something real happening now, or about what MIGHT happen?",
+            "When you are completely in this moment — not the next moment, not tomorrow — is the anxiety still there?",
+        ],
+    },
+    "self_knowledge": {
+        "title": "Self-Knowledge and Self-Observation",
+        "description": "The beginning and end of all psychological transformation — direct, moment-to-moment observation of thought, feeling, and reaction.",
+        "core_insight": "Self-knowledge is not accumulated knowledge about yourself. It is the living, flowing observation of what you actually are, moment to moment.",
+        "quotes": [
+            "Self-knowledge is the beginning of wisdom. In self-knowledge is the whole universe; it embraces all the struggles of humanity.",
+            "The book of yourself is not written by another. No specialist, no teacher can explore it for you.",
+            "You can observe yourself only in relationship, because all life is relationship.",
+        ],
+        "inquiry_patterns": [
+            "What do you mean by 'understanding yourself'? Is it collecting information, or a different quality of seeing?",
+            "Can you observe what is happening in your mind right now — without judging it, without wanting it to be different?",
+            "You say you want to know yourself. Who is the 'you' that wants to know? Is that also part of what needs to be seen?",
+        ],
+    },
+    "conditioning": {
+        "title": "Conditioning — Cultural, Religious, Psychological",
+        "description": "How the mind is shaped by culture, education, religion, and experience — and whether it's possible to see this conditioning directly.",
+        "core_insight": "The seeing of conditioning IS the freeing from it. There is no separate act of liberation.",
+        "quotes": [
+            "You are the result of your environment, your culture, your religion, your education. This conditioning is your consciousness.",
+            "From childhood we are trained to compare. The whole structure of society is based on comparison.",
+            "The mind that is caught in tradition, in belief, cannot possibly discover what is true.",
+        ],
+        "inquiry_patterns": [
+            "Is that your own perception, or have you been told that? Where does that belief come from?",
+            "Can you see how your response is shaped by your background — not as a fault, but simply as a fact?",
+            "When you react that way, is it you reacting, or your conditioning — your culture, your upbringing?",
+        ],
+    },
+    "relationship": {
+        "title": "Relationship and Images",
+        "description": "How we relate through images rather than direct perception — and what happens when images are seen for what they are.",
+        "core_insight": "Most relationship is between images. When images meet, there is no actual relationship, only friction between concepts.",
+        "quotes": [
+            "You have an image of your wife and she has an image of you. The relationship is between these two images.",
+            "Relationship based on mutual need brings only conflict.",
+            "Can one live with another without building an image?",
+            "Love is not thought. Love is not a thing of the mind.",
+        ],
+        "inquiry_patterns": [
+            "Do you see this person as they are, or do you see the image you've built of them over time?",
+            "What was hurt in that interaction? Was it you, or an image you carry of yourself?",
+            "Can you meet this person freshly, without all the accumulated memories and conclusions?",
+        ],
+    },
+    "sorrow": {
+        "title": "Sorrow and the Ending of Sorrow",
+        "description": "Understanding sorrow not as personal misfortune but as the shared human condition — and what happens when it is met without escape.",
+        "core_insight": "When sorrow is fully met without escape, without rationalization, it opens the door to compassion. The ending of sorrow is the beginning of wisdom.",
+        "quotes": [
+            "When you suffer psychologically, when you remain with it completely without escape, then out of that suffering comes compassion.",
+            "Sorrow is not personal. It is the sorrow of humanity.",
+            "We escape from sorrow through every form of entertainment. But sorrow continues.",
+        ],
+        "inquiry_patterns": [
+            "Can you be with this sorrow completely — without converting it into self-pity, anger, or blame?",
+            "What would it mean to not escape from this pain? Not to wallow in it, but to give it your complete attention?",
+            "Is this your personal sorrow, or is it something every human being has felt?",
+        ],
+    },
+    "thought": {
+        "title": "The Nature of Thought",
+        "description": "Thought as a material process — always limited, always old — and its proper place in human life.",
+        "core_insight": "Thought is the response of memory. It is always limited, always the past. The thinker IS the thought — they are not separate.",
+        "quotes": [
+            "Thought is the response of memory. Memory is the residue of experience, which is knowledge. So thought is always old, never new.",
+            "The thinker IS the thought. There is no thinker without thought.",
+            "Can thought be aware of its own limitation?",
+        ],
+        "inquiry_patterns": [
+            "Can you see that the very instrument you are using to solve this — thinking — is the same movement that created the difficulty?",
+            "Is there a way of looking at this that is not through the lens of past experience?",
+            "Who is the 'you' that is thinking about this? Is that thinker different from the thoughts?",
+        ],
+    },
+    "comparison": {
+        "title": "Comparison and Becoming",
+        "description": "How comparison breeds conflict, inadequacy, and violence — and the radical act of living without measurement.",
+        "core_insight": "The desire to become is the origin of conflict. When you drop comparison, what remains is what actually IS.",
+        "quotes": [
+            "Where there is comparison, there is no love.",
+            "Can you look at yourself without comparing yourself with another?",
+            "The desire to become is the origin of conflict.",
+        ],
+        "inquiry_patterns": [
+            "You say you are not enough. Compared to what? Whose standard are you measuring yourself against?",
+            "What if you dropped all comparison, just for this moment? What is actually here?",
+            "Is there a seeing of 'what is' without the desire to change it?",
+        ],
+    },
+    "loneliness": {
+        "title": "Loneliness and Aloneness",
+        "description": "The distinction between loneliness (the pain of isolation) and aloneness (the completeness of being) — and the escape mechanisms we use.",
+        "core_insight": "Loneliness is the awareness of complete isolation. Aloneness is something entirely different — it is being whole, complete, not dependent.",
+        "quotes": [
+            "Loneliness is the awareness of complete isolation.",
+            "Are not most of our activities self-enclosing?",
+        ],
+        "inquiry_patterns": [
+            "Is the loneliness a discovery that the 'me' is by nature separate? Can we look at that?",
+            "What do you do when loneliness comes? Do you reach for the phone, turn on the television, seek company?",
+            "What if loneliness is not a problem to solve, but a fact to understand?",
+        ],
+    },
+    "depression": {
+        "title": "Depression and the Self-Image",
+        "description": "Exploring depression not as a chemical label but as the collapse of the self-image — the gap between what you think you should be and what is.",
+        "core_insight": "Depression often arises when the image you have of yourself collapses. The question is: was that image real in the first place?",
+        "quotes": [
+            "The image you have about yourself gets hurt. And you spend your life protecting that image.",
+        ],
+        "inquiry_patterns": [
+            "Depressed compared to what? What is the image you are falling short of?",
+            "You say you feel empty. Can we look at that emptiness without running from it?",
+            "What if this heaviness is not wrong — what if it is showing you something about the images you have been carrying?",
+        ],
+    },
+    "meditation": {
+        "title": "Meditation and Choiceless Awareness",
+        "description": "Meditation not as technique but as the quality of attention that comes when the mind understands its own movement.",
+        "core_insight": "Meditation is not a means to an end. It is both the means and the end. The first step is the last step — to perceive without condemnation.",
+        "quotes": [
+            "Meditation is the emptying of the mind of all the things that the mind has put together.",
+            "The first step is the last step. Perceive what you are thinking, perceive your ambition, your anxiety. Just perceive it.",
+            "Awareness without choice is the highest form of intelligence.",
+        ],
+        "inquiry_patterns": [
+            "Can you observe what is happening in your mind right now — not to change it, just to see it?",
+            "What would it mean to be aware without choosing — not selecting what to observe, but letting everything be seen?",
+            "Is there a quality of attention where you are not the centre looking outward, but attention itself — without a centre?",
+        ],
+    },
+    "authority": {
+        "title": "Authority and Freedom",
+        "description": "Why psychological authority — the guru, the expert, the system — prevents self-knowledge and genuine freedom.",
+        "core_insight": "Truth is a pathless land. No guru, no teacher, no system can give you freedom. Freedom lies in your own hands.",
+        "quotes": [
+            "Truth is a pathless land. Man cannot come to it through any organization, through any creed, through any dogma.",
+            "The moment you follow someone, you cease to follow Truth.",
+            "You are your own teacher and your own pupil.",
+        ],
+        "inquiry_patterns": [
+            "You are looking for someone to tell you the answer. Can we ask — why? What would happen if you looked for yourself?",
+            "I am not your authority. Can we explore this together, as two people inquiring, without one being higher than the other?",
+            "What is it that makes you seek guidance? Is there a fear of making a mistake?",
+        ],
+    },
+    "death": {
+        "title": "Death and Living",
+        "description": "Death not as the end of life but as the continuous ending of the known — dying to the past so the mind is perpetually fresh.",
+        "core_insight": "We have separated living from dying. The interval between them is fear. Can you die to everything you have known — to your pleasure, your attachment, your opinions?",
+        "quotes": [
+            "We have separated living from dying, and the interval between the living and the dying is fear.",
+            "To die to everything of yesterday, so that your mind is always fresh, always young, innocent, full of vigour and passion.",
+        ],
+        "inquiry_patterns": [
+            "What if ending — letting go of what you know — is not loss but renewal?",
+            "Can you die to this memory, this grudge, this image — right now? What happens when you do?",
+            "Are you living, or are you carrying the past and calling it life?",
+        ],
+    },
+    "anger": {
+        "title": "Anger and the Observer",
+        "description": "Seeing anger without the division of controller and controlled — the observer IS the observed.",
+        "core_insight": "When you say 'I am angry,' is there an 'I' separate from anger? The observer IS the observed. When this is seen, the conflict of controlling anger dissolves.",
+        "quotes": [
+            "The observer IS the observed. The thinker IS the thought.",
+            "As long as there is an observer who says 'I must change,' there will be conflict.",
+        ],
+        "inquiry_patterns": [
+            "Who is trying to control the anger? Is that controller different from the anger?",
+            "Can you be with the anger without naming it, without judging it, without trying to push it away?",
+            "What was threatened? What image of yourself was challenged?",
+        ],
+    },
+    "meaning": {
+        "title": "The Search for Meaning",
+        "description": "Questioning the very search for meaning — who is searching, and can the searcher exist without the search?",
+        "core_insight": "The seeker IS the sought. When the search stops, what remains may be what you were looking for.",
+        "quotes": [
+            "The ability to observe without evaluating is the highest form of intelligence.",
+        ],
+        "inquiry_patterns": [
+            "Who is looking for meaning? Can that one exist without the search?",
+            "What if meaning is not found at the end of a search, but in the quality of attention you bring to this moment?",
+            "Why do you need meaning? What is the emptiness you are trying to fill?",
+        ],
+    },
+}
+
+# Opening and closing phrases in the style of Krishnamurti
+_K_OPENING_PHRASES: list[str] = [
+    "Can we look at that together?",
+    "Let's go into that slowly, carefully.",
+    "That's a very important question. Let's not rush to answer it.",
+    "Before we go further, can we examine what is behind that feeling?",
+    "Let's explore this together — not as teacher and student, but as two people inquiring.",
+    "I wonder if we can look at this without trying to arrive at a conclusion.",
+]
+
+_K_CLOSING_PHRASES: list[str] = [
+    "We've looked at this together. There is no conclusion to reach — just the seeing itself.",
+    "Can you carry this observation into your daily life — not as a conclusion, but as a living inquiry?",
+    "The question we've explored doesn't need an answer from me. It needs your own looking.",
+    "Stay with what we've uncovered. Let it work in you, without trying to do anything with it.",
+    "This is not an answer — it is an invitation to keep looking, freshly, each time.",
+]
+
+
+def _match_counselling_theme(user_message: str) -> str:
+    """Return the best-matching Krishnamurti theme key for a user message."""
+    msg = user_message.lower()
+
+    # Keyword-to-theme mapping (checked in order; first match wins)
+    keyword_map: list[tuple[list[str], str]] = [
+        (["afraid", "fear", "scared", "terrif", "dread", "panic", "phobia"], "fear"),
+        (["anxi", "nervous", "worry", "worri", "uneasy", "restless", "tense"], "anxiety"),
+        (["depress", "hopeless", "empty", "numb", "worthless", "no point", "dark place"], "depression"),
+        (["angry", "anger", "furious", "rage", "irritat", "resent", "frustrat"], "anger"),
+        (["lonely", "alone", "isolat", "no one", "nobody", "disconnected"], "loneliness"),
+        (["relationship", "partner", "spouse", "husband", "wife", "marriage", "love", "breakup", "divorce"], "relationship"),
+        (["sorrow", "grief", "loss", "mourn", "bereav", "died", "death of", "passed away"], "sorrow"),
+        (["die", "dying", "death", "mortal", "end of life", "afterlife"], "death"),
+        (["meaning", "purpose", "point of life", "why am i", "meaningless", "existential"], "meaning"),
+        (["meditat", "mindful", "stillness", "silence", "inner peace", "calm mind"], "meditation"),
+        (["should be", "not good enough", "compar", "better than", "worse than", "inadequa", "measure up"], "comparison"),
+        (["condition", "programm", "brought up", "taught to", "societi", "culture"], "conditioning"),
+        (["self", "who am i", "identity", "know myself", "understand myself"], "self_knowledge"),
+        (["thought", "thinking", "mind won't stop", "overthink", "ruminate", "can't stop thinking"], "thought"),
+        (["authorit", "guru", "teacher", "expert", "follow", "obey", "depend"], "authority"),
+    ]
+
+    for keywords, theme in keyword_map:
+        for kw in keywords:
+            if kw in msg:
+                return theme
+
+    return "self_knowledge"  # Default: begin with self-observation
+
+
+def _build_counselling_response(theme_key: str, user_message: str) -> dict[str, Any]:
+    """Build a Krishnamurti-style counselling response for the matched theme."""
+    theme = _KRISHNAMURTI_THEMES.get(theme_key, _KRISHNAMURTI_THEMES["self_knowledge"])
+
+    # Select inquiry patterns (rotate based on message hash for variety)
+    msg_hash = hash(user_message) % len(theme["inquiry_patterns"])
+    primary_inquiry = theme["inquiry_patterns"][msg_hash]
+    secondary_inquiry = theme["inquiry_patterns"][(msg_hash + 1) % len(theme["inquiry_patterns"])]
+
+    # Select opening and closing
+    opening = _K_OPENING_PHRASES[hash(user_message[:20]) % len(_K_OPENING_PHRASES)]
+    closing = _K_CLOSING_PHRASES[hash(user_message[-20:]) % len(_K_CLOSING_PHRASES)]
+
+    # Select a relevant quote
+    quote_idx = hash(user_message[:15]) % len(theme["quotes"])
+    quote = theme["quotes"][quote_idx]
+
+    return {
+        "theme": theme_key,
+        "theme_title": theme["title"],
+        "core_insight": theme["core_insight"],
+        "response": {
+            "opening": opening,
+            "inquiry": primary_inquiry,
+            "deepening": secondary_inquiry,
+            "reflection": theme["description"],
+            "closing": closing,
+        },
+        "quote": quote,
+        "all_quotes": theme["quotes"],
+    }
+
+
+@app.get("/api/psychiatry/themes", tags=["Psychiatry"])
+async def get_psychiatry_themes() -> dict[str, Any]:
+    """Return all Krishnamurti counselling themes and their metadata."""
+    themes = {}
+    for key, theme in _KRISHNAMURTI_THEMES.items():
+        themes[key] = {
+            "title": theme["title"],
+            "description": theme["description"],
+            "core_insight": theme["core_insight"],
+            "quote_count": len(theme["quotes"]),
+        }
+    return {"themes": themes, "count": len(themes)}
+
+
+@app.post("/api/psychiatry/counsel", tags=["Psychiatry"])
+async def psychiatry_counsel(request: Request) -> dict[str, Any]:
+    """Process a counselling message and return a Krishnamurti-inspired response.
+
+    Expects JSON body: {"message": "user's message text"}
+    Returns structured counselling response with inquiry, quotes, and reflection.
+    """
+    body = await request.json()
+    message = body.get("message", "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+    if len(message) > 5000:
+        raise HTTPException(status_code=400, detail="Message too long (max 5000 characters)")
+
+    theme_key = _match_counselling_theme(message)
+    response = _build_counselling_response(theme_key, message)
+    return response
+
+
+@app.get("/api/psychiatry/knowledge-base", tags=["Psychiatry"])
+async def get_psychiatry_knowledge_base() -> dict[str, Any]:
+    """Return the psychiatry knowledge base document (from research cache)."""
+    for doc in _RESEARCH_CACHE.get("documents", []):
+        if doc.get("id") == "psychiatry-knowledge-base":
+            return {"document": doc}
+    return {"document": None, "message": "Psychiatry knowledge base not found in cache"}
 
 
 @app.get("/api/debug/templates")

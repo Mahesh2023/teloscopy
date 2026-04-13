@@ -522,3 +522,224 @@ class TestMobileApiPathTraversal:
         handler = ImageUploadHandler(upload_dir="/tmp/teloscopy_test_uploads")
         result = handler.get_path("fake", user_id="../../root/.ssh")
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# 8. Psychiatry Counselling Engine
+# ---------------------------------------------------------------------------
+
+class TestPsychiatryThemesEndpoint:
+    """Verify /api/psychiatry/themes returns all themes."""
+
+    def test_themes_returns_all(self, client):
+        resp = client.get("/api/psychiatry/themes")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "themes" in data
+        assert "count" in data
+        assert data["count"] >= 10  # We defined at least 15 themes
+        # Check a few expected theme keys
+        for key in ("fear", "anxiety", "self_knowledge", "conditioning", "relationship"):
+            assert key in data["themes"], f"Missing theme: {key}"
+            theme = data["themes"][key]
+            assert "title" in theme
+            assert "description" in theme
+            assert "core_insight" in theme
+
+    def test_themes_have_quote_counts(self, client):
+        resp = client.get("/api/psychiatry/themes")
+        data = resp.json()
+        for key, theme in data["themes"].items():
+            assert "quote_count" in theme
+            assert theme["quote_count"] >= 1, f"Theme {key} has no quotes"
+
+
+class TestPsychiatryCounselEndpoint:
+    """Verify /api/psychiatry/counsel returns Krishnamurti-style responses."""
+
+    def test_counsel_fear_message(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I am afraid of losing my job and everything I have worked for."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "fear"
+        assert "response" in data
+        assert "opening" in data["response"]
+        assert "inquiry" in data["response"]
+        assert "deepening" in data["response"]
+        assert "closing" in data["response"]
+        assert "quote" in data
+        assert "core_insight" in data
+
+    def test_counsel_anxiety_message(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel anxious and worried about the future all the time."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "anxiety"
+
+    def test_counsel_depression_message(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel empty and hopeless, like nothing matters anymore."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "depression"
+
+    def test_counsel_relationship_message(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "My partner and I keep arguing. Our relationship feels broken."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "relationship"
+
+    def test_counsel_loneliness_message(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel so lonely. Nobody understands me."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "loneliness"
+
+    def test_counsel_empty_message_rejected(self, client):
+        resp = client.post("/api/psychiatry/counsel", json={"message": ""})
+        assert resp.status_code == 400
+
+    def test_counsel_missing_message_rejected(self, client):
+        resp = client.post("/api/psychiatry/counsel", json={})
+        assert resp.status_code == 400
+
+    def test_counsel_too_long_message_rejected(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "x" * 5001},
+        )
+        assert resp.status_code == 400
+
+    def test_counsel_default_theme_fallback(self, client):
+        """A generic message with no theme keywords falls back to self_knowledge."""
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "Hello, I want to talk about something."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "self_knowledge"
+
+    def test_counsel_response_has_all_fields(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I keep comparing myself to others and feel inadequate."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "comparison"
+        assert "theme_title" in data
+        assert "core_insight" in data
+        assert "all_quotes" in data
+        assert isinstance(data["all_quotes"], list)
+        assert len(data["all_quotes"]) >= 1
+
+    def test_counsel_meditation_theme(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I want to understand meditation and find inner peace."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "meditation"
+
+    def test_counsel_anger_theme(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I am so angry and frustrated with everyone around me."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "anger"
+
+    def test_counsel_sorrow_theme(self, client):
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I am grieving. My mother passed away and the sorrow is overwhelming."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["theme"] == "sorrow"
+
+
+class TestPsychiatryKnowledgeBase:
+    """Verify /api/psychiatry/knowledge-base endpoint."""
+
+    def test_knowledge_base_returns_document(self, client):
+        resp = client.get("/api/psychiatry/knowledge-base")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "document" in data
+
+
+class TestPsychiatrySectionInUI:
+    """Verify the psychiatry section is present in the main page."""
+
+    def test_psychiatry_section_in_index(self, client):
+        resp = client.get("/")
+        assert resp.status_code == 200
+        text = resp.text
+        assert 'id="psychiatry-section"' in text
+        assert "Voice Counselling" in text
+        assert "Krishnamurti" in text
+
+    def test_psychiatry_nav_item_in_sidebar(self, client):
+        resp = client.get("/")
+        assert resp.status_code == 200
+        text = resp.text
+        assert 'data-section="psychiatry-section"' in text
+        assert "Psychiatry" in text
+
+    def test_psychiatry_disclaimer_present(self, client):
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "not a substitute for professional psychiatric care" in resp.text.lower() or \
+               "not</strong> a substitute" in resp.text
+
+
+class TestThemeMatchingEngine:
+    """Unit tests for the _match_counselling_theme function."""
+
+    def test_fear_keywords(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("I am afraid of the dark") == "fear"
+        assert _match_counselling_theme("I feel scared") == "fear"
+        assert _match_counselling_theme("I have a dread of public speaking") == "fear"
+
+    def test_anxiety_keywords(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("I feel anxious about exams") == "anxiety"
+        assert _match_counselling_theme("constant worry keeps me up") == "anxiety"
+
+    def test_depression_keywords(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("I feel depressed and hopeless") == "depression"
+        assert _match_counselling_theme("Everything feels empty") == "depression"
+
+    def test_relationship_keywords(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("My marriage is falling apart") == "relationship"
+        assert _match_counselling_theme("I had a breakup recently") == "relationship"
+
+    def test_thought_keywords(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("I can't stop thinking") == "thought"
+        assert _match_counselling_theme("My mind won't stop racing") == "thought"
+
+    def test_default_fallback(self):
+        from teloscopy.webapp.app import _match_counselling_theme
+        assert _match_counselling_theme("hello world") == "self_knowledge"
