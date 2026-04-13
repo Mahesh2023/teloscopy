@@ -1,0 +1,285 @@
+[
+  {
+    "keywords": [
+      "afraid",
+      "fear",
+      "scared",
+      "terrif",
+      "dread",
+      "panic",
+      "phobia"
+    ],
+    "theme": "fear"
+  },
+  {
+    "keywords": [
+      "anxi",
+      "nervous",
+      "worry",
+      "worri",
+      "uneasy",
+      "restless",
+      "tense"
+    ],
+    "theme": "anxiety"
+  },
+  {
+    "keywords": [
+      "depress",
+      "hopeless",
+      "empty",
+      "numb",
+      "worthless",
+      "no point",
+      "dark place",
+      "heavy"
+    ],
+    "theme": "depression"
+  },
+  {
+    "keywords": [
+      "angry",
+      "anger",
+      "furious",
+      "rage",
+      "irritat",
+      "resent",
+      "frustrat"
+    ],
+    "theme": "anger"
+  },
+  {
+    "keywords": [
+      "lonely",
+      "alone",
+      "isolat",
+      "no one",
+      "nobody",
+      "disconnected"
+    ],
+    "theme": "loneliness"
+  },
+  {
+    "keywords": [
+      "hurt",
+      "wounded",
+      "offend",
+      "betray",
+      "insult",
+      "pain from",
+      "rejection"
+    ],
+    "theme": "hurt"
+  },
+  {
+    "keywords": [
+      "relationship",
+      "partner",
+      "spouse",
+      "husband",
+      "wife",
+      "marriage",
+      "breakup",
+      "divorce"
+    ],
+    "theme": "relationship"
+  },
+  {
+    "keywords": [
+      "love",
+      "loving",
+      "beloved",
+      "heart",
+      "intimacy",
+      "compassion"
+    ],
+    "theme": "love"
+  },
+  {
+    "keywords": [
+      "sorrow",
+      "grief",
+      "loss",
+      "mourn",
+      "bereav",
+      "died",
+      "death of",
+      "passed away"
+    ],
+    "theme": "sorrow"
+  },
+  {
+    "keywords": [
+      "die",
+      "dying",
+      "death",
+      "mortal",
+      "end of life",
+      "afterlife"
+    ],
+    "theme": "death"
+  },
+  {
+    "keywords": [
+      "meaning",
+      "purpose",
+      "point of life",
+      "why am i",
+      "meaningless",
+      "existential"
+    ],
+    "theme": "meaning"
+  },
+  {
+    "keywords": [
+      "meditat",
+      "mindful",
+      "stillness",
+      "silence",
+      "inner peace",
+      "calm mind",
+      "sacred"
+    ],
+    "theme": "meditation"
+  },
+  {
+    "keywords": [
+      "desire",
+      "crave",
+      "craving",
+      "urge",
+      "tempt",
+      "addict",
+      "yearning",
+      "wanting things",
+      "wanting more"
+    ],
+    "theme": "desire"
+  },
+  {
+    "keywords": [
+      "pleasure",
+      "enjoy",
+      "happiness",
+      "joy",
+      "satisfaction",
+      "gratif"
+    ],
+    "theme": "pleasure"
+  },
+  {
+    "keywords": [
+      "listen",
+      "hear",
+      "attention",
+      "aware",
+      "present",
+      "mindful"
+    ],
+    "theme": "listening"
+  },
+  {
+    "keywords": [
+      "should be",
+      "not good enough",
+      "compar",
+      "better than",
+      "worse than",
+      "inadequa",
+      "measure up"
+    ],
+    "theme": "comparison"
+  },
+  {
+    "keywords": [
+      "condition",
+      "programm",
+      "brought up",
+      "taught to",
+      "societi",
+      "culture",
+      "tradition"
+    ],
+    "theme": "conditioning"
+  },
+  {
+    "keywords": [
+      "knowledge",
+      "learn",
+      "study",
+      "education",
+      "understand",
+      "intellect"
+    ],
+    "theme": "knowledge"
+  },
+  {
+    "keywords": [
+      "freedom",
+      "free",
+      "liberat",
+      "transform",
+      "change",
+      "different life"
+    ],
+    "theme": "freedom"
+  },
+  {
+    "keywords": [
+      "order",
+      "disciplin",
+      "routine",
+      "chaos",
+      "disorder",
+      "structure"
+    ],
+    "theme": "order"
+  },
+  {
+    "keywords": [
+      "responsib",
+      "duty",
+      "obligat",
+      "contribute",
+      "the world",
+      "humanity"
+    ],
+    "theme": "responsibility"
+  },
+  {
+    "keywords": [
+      "self",
+      "who am i",
+      "identity",
+      "know myself",
+      "understand myself"
+    ],
+    "theme": "self_knowledge"
+  },
+  {
+    "keywords": [
+      "thought",
+      "thinking",
+      "mind won't stop",
+      "overthink",
+      "ruminate",
+      "can't stop thinking"
+    ],
+    "theme": "thought"
+  },
+  {
+    "keywords": [
+      "authorit",
+      "guru",
+      "teacher",
+      "expert",
+      "follow",
+      "obey",
+      "depend",
+      "religion",
+      "god",
+      "belief"
+    ],
+    "theme": "authority"
+  }
+]
