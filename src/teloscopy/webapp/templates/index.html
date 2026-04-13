@@ -6564,26 +6564,48 @@ function escapeHtml(str) {
                 history: _counselIndexHistory
             });
 
-            function _doCounselFetch() {
+            function _doCounselFetch(overrideToken) {
+                var hdrs = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+                /* Use the override token if provided (e.g. after refresh), otherwise read from session */
+                var tok = overrideToken || '';
+                if (!tok) {
+                    try { tok = sessionStorage.getItem('teloscopy_consent_token') || ''; } catch(_) {}
+                }
+                if (tok) hdrs['X-Consent-Token'] = tok;
                 return fetch('/api/psychiatry/counsel', {
                     method: 'POST',
-                    headers: window.withConsent
-                        ? window.withConsent({ 'Content-Type': 'application/json' })
-                        : { 'Content-Type': 'application/json' },
+                    headers: hdrs,
                     body: _counselFetchBody
                 });
             }
 
             _doCounselFetch()
             .then(function(r) {
-                if (r.status === 403 && window.refreshConsentToken) {
-                    /* Consent token may have expired — try silent refresh + retry */
-                    return window.refreshConsentToken().then(function(tok) {
-                        if (tok) return _doCounselFetch();
-                        throw new Error('Session expired. Please refresh the page and accept the consent notice.');
-                    }).then(function(r2) {
-                        if (!r2 || !r2.ok) throw new Error('Unable to reach the counselling service. Please try again.');
-                        return r2.json();
+                if (r.status === 403) {
+                    /* Read the 403 body to distinguish CSRF from consent errors */
+                    return r.clone().json().catch(function() { return {}; }).then(function(errBody) {
+                        var detail = (errBody.detail || (errBody.error && errBody.error.message)) || '';
+                        /* CSRF failures are not fixable with a consent refresh */
+                        if (/csrf/i.test(detail)) {
+                            throw new Error(detail);
+                        }
+                        /* Consent issue — try silent token refresh + retry */
+                        if (window.refreshConsentToken) {
+                            return window.refreshConsentToken().then(function(tok) {
+                                if (!tok) throw new Error('Session expired. Please refresh the page and accept the consent notice.');
+                                /* Pass the fresh token explicitly so we don't depend on sessionStorage */
+                                return _doCounselFetch(tok);
+                            }).then(function(r2) {
+                                if (!r2.ok) {
+                                    return r2.json().catch(function() { return {}; }).then(function(body2) {
+                                        var d = (body2.detail || (body2.error && body2.error.message)) || 'Server error (' + r2.status + ')';
+                                        throw new Error(d);
+                                    });
+                                }
+                                return r2.json();
+                            });
+                        }
+                        throw new Error(detail || 'Consent required. Please accept the privacy notice.');
                     });
                 }
                 if (!r.ok) {
