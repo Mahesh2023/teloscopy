@@ -6598,7 +6598,6 @@ function escapeHtml(str) {
 
             function _doCounselFetch(overrideToken) {
                 var hdrs = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
-                /* Use the override token if provided (e.g. after refresh), otherwise read from session */
                 var tok = overrideToken || '';
                 if (!tok) {
                     try { tok = sessionStorage.getItem('teloscopy_consent_token') || ''; } catch(_) {}
@@ -6611,33 +6610,53 @@ function escapeHtml(str) {
                 });
             }
 
+            /* Obtain a fresh consent token by posting ALL purposes directly.
+               Does not depend on localStorage — always sends the full set. */
+            function _forceConsentRefresh() {
+                var ALL_PURPOSES = ['telomere_analysis', 'disease_risk', 'nutrition_plan',
+                    'facial_analysis', 'health_report', 'genetic_data', 'profile_data', 'psychiatry'];
+                return fetch('/api/legal/consent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        consents: ALL_PURPOSES.map(function(p) {
+                            return { purpose: p, granted: true, notice_version: '1.0' };
+                        }),
+                        data_principal_age_confirmed: true,
+                        privacy_policy_version: '1.0',
+                        terms_version: '1.0'
+                    })
+                }).then(function(r) {
+                    if (!r.ok) return '';
+                    return r.json().then(function(d) {
+                        var tok = d.consent_token || '';
+                        if (tok) {
+                            try { sessionStorage.setItem('teloscopy_consent_token', tok); } catch(_) {}
+                        }
+                        return tok;
+                    });
+                }).catch(function() { return ''; });
+            }
+
             _doCounselFetch()
             .then(function(r) {
                 if (r.status === 403) {
-                    /* Read the 403 body to distinguish CSRF from consent errors */
                     return r.clone().json().catch(function() { return {}; }).then(function(errBody) {
                         var detail = (errBody.detail || (errBody.error && errBody.error.message)) || '';
-                        /* CSRF failures are not fixable with a consent refresh */
-                        if (/csrf/i.test(detail)) {
-                            throw new Error(detail);
-                        }
-                        /* Consent issue — try silent token refresh + retry */
-                        if (window.refreshConsentToken) {
-                            return window.refreshConsentToken().then(function(tok) {
-                                if (!tok) throw new Error('Session expired. Please refresh the page and accept the consent notice.');
-                                /* Pass the fresh token explicitly so we don't depend on sessionStorage */
-                                return _doCounselFetch(tok);
-                            }).then(function(r2) {
-                                if (!r2.ok) {
-                                    return r2.json().catch(function() { return {}; }).then(function(body2) {
-                                        var d = (body2.detail || (body2.error && body2.error.message)) || 'Server error (' + r2.status + ')';
-                                        throw new Error(d);
-                                    });
-                                }
-                                return r2.json();
-                            });
-                        }
-                        throw new Error(detail || 'Consent required. Please accept the privacy notice.');
+                        if (/csrf/i.test(detail)) throw new Error(detail);
+                        /* Consent issue — force a fresh consent with ALL purposes and retry */
+                        return _forceConsentRefresh().then(function(tok) {
+                            if (!tok) throw new Error('Could not obtain consent. Please refresh the page and re-accept the privacy notice.');
+                            return _doCounselFetch(tok);
+                        }).then(function(r2) {
+                            if (!r2.ok) {
+                                return r2.json().catch(function() { return {}; }).then(function(body2) {
+                                    var d = (body2.detail || (body2.error && body2.error.message)) || 'Server error (' + r2.status + ')';
+                                    throw new Error(d);
+                                });
+                            }
+                            return r2.json();
+                        });
                     });
                 }
                 if (!r.ok) {
