@@ -1286,6 +1286,112 @@
             color: var(--text-dim);
             line-height: 1.5;
         }
+
+        /* Psychiatry consent gate — blocks all content until T&C accepted */
+        .psych-consent-gate {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            background: rgba(10,10,20,.6);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid rgba(147,51,234,.2);
+            padding: 2rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .psych-consent-gate h3 {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: .75rem;
+        }
+        .psych-consent-gate h3 svg { width: 22px; height: 22px; color: #a855f7; flex-shrink: 0; }
+        .psych-consent-gate .gate-subtitle {
+            color: var(--text-dim);
+            font-size: .88rem;
+            line-height: 1.55;
+            margin-bottom: 1.25rem;
+        }
+        .psych-consent-terms {
+            background: rgba(15,15,25,.4);
+            border: 1px solid rgba(147,51,234,.12);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            max-height: 260px;
+            overflow-y: auto;
+            margin-bottom: 1.25rem;
+            font-size: .84rem;
+            color: var(--text-dim);
+            line-height: 1.6;
+        }
+        .psych-consent-terms h4 {
+            font-size: .9rem;
+            color: var(--text);
+            margin: .75rem 0 .35rem;
+            font-weight: 600;
+        }
+        .psych-consent-terms h4:first-child { margin-top: 0; }
+        .psych-consent-terms ul { padding-left: 1.2rem; margin: .3rem 0; }
+        .psych-consent-terms ul li { margin-bottom: .25rem; }
+        .psych-consent-checks {
+            display: flex;
+            flex-direction: column;
+            gap: .5rem;
+            margin-bottom: 1.25rem;
+        }
+        .psych-consent-checks label {
+            display: flex;
+            align-items: flex-start;
+            gap: .6rem;
+            padding: .6rem .8rem;
+            background: rgba(15,15,25,.3);
+            border: 1px solid rgba(147,51,234,.1);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: .84rem;
+            color: var(--text-dim);
+            line-height: 1.45;
+            transition: border-color .2s;
+        }
+        .psych-consent-checks label:hover { border-color: rgba(147,51,234,.3); }
+        .psych-consent-checks input[type="checkbox"] {
+            margin-top: 2px;
+            accent-color: #a855f7;
+            flex-shrink: 0;
+        }
+        .psych-consent-checks .req { color: var(--danger); font-weight: 700; }
+        .psych-consent-accept {
+            display: block;
+            width: 100%;
+            padding: .7rem 1.5rem;
+            font-size: .92rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: opacity .2s, transform .1s;
+        }
+        .psych-consent-accept:hover { opacity: .9; }
+        .psych-consent-accept:active { transform: scale(.98); }
+        .psych-consent-accept:disabled {
+            opacity: .35;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* When consent not given, blur the actual counselling content */
+        .psych-content-locked {
+            filter: blur(6px);
+            pointer-events: none;
+            user-select: none;
+            opacity: .3;
+        }
+
         /* ============================================================
            RESEARCH PANEL — slide-out from right
            ============================================================ */
@@ -2528,6 +2634,114 @@
         examining fear, conditioning, thought, and the possibility of psychological freedom.
     </p>
 
+    <!-- ============================================================
+         PSYCHIATRY CONSENT GATE — must accept before using counselling
+         ============================================================ -->
+    <div class="psych-consent-gate" id="psych-consent-gate">
+        <h3>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
+            Terms &amp; Conditions &mdash; Counselling Service
+        </h3>
+        <p class="gate-subtitle">
+            Please read and accept the following terms before using the counselling feature.
+            This service involves sharing personal thoughts and feelings, and it is important
+            that you understand how it works and its limitations.
+        </p>
+
+        <div class="psych-consent-terms" id="psych-terms-scroll">
+            <h4>1. Nature of This Service</h4>
+            <p>
+                This is an <strong>AI-assisted self-reflection tool</strong>, not therapy, counselling,
+                or psychiatric treatment. It uses inquiry-based dialogue to help you explore your
+                inner experience. It does not diagnose, treat, or prescribe.
+            </p>
+
+            <h4>2. Not a Substitute for Professional Care</h4>
+            <p>
+                This tool is <strong>not</strong> a replacement for licensed mental health professionals,
+                psychiatrists, psychologists, or crisis services. If you are experiencing a mental health
+                crisis, suicidal thoughts, or self-harm urges, please contact:
+            </p>
+            <ul>
+                <li><strong>India:</strong> iCall &mdash; 9152987821 &nbsp;|&nbsp; Vandrevala Foundation &mdash; 1860-2662-345</li>
+                <li><strong>International:</strong> Crisis Text Line &mdash; text HOME to 741741</li>
+                <li><strong>Emergency:</strong> Call your local emergency number immediately</li>
+            </ul>
+
+            <h4>3. AI &amp; Data Processing</h4>
+            <p>
+                Your messages may be processed by an AI language model (LLM) to generate responses.
+                This means your conversation text is sent to an external AI service for processing.
+                Conversations are <strong>not permanently stored</strong> on our servers and are
+                discarded at the end of your session. However, the AI provider may process your
+                messages according to their own data policies.
+            </p>
+
+            <h4>4. No Confidentiality Guarantee</h4>
+            <p>
+                Unlike sessions with a licensed therapist, conversations here are <strong>not
+                protected by therapist-client privilege</strong>. Do not share information that
+                you would only share in a confidential clinical setting.
+            </p>
+
+            <h4>5. Limitations of AI Responses</h4>
+            <ul>
+                <li>Responses are generated by AI and may be inaccurate, inappropriate, or unhelpful.</li>
+                <li>The AI cannot understand context the way a human therapist can.</li>
+                <li>The AI does not remember previous sessions.</li>
+                <li>Responses should not be taken as professional advice of any kind.</li>
+            </ul>
+
+            <h4>6. Your Responsibility</h4>
+            <p>
+                By using this service, you acknowledge that you are engaging in voluntary self-reflection.
+                You are solely responsible for decisions you make based on interactions with this tool.
+                Teloscopy and its creators bear no liability for outcomes arising from use of this feature.
+            </p>
+
+            <h4>7. Age Requirement</h4>
+            <p>
+                You must be <strong>18 years of age or older</strong> to use this counselling feature,
+                or have verifiable parental/guardian consent as required by the Digital Personal Data
+                Protection Act, 2023 (Section 9).
+            </p>
+
+            <h4>8. Medical Disclaimer</h4>
+            <p>
+                Teloscopy is <strong>not</strong> a medical device, not registered with CDSCO, and not
+                a clinical establishment. Nothing in this counselling feature constitutes medical advice,
+                diagnosis, or treatment under the Drugs &amp; Cosmetics Act, 1940 or the Clinical
+                Establishments Act, 2010.
+            </p>
+        </div>
+
+        <div class="psych-consent-checks">
+            <label>
+                <input type="checkbox" id="psych-consent-understand" />
+                <span><span class="req">*</span> I understand that this is an <strong>AI-assisted self-reflection tool</strong> and <strong>not</strong> a substitute for professional mental health care, therapy, or psychiatric treatment.</span>
+            </label>
+            <label>
+                <input type="checkbox" id="psych-consent-ai-data" />
+                <span><span class="req">*</span> I consent to my conversation messages being processed by an <strong>AI language model</strong> and understand that conversations may be sent to an external AI service.</span>
+            </label>
+            <label>
+                <input type="checkbox" id="psych-consent-age" />
+                <span><span class="req">*</span> I confirm that I am <strong>18 years of age or older</strong>, or have verifiable parental/guardian consent.</span>
+            </label>
+            <label>
+                <input type="checkbox" id="psych-consent-liability" />
+                <span><span class="req">*</span> I accept that I am solely responsible for decisions made based on this tool, and I have read and agree to the terms above.</span>
+            </label>
+        </div>
+
+        <button class="psych-consent-accept" id="psych-consent-accept-btn" type="button" disabled>
+            I Accept &amp; Begin Counselling
+        </button>
+    </div>
+
+    <!-- All counselling content — locked (blurred) until consent accepted -->
+    <div id="psych-content-wrapper" class="psych-content-locked">
+
     <div class="psychiatry-hero reveal">
         <h3>Voice Counselling</h3>
         <p>
@@ -2598,6 +2812,8 @@
         or medical advice. If you are experiencing a mental health crisis, please contact
         a qualified mental health professional or crisis helpline immediately.
     </div>
+
+    </div><!-- /psych-content-wrapper -->
 </section>
 
 <!-- ================================================================
@@ -3051,7 +3267,7 @@
             accepted: true,
             timestamp: Date.now(),
             purposes: ['telomere_analysis', 'disease_risk', 'nutrition_plan', 'facial_analysis',
-                        'health_report', 'genetic_data', 'profile_data'],
+                        'health_report', 'genetic_data', 'profile_data', 'psychiatry'],
             research_consent: researchConsent ? researchConsent.checked : false,
             age_confirmed: true,
             privacy_policy_version: '1.0',
@@ -3120,7 +3336,7 @@
                 body: JSON.stringify({
                     session_id: '',
                     purposes: ['telomere_analysis', 'disease_risk', 'nutrition_plan',
-                               'facial_analysis', 'health_report', 'genetic_data', 'profile_data']
+                               'facial_analysis', 'health_report', 'genetic_data', 'profile_data', 'psychiatry']
                 })
             }).catch(function () {});
         } catch (_) {}
@@ -5946,6 +6162,105 @@ function escapeHtml(str) {
 
         if (!counselChat) return; /* Section not in DOM */
 
+        /* ---- Psychiatry consent gate ---- */
+        var PSYCH_CONSENT_KEY = 'teloscopy_psych_consent_v1';
+        var _psychConsentGate = document.getElementById('psych-consent-gate');
+        var _psychContentWrapper = document.getElementById('psych-content-wrapper');
+        var _psychAcceptBtn = document.getElementById('psych-consent-accept-btn');
+        var _psychChecks = [
+            'psych-consent-understand',
+            'psych-consent-ai-data',
+            'psych-consent-age',
+            'psych-consent-liability'
+        ];
+        var _psychConsentAccepted = false;
+
+        function _hasPsychConsent() {
+            try {
+                var raw = sessionStorage.getItem(PSYCH_CONSENT_KEY);
+                if (!raw) return false;
+                var data = JSON.parse(raw);
+                return data.accepted === true;
+            } catch (_) { return false; }
+        }
+
+        function _savePsychConsent() {
+            try {
+                sessionStorage.setItem(PSYCH_CONSENT_KEY, JSON.stringify({
+                    accepted: true,
+                    timestamp: Date.now()
+                }));
+            } catch (_) {}
+        }
+
+        function _updatePsychAcceptBtn() {
+            if (!_psychAcceptBtn) return;
+            var allChecked = _psychChecks.every(function(id) {
+                var el = document.getElementById(id);
+                return el && el.checked;
+            });
+            _psychAcceptBtn.disabled = !allChecked;
+        }
+
+        function _unlockPsychContent() {
+            _psychConsentAccepted = true;
+            if (_psychConsentGate) _psychConsentGate.style.display = 'none';
+            if (_psychContentWrapper) _psychContentWrapper.classList.remove('psych-content-locked');
+        }
+
+        function _lockPsychContent() {
+            _psychConsentAccepted = false;
+            if (_psychConsentGate) _psychConsentGate.style.display = '';
+            if (_psychContentWrapper) _psychContentWrapper.classList.add('psych-content-locked');
+        }
+
+        /* Check if already accepted this session */
+        if (_hasPsychConsent()) {
+            _unlockPsychContent();
+        } else {
+            _lockPsychContent();
+        }
+
+        /* Wire checkbox listeners */
+        _psychChecks.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('change', _updatePsychAcceptBtn);
+        });
+
+        /* Accept button */
+        if (_psychAcceptBtn) {
+            _psychAcceptBtn.addEventListener('click', function() {
+                if (_psychChecks.every(function(id) {
+                    var el = document.getElementById(id);
+                    return el && el.checked;
+                })) {
+                    _savePsychConsent();
+                    _unlockPsychContent();
+                    /* Smooth scroll to the counselling area */
+                    var hero = document.querySelector('.psychiatry-hero');
+                    if (hero) hero.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        }
+
+        /* Guard function — returns true only if consent was given */
+        function requirePsychConsent() {
+            if (_psychConsentAccepted) return true;
+            if (_hasPsychConsent()) {
+                _unlockPsychContent();
+                return true;
+            }
+            _lockPsychContent();
+            /* Scroll to the consent gate */
+            if (_psychConsentGate) {
+                _psychConsentGate.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            if (typeof toast === 'function') {
+                toast('Please accept the Terms & Conditions before using the counselling feature.', 'warning');
+            }
+            return false;
+        }
+
         var isListening = false;
         var isSpeaking = false;
         var recognition = null;
@@ -6129,6 +6444,12 @@ function escapeHtml(str) {
             var message = counselInput.value.trim();
             if (!message) return;
 
+            /* Enforce psychiatry consent gate */
+            if (!requirePsychConsent()) return;
+
+            /* Also enforce global consent if available */
+            if (typeof window.requireConsent === 'function' && !window.requireConsent()) return;
+
             /* Unlock synthesis on this user gesture so the response
                can auto-speak even though the fetch callback is async */
             if (typeof _trySynthUnlock === 'function') _trySynthUnlock();
@@ -6151,7 +6472,9 @@ function escapeHtml(str) {
 
             fetch('/api/psychiatry/counsel', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: window.withConsent
+                    ? window.withConsent({ 'Content-Type': 'application/json' })
+                    : { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: message,
                     conversation: counsellingHistory,
@@ -6459,6 +6782,8 @@ function escapeHtml(str) {
                     (_secureContext ? 'Try Chrome or Edge.' : 'HTTPS is required.'), 'warning');
                 return;
             }
+            /* Enforce psychiatry consent gate before voice input */
+            if (!requirePsychConsent()) return;
             /* Prevent rapid double-clicks */
             if (_voiceState === 'requesting' || _voiceState === 'stopping') return;
 

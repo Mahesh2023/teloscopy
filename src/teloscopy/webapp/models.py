@@ -1042,6 +1042,7 @@ class ConsentPurpose(StrEnum):
     HEALTH_REPORT = "health_report"
     GENETIC_DATA = "genetic_data"
     PROFILE_DATA = "profile_data"
+    PSYCHIATRY = "psychiatry"
 
 
 class ConsentRecord(BaseModel):

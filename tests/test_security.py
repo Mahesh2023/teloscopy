@@ -58,6 +58,7 @@ def _make_consent_bundle(
         "health_report",
         "genetic_data",
         "profile_data",
+        "psychiatry",
     ]
     return {
         "session_id": sid,
@@ -103,6 +104,13 @@ def consented_client(client):
     """Return (client, session_id, token) with full consent."""
     sid, token = _obtain_consent_token(client)
     return client, sid, token
+
+
+@pytest.fixture
+def consent_headers(client):
+    """Return consent headers dict for use in test requests."""
+    _, token = _obtain_consent_token(client)
+    return _consent_headers(token)
 
 
 # ---------------------------------------------------------------------------
@@ -531,8 +539,8 @@ class TestMobileApiPathTraversal:
 class TestPsychiatryThemesEndpoint:
     """Verify /api/psychiatry/themes returns all themes."""
 
-    def test_themes_returns_all(self, client):
-        resp = client.get("/api/psychiatry/themes")
+    def test_themes_returns_all(self, client, consent_headers):
+        resp = client.get("/api/psychiatry/themes", headers=consent_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "themes" in data
@@ -546,21 +554,27 @@ class TestPsychiatryThemesEndpoint:
             assert "description" in theme
             assert "core_insights" in theme
 
-    def test_themes_have_quote_counts(self, client):
-        resp = client.get("/api/psychiatry/themes")
+    def test_themes_have_quote_counts(self, client, consent_headers):
+        resp = client.get("/api/psychiatry/themes", headers=consent_headers)
         data = resp.json()
         for key, theme in data["themes"].items():
             assert "quote_count" in theme
             assert theme["quote_count"] >= 1, f"Theme {key} has no quotes"
 
+    def test_themes_requires_consent(self, client):
+        """Psychiatry themes endpoint rejects bare requests without consent."""
+        resp = client.get("/api/psychiatry/themes")
+        assert resp.status_code == 403
+
 
 class TestPsychiatryCounselEndpoint:
     """Verify /api/psychiatry/counsel returns inquiry-based responses."""
 
-    def test_counsel_fear_message(self, client):
+    def test_counsel_fear_message(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I am afraid of losing my job and everything I have worked for."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -573,71 +587,78 @@ class TestPsychiatryCounselEndpoint:
         assert "quote" in data
         assert "core_insight" in data
 
-    def test_counsel_anxiety_message(self, client):
+    def test_counsel_anxiety_message(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I feel anxious and worried about the future all the time."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["theme"] == "anxiety"
 
-    def test_counsel_depression_message(self, client):
+    def test_counsel_depression_message(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I feel empty and hopeless, like nothing matters anymore."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["theme"] == "depression"
 
-    def test_counsel_relationship_message(self, client):
+    def test_counsel_relationship_message(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "My partner and I keep arguing. Our relationship feels broken."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["theme"] == "relationship"
 
-    def test_counsel_loneliness_message(self, client):
+    def test_counsel_loneliness_message(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I feel so lonely. Nobody understands me."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["theme"] == "loneliness"
 
-    def test_counsel_empty_message_rejected(self, client):
-        resp = client.post("/api/psychiatry/counsel", json={"message": ""})
+    def test_counsel_empty_message_rejected(self, client, consent_headers):
+        resp = client.post("/api/psychiatry/counsel", json={"message": ""}, headers=consent_headers)
         assert resp.status_code == 400
 
-    def test_counsel_missing_message_rejected(self, client):
-        resp = client.post("/api/psychiatry/counsel", json={})
+    def test_counsel_missing_message_rejected(self, client, consent_headers):
+        resp = client.post("/api/psychiatry/counsel", json={}, headers=consent_headers)
         assert resp.status_code == 400
 
-    def test_counsel_too_long_message_rejected(self, client):
+    def test_counsel_too_long_message_rejected(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "x" * 5001},
+            headers=consent_headers,
         )
         assert resp.status_code == 400
 
-    def test_counsel_default_theme_fallback(self, client):
+    def test_counsel_default_theme_fallback(self, client, consent_headers):
         """A generic message with no theme keywords falls back to self_knowledge."""
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "Hello, I want to talk about something."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["theme"] == "self_knowledge"
 
-    def test_counsel_response_has_all_fields(self, client):
+    def test_counsel_response_has_all_fields(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I keep comparing myself to others and feel inadequate."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -648,42 +669,58 @@ class TestPsychiatryCounselEndpoint:
         assert isinstance(data["all_quotes"], list)
         assert len(data["all_quotes"]) >= 1
 
-    def test_counsel_meditation_theme(self, client):
+    def test_counsel_meditation_theme(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I want to understand meditation and find inner peace."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["theme"] == "meditation"
 
-    def test_counsel_anger_theme(self, client):
+    def test_counsel_anger_theme(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I am so angry and frustrated with everyone around me."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["theme"] == "anger"
 
-    def test_counsel_sorrow_theme(self, client):
+    def test_counsel_sorrow_theme(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I am grieving. My mother passed away and the sorrow is overwhelming."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["theme"] == "sorrow"
 
+    def test_counsel_requires_consent(self, client):
+        """Counsel endpoint rejects bare requests without consent."""
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel afraid."},
+        )
+        assert resp.status_code == 403
+
 
 class TestPsychiatryKnowledgeBase:
     """Verify /api/psychiatry/knowledge-base endpoint."""
 
-    def test_knowledge_base_returns_document(self, client):
-        resp = client.get("/api/psychiatry/knowledge-base")
+    def test_knowledge_base_returns_document(self, client, consent_headers):
+        resp = client.get("/api/psychiatry/knowledge-base", headers=consent_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "document" in data
+
+    def test_knowledge_base_requires_consent(self, client):
+        """Knowledge-base endpoint rejects bare requests without consent."""
+        resp = client.get("/api/psychiatry/knowledge-base")
+        assert resp.status_code == 403
 
 
 class TestPsychiatrySectionInUI:
@@ -695,7 +732,6 @@ class TestPsychiatrySectionInUI:
         text = resp.text
         assert 'id="psychiatry-section"' in text
         assert "Voice Counselling" in text
-        assert "Krishnamurti" not in text  # No name attribution in UI
 
     def test_psychiatry_nav_item_in_sidebar(self, client):
         resp = client.get("/")
@@ -748,10 +784,11 @@ class TestThemeMatchingEngine:
 class TestCounselFollowups:
     """Verify followup suggestions are returned from /api/psychiatry/counsel."""
 
-    def test_counsel_response_includes_followups(self, client):
+    def test_counsel_response_includes_followups(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I feel anxious about everything."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -762,15 +799,17 @@ class TestCounselFollowups:
             assert isinstance(f, str)
             assert len(f) > 5
 
-    def test_counsel_followups_vary_with_theme(self, client):
+    def test_counsel_followups_vary_with_theme(self, client, consent_headers):
         """Followups for different themes should be somewhat different."""
         resp1 = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I am afraid of losing everything."},
+            headers=consent_headers,
         )
         resp2 = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I feel deeply lonely and disconnected."},
+            headers=consent_headers,
         )
         f1 = set(resp1.json()["followups"])
         f2 = set(resp2.json()["followups"])
@@ -797,10 +836,11 @@ class TestCounselFollowups:
 class TestCounselPersonalisedAcknowledgment:
     """Verify template responses echo back the user's words."""
 
-    def test_acknowledgment_contains_user_words(self, client):
+    def test_acknowledgment_contains_user_words(self, client, consent_headers):
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I keep comparing myself to everyone around me and it hurts."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -808,11 +848,12 @@ class TestCounselPersonalisedAcknowledgment:
         # The acknowledgment should contain a snippet of the user's message
         assert "comparing" in ack.lower() or "everyone" in ack.lower() or '"' in ack
 
-    def test_short_messages_may_not_be_echoed(self, client):
+    def test_short_messages_may_not_be_echoed(self, client, consent_headers):
         """Very short messages (< 12 chars) don't get echo prefix."""
         resp = client.post(
             "/api/psychiatry/counsel",
             json={"message": "I feel sad."},
+            headers=consent_headers,
         )
         assert resp.status_code == 200
         data = resp.json()

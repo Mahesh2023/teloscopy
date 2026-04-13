@@ -29,6 +29,7 @@
 22. [Lifestyle Psychiatry and Integrative Approaches](#22-lifestyle-psychiatry-and-integrative-approaches)
 23. [Telomere-Mental Health Nexus (Teloscopy Platform Integration)](#23-telomere-mental-health-nexus-teloscopy-platform-integration)
 24. [Glossary](#24-glossary)
+25. [Krishnamurti's Dialogic Inquiry — San Diego 1974 Conversations](#25-krishnamurtis-dialogic-inquiry--san-diego-1974-conversations)
 
 ---
 
@@ -2649,6 +2650,160 @@ PROPOSED INTEGRATION POINTS:
 | **VTA** | Ventral Tegmental Area |
 | **Y-BOCS** | Yale-Brown Obsessive Compulsive Scale |
 | **YMRS** | Young Mania Rating Scale |
+
+---
+
+## 25. Krishnamurti's Dialogic Inquiry — San Diego 1974 Conversations
+
+### 25.1 Overview
+
+The counselling module draws on the 18 conversations between **J. Krishnamurti** and **Professor Allan W. Anderson** (Religious Studies, San Diego State University), recorded in February 1974 under the series title **"A Wholly Different Way of Living."** These dialogues represent one of the most comprehensive explorations of Krishnamurti's approach to psychological inquiry.
+
+### 25.2 The 18 Conversations — Topics and Therapeutic Relevance
+
+| # | Title | Key Theme | Counselling Application |
+|---|-------|-----------|------------------------|
+| 1 | Knowledge and the transformation of man | Self-knowledge | Transformation through observation, not accumulation |
+| 2 | Knowledge and conflict in human relationships | Relationship | How images and memory create relational conflict |
+| 3 | What is communication with others? | Communication | True listening as communion, not verbal exchange |
+| 4 | What is a responsible human being? | Responsibility | "The world is me and I am the world" |
+| 5 | Order comes from the understanding of our disorder | Order | Natural order emerges from seeing one's own chaos |
+| 6 | The nature and total eradication of fear | Fear | Fear as thought projecting past into future |
+| 7 | Understanding, not controlling, desire | Desire | Seeing the mechanism of desire without suppression |
+| 8 | Does pleasure bring happiness? | Pleasure | Distinguishing pleasure (thought-sustained) from happiness |
+| 9 | Sorrow, passion and beauty | Sorrow | The ending of sorrow as the birth of compassion |
+| 10 | The art of listening | Listening | Attention without the screen of conclusions |
+| 11 | Being hurt and hurting others | Hurt | Psychological hurt as injury to the self-image |
+| 12 | Love, sex and pleasure | Love | Love as the absence of self, not the fulfilment of desire |
+| 13 | A different way of living | Freedom | Living without comparison or psychological weight |
+| 14 | Death, life and love are indivisible | Death | Dying to the known as liberation, not ending |
+| 15 | Religion, authority and education — Part 1 | Authority | Truth as a pathless land; rejecting psychological authority |
+| 16 | Religion, authority and education — Part 2 | Authority | Education as self-understanding, not knowledge accumulation |
+| 17 | Meditation, a quality of attention that pervades | Meditation | Meditation as choiceless awareness, not technique |
+| 18 | Meditation and the sacred mind | Meditation | Silence and the immeasurable |
+
+**Video playlist:** YouTube — J. Krishnamurti Official Channel, Playlist ID: `PL1n30s-LKus7XDJA0eXbd5n3f9qDcQOWP`
+
+### 25.3 Core Principles for Counselling
+
+```
+The Seven Pillars of Krishnamurti-Informed Inquiry
+═══════════════════════════════════════════════════
+
+1. THE OBSERVER IS THE OBSERVED
+   The "I" that observes fear IS fear.  The division between
+   observer and observed is created by thought and sustains conflict.
+   When this is seen, total attention replaces internal warfare.
+
+2. THE WORD IS NOT THE THING
+   Labels ("anxiety," "depression," "anger") invoke the whole history
+   of that word and prevent direct contact with the actual feeling.
+   Drop the word; meet the raw sensation.
+
+3. STAYING WITH 'WHAT IS'
+   Rather than moving to "what should be," remain with what actually
+   is.  The gap between the two is conflict.  In complete attention
+   to what is, transformation occurs without effort.
+
+4. QUESTIONING THE QUESTIONER
+   "How do I overcome fear?" — Who is the "I" that wants to overcome?
+   Is that entity different from the fear?  The question dissolves
+   when the questioner is seen.
+
+5. THOUGHT AS ROOT OF PSYCHOLOGICAL SUFFERING
+   Thought projects the past into the future, creating fear, anxiety,
+   regret, and the illusion of a separate self.  Thought has its
+   place in practical matters; in psychological matters it creates
+   and sustains suffering.
+
+6. RELATIONSHIP AS MIRROR
+   All life is relationship.  In relationship we see ourselves most
+   clearly — our demands, fears, images, and patterns.  Relationship
+   is not the problem; it is the revelation.
+
+7. DYING TO THE KNOWN
+   Letting go of accumulated conclusions — not once, but moment to
+   moment — is what keeps the mind fresh.  This "psychological death"
+   is not loss but liberation.
+```
+
+### 25.4 Practical Counselling Applications
+
+#### For Anxiety & Worry
+- Fear is always about what *might* happen — thought projecting into the future
+- The attempt to escape fear strengthens it; direct observation dissolves it
+- The root of anxiety is psychological time: the gap between "what is" and "what should be"
+- Security-seeking is itself the source of insecurity
+
+#### For Depression & Meaninglessness
+- Depression often arises when a self-image collapses — the image was never real
+- Sorrow is not personal; it is the sorrow of humanity — seeing this releases energy
+- The search for meaning through thought perpetuates meaninglessness
+- Meaninglessness may be a doorway rather than a dead end
+
+#### For Relationship Difficulties
+- We relate through images, not through direct perception of the other person
+- Attachment is not love; dependency breeds resentment
+- Jealousy reveals the depth of possessiveness, not the depth of love
+- When images drop, actual relationship — communion — becomes possible
+
+#### For Anger & Resentment
+- The observer of anger IS anger — there is no separate controller
+- Resentment is sustained by thought's repetition of the original incident
+- Anger often conceals fear or wounded self-image
+- Understanding anger is not accepting injustice; intelligent action differs from reaction
+
+#### For Grief & Loss
+- Death is not separate from life; dying to the known daily is liberating
+- Grief contains both genuine sorrow and self-pity — can you see the difference?
+- The ending of sorrow, fully met, gives birth to compassion
+- Love beyond attachment does not create devastating loss
+
+#### For Addiction & Compulsion
+- Every addiction is an escape from "what is" — loneliness, emptiness, fear
+- Habit operates in the gap of unawareness; full attention transforms compulsion
+- Willpower creates internal war because the controller and the controlled are not separate
+- The contents driving addiction are survivable when faced directly
+
+#### For Existential Questions
+- The question "What is the purpose of life?" arises when you are not living fully
+- Truth is a pathless land — no method, no authority can deliver it
+- Freedom is not freedom from constraints but freedom to see clearly
+- When the mind is completely still, something immeasurable comes into being
+
+### 25.5 Integration with Clinical Approaches
+
+| Krishnamurti Concept | Clinical Parallel | Common Ground |
+|---|---|---|
+| Choiceless awareness | MBCT/MBSR mindfulness, ACT defusion | Observing without judging; non-reactivity |
+| The observer is the observed | IFS self-leadership, Gestalt integration | Dissolving internal fragmentation |
+| Image-making in relationship | Imago Therapy, Object Relations | Projection, transference, relational schemas |
+| Facing "what is" | Exposure therapy, ACT acceptance | Approaching rather than avoiding distress |
+| Freedom from conditioning | Schema Therapy, Narrative Therapy | Identifying and transcending learned patterns |
+| Dying to the known | DBT radical acceptance, letting go | Releasing attachment to fixed outcomes |
+| Effort vs. action | Flow states, Gestalt paradoxical change | Change through awareness, not willpower |
+
+### 25.6 Key Published Works
+
+| Book | Year | Relevance |
+|---|---|---|
+| *The First and Last Freedom* | 1954 | Comprehensive — fear, effort, self-knowledge, desire |
+| *Freedom from the Known* | 1969 | Concise introduction to all major themes |
+| *Think on These Things* | 1964 | Most accessible; suitable for introducing inquiry |
+| *The Ending of Time* (with David Bohm) | 1985 | Deepest exploration — thought, consciousness, the nature of mind |
+| *On Love and Loneliness* | 1993 | Relationship, attachment, aloneness |
+| *On Fear* | 1995 | Anxiety, worry, psychological security |
+| *On Living and Dying* | 1992 | Grief, loss, endings, death |
+| *Commentaries on Living* (I–III) | 1956–60 | Case-study-like dialogues on everyday psychological issues |
+| *The Impossible Question* | 1972 | Effort, action, the nature of change |
+
+### 25.7 Clinical Cautions
+
+1. **Timing matters.** Radical inquiry is most appropriate for clients with some psychological stability. Acute crisis, active suicidality, or severe dissociation requires stabilisation first.
+2. **This is not intellectualisation.** Insights must be *lived*, not discussed abstractly.
+3. **No authority.** The counsellor is a co-inquirer, not a guru delivering wisdom.
+4. **Paradox of method.** Turning these teachings into a "method" contradicts their spirit. Use them as invitations to look, not prescriptions to follow.
+5. **Complementary role.** This approach works alongside, not instead of, clinical treatment, medication, and evidence-based psychotherapy.
 
 ---
 
