@@ -5824,6 +5824,7 @@ function escapeHtml(str) {
         var recognition = null;
         var synthesis = window.speechSynthesis || null;
         var counsellingHistory = [];
+        var _counselIndexHistory = [];  /* tracks _indices from each API response for de-duplication */
 
         /* ---- Rotating wisdom quotes ---- */
         var wisdomQuotes = [
@@ -5924,22 +5925,38 @@ function escapeHtml(str) {
             fetch('/api/psychiatry/counsel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: message })
+                body: JSON.stringify({ message: message, history: _counselIndexHistory })
             })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 counselChat.removeChild(typingDiv);
                 var resp = data.response;
-                var fullText = resp.opening + '\n\n' + resp.inquiry + '\n\n' + resp.deepening;
+                /* Build a multi-paragraph counsellor reply */
+                var parts = [resp.acknowledgment, resp.opening, resp.inquiry];
+                if (resp.deepening) parts.push(resp.deepening);
+                if (resp.reflection) parts.push(resp.reflection);
+                if (resp.closing) parts.push(resp.closing);
+                var fullText = parts.join('\n\n');
                 addMessage(fullText, 'counsellor', {
                     insight: data.core_insight,
                     quote: data.quote
                 });
                 counsellingHistory.push({ role: 'counsellor', text: fullText, theme: data.theme });
 
+                /* Track indices for de-duplication in future requests */
+                if (data._indices) {
+                    var entry = { theme: data.theme };
+                    var idx = data._indices;
+                    if (idx.quote_idx !== undefined) entry.quote_idx = idx.quote_idx;
+                    if (idx.inquiry_idx !== undefined) entry.inquiry_idx = idx.inquiry_idx;
+                    if (idx.opening_idx !== undefined) entry.opening_idx = idx.opening_idx;
+                    if (idx.closing_idx !== undefined) entry.closing_idx = idx.closing_idx;
+                    _counselIndexHistory.push(entry);
+                }
+
                 /* Auto-speak if enabled */
                 if (autoSpeakToggle && autoSpeakToggle.checked && synthesis) {
-                    speakText(resp.opening + '. ' + resp.inquiry + '. ' + resp.deepening);
+                    speakText(resp.acknowledgment + '. ' + resp.opening + '. ' + resp.inquiry + '. ' + (resp.deepening || ''));
                 }
             })
             .catch(function(err) {

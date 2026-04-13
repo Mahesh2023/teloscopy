@@ -544,7 +544,7 @@ class TestPsychiatryThemesEndpoint:
             theme = data["themes"][key]
             assert "title" in theme
             assert "description" in theme
-            assert "core_insight" in theme
+            assert "core_insights" in theme
 
     def test_themes_have_quote_counts(self, client):
         resp = client.get("/api/psychiatry/themes")
