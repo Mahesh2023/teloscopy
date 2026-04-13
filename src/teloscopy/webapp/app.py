@@ -2039,11 +2039,11 @@ async def get_research() -> dict[str, Any]:
 
 
 # ===================================================================== #
-#  Psychiatry — Krishnamurti-inspired Counselling Engine                 #
+#  Psychiatry — Inquiry-based Counselling Engine                          #
 # ===================================================================== #
 
-# Krishnamurti dialogue themes: each maps to inquiry patterns
-_KRISHNAMURTI_THEMES: dict[str, dict[str, Any]] = {
+# Counselling dialogue themes: each maps to inquiry patterns
+_COUNSEL_THEMES: dict[str, dict[str, Any]] = {
     "fear": {
         "title": "Fear and Its Roots",
         "description": "Exploring the nature of fear — how thought creates it by projecting into the future or carrying memory from the past.",
@@ -2266,8 +2266,8 @@ _KRISHNAMURTI_THEMES: dict[str, dict[str, Any]] = {
     },
 }
 
-# Opening and closing phrases in the style of Krishnamurti
-_K_OPENING_PHRASES: list[str] = [
+# Opening and closing phrases for inquiry-based dialogue
+_OPENING_PHRASES: list[str] = [
     "Can we look at that together?",
     "Let's go into that slowly, carefully.",
     "That's a very important question. Let's not rush to answer it.",
@@ -2276,7 +2276,7 @@ _K_OPENING_PHRASES: list[str] = [
     "I wonder if we can look at this without trying to arrive at a conclusion.",
 ]
 
-_K_CLOSING_PHRASES: list[str] = [
+_CLOSING_PHRASES: list[str] = [
     "We've looked at this together. There is no conclusion to reach — just the seeing itself.",
     "Can you carry this observation into your daily life — not as a conclusion, but as a living inquiry?",
     "The question we've explored doesn't need an answer from me. It needs your own looking.",
@@ -2286,7 +2286,7 @@ _K_CLOSING_PHRASES: list[str] = [
 
 
 def _match_counselling_theme(user_message: str) -> str:
-    """Return the best-matching Krishnamurti theme key for a user message."""
+    """Return the best-matching counselling theme key for a user message."""
     msg = user_message.lower()
 
     # Keyword-to-theme mapping (checked in order; first match wins)
@@ -2317,8 +2317,8 @@ def _match_counselling_theme(user_message: str) -> str:
 
 
 def _build_counselling_response(theme_key: str, user_message: str) -> dict[str, Any]:
-    """Build a Krishnamurti-style counselling response for the matched theme."""
-    theme = _KRISHNAMURTI_THEMES.get(theme_key, _KRISHNAMURTI_THEMES["self_knowledge"])
+    """Build an inquiry-based counselling response for the matched theme."""
+    theme = _COUNSEL_THEMES.get(theme_key, _COUNSEL_THEMES["self_knowledge"])
 
     # Select inquiry patterns (rotate based on message hash for variety)
     msg_hash = hash(user_message) % len(theme["inquiry_patterns"])
@@ -2326,8 +2326,8 @@ def _build_counselling_response(theme_key: str, user_message: str) -> dict[str, 
     secondary_inquiry = theme["inquiry_patterns"][(msg_hash + 1) % len(theme["inquiry_patterns"])]
 
     # Select opening and closing
-    opening = _K_OPENING_PHRASES[hash(user_message[:20]) % len(_K_OPENING_PHRASES)]
-    closing = _K_CLOSING_PHRASES[hash(user_message[-20:]) % len(_K_CLOSING_PHRASES)]
+    opening = _OPENING_PHRASES[hash(user_message[:20]) % len(_OPENING_PHRASES)]
+    closing = _CLOSING_PHRASES[hash(user_message[-20:]) % len(_CLOSING_PHRASES)]
 
     # Select a relevant quote
     quote_idx = hash(user_message[:15]) % len(theme["quotes"])
@@ -2351,9 +2351,9 @@ def _build_counselling_response(theme_key: str, user_message: str) -> dict[str, 
 
 @app.get("/api/psychiatry/themes", tags=["Psychiatry"])
 async def get_psychiatry_themes() -> dict[str, Any]:
-    """Return all Krishnamurti counselling themes and their metadata."""
+    """Return all counselling themes and their metadata."""
     themes = {}
-    for key, theme in _KRISHNAMURTI_THEMES.items():
+    for key, theme in _COUNSEL_THEMES.items():
         themes[key] = {
             "title": theme["title"],
             "description": theme["description"],
@@ -2365,7 +2365,7 @@ async def get_psychiatry_themes() -> dict[str, Any]:
 
 @app.post("/api/psychiatry/counsel", tags=["Psychiatry"])
 async def psychiatry_counsel(request: Request) -> dict[str, Any]:
-    """Process a counselling message and return a Krishnamurti-inspired response.
+    """Process a counselling message and return an inquiry-based response.
 
     Expects JSON body: {"message": "user's message text"}
     Returns structured counselling response with inquiry, quotes, and reflection.

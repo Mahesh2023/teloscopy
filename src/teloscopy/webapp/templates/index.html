@@ -911,7 +911,7 @@
             margin: 0 auto;
             line-height: 1.6;
         }
-        .k-quote-banner {
+        .counsel-quote-banner {
             font-style: italic;
             color: var(--text-dim);
             font-size: .88rem;
@@ -922,7 +922,7 @@
             background: rgba(147,51,234,.04);
             border-radius: 0 10px 10px 0;
         }
-        .k-quote-banner cite {
+        .counsel-quote-banner cite {
             display: block;
             margin-top: .5rem;
             font-size: .8rem;
@@ -971,7 +971,7 @@
             color: var(--text);
             border-bottom-left-radius: 4px;
         }
-        .counsel-msg.counsellor .k-insight {
+        .counsel-msg.counsellor .counsel-insight {
             display: block;
             margin-top: .6rem;
             padding-top: .6rem;
@@ -980,7 +980,7 @@
             font-size: .85rem;
             color: var(--text-dim);
         }
-        .counsel-msg.counsellor .k-source-quote {
+        .counsel-msg.counsellor .counsel-source-quote {
             display: block;
             margin-top: .5rem;
             font-size: .82rem;
@@ -2414,13 +2414,13 @@
 </section>
 
 <!-- ================================================================
-     PSYCHIATRY — Krishnamurti-inspired Voice Counselling
+     PSYCHIATRY — Inquiry-based Voice Counselling
      ================================================================ -->
 <section class="section" id="psychiatry-section" style="scroll-margin-top:20px;">
     <h2 class="section-title reveal">Psychiatry Analysis</h2>
     <p class="section-subtitle reveal">
-        Explore the landscape of your mind through inquiry inspired by Jiddu Krishnamurti's
-        profound work on the human psyche &mdash; fear, conditioning, thought, and psychological freedom.
+        Explore the landscape of your mind through deep self-inquiry &mdash;
+        examining fear, conditioning, thought, and the possibility of psychological freedom.
     </p>
 
     <div class="psychiatry-hero reveal">
@@ -2430,10 +2430,9 @@
             to look at yourself with fresh eyes, without judgement, without seeking a conclusion.
             We explore together.
         </p>
-        <div class="k-quote-banner" id="k-rotating-quote">
+        <div class="counsel-quote-banner" id="counsel-rotating-quote">
             "Self-knowledge is the beginning of wisdom. In self-knowledge is the whole universe;
             it embraces all the struggles of humanity."
-            <cite>&mdash; Jiddu Krishnamurti, <em>The First and Last Freedom</em></cite>
         </div>
     </div>
 
@@ -2488,8 +2487,8 @@
 
     <!-- Disclaimer -->
     <div class="psychiatry-disclaimer reveal">
-        <strong>Important:</strong> This counselling tool draws on the philosophical work of
-        Jiddu Krishnamurti and is intended for self-reflection and personal inquiry only.
+        <strong>Important:</strong> This counselling tool uses inquiry-based self-reflection
+        and is intended for personal exploration only.
         It is <strong>not</strong> a substitute for professional psychiatric care, therapy,
         or medical advice. If you are experiencing a mental health crisis, please contact
         a qualified mental health professional or crisis helpline immediately.
@@ -5783,7 +5782,7 @@ function escapeHtml(str) {
     setInterval(loadAgents, 10000);
 
     /* ==============================================================
-       PSYCHIATRY — Krishnamurti Voice Counselling Engine
+       PSYCHIATRY — Inquiry-based Voice Counselling Engine
        ============================================================== */
     (function initPsychiatryCounselling() {
         var counselChat = document.getElementById('counsel-chat');
@@ -5794,7 +5793,7 @@ function escapeHtml(str) {
         var voiceStatusText = document.getElementById('voice-status-text');
         var autoSpeakToggle = document.getElementById('auto-speak-toggle');
         var themeGrid = document.getElementById('theme-grid');
-        var rotatingQuote = document.getElementById('k-rotating-quote');
+        var rotatingQuote = document.getElementById('counsel-rotating-quote');
 
         if (!counselChat) return; /* Section not in DOM */
 
@@ -5804,27 +5803,26 @@ function escapeHtml(str) {
         var synthesis = window.speechSynthesis || null;
         var counsellingHistory = [];
 
-        /* ---- Rotating Krishnamurti quotes ---- */
-        var kQuotes = [
-            { text: "Self-knowledge is the beginning of wisdom. In self-knowledge is the whole universe; it embraces all the struggles of humanity.", source: "The First and Last Freedom" },
-            { text: "The ability to observe without evaluating is the highest form of intelligence.", source: "Commentaries on Living" },
-            { text: "Truth is a pathless land. Man cannot come to it through any organization, through any creed, through any dogma.", source: "Dissolution Speech, 1929" },
-            { text: "It is no measure of health to be well adjusted to a profoundly sick society.", source: "Talks" },
-            { text: "The observer IS the observed. The thinker IS the thought.", source: "Freedom from the Known" },
-            { text: "Freedom is found in the choiceless awareness of our daily existence and activity.", source: "Freedom from the Known" },
-            { text: "The first step is the last step. Perceive what you are thinking, perceive your ambition, your anxiety. Just perceive it.", source: "Public Talks" },
-            { text: "Where there is comparison, there is no love.", source: "Think on These Things" },
-            { text: "When you suffer psychologically, when you remain with it completely without escape, then out of that suffering comes compassion.", source: "The Awakening of Intelligence" },
-            { text: "The root of fear is thought. Thought breeds fear; thought also cultivates pleasure.", source: "Freedom from the Known" },
-            { text: "You have an image of your wife and she has an image of you. The relationship is between these two images.", source: "Freedom from the Known" },
-            { text: "Meditation is the emptying of the mind of all the things that the mind has put together.", source: "Freedom from the Known" },
+        /* ---- Rotating wisdom quotes ---- */
+        var wisdomQuotes = [
+            "Self-knowledge is the beginning of wisdom. In self-knowledge is the whole universe; it embraces all the struggles of humanity.",
+            "The ability to observe without evaluating is the highest form of intelligence.",
+            "Truth is a pathless land. No one can come to it through any organisation, through any creed, through any dogma.",
+            "It is no measure of health to be well adjusted to a profoundly sick society.",
+            "The observer IS the observed. The thinker IS the thought.",
+            "Freedom is found in the choiceless awareness of our daily existence and activity.",
+            "The first step is the last step. Perceive what you are thinking, perceive your ambition, your anxiety. Just perceive it.",
+            "Where there is comparison, there is no love.",
+            "When you suffer psychologically, when you remain with it completely without escape, then out of that suffering comes compassion.",
+            "The root of fear is thought. Thought breeds fear; thought also cultivates pleasure.",
+            "You have an image of your partner and they have an image of you. The relationship is between these two images.",
+            "Meditation is the emptying of the mind of all the things that the mind has put together.",
         ];
         var quoteIdx = 0;
         function rotateQuote() {
-            quoteIdx = (quoteIdx + 1) % kQuotes.length;
-            var q = kQuotes[quoteIdx];
+            quoteIdx = (quoteIdx + 1) % wisdomQuotes.length;
             if (rotatingQuote) {
-                rotatingQuote.innerHTML = '&ldquo;' + q.text + '&rdquo;<cite>&mdash; Jiddu Krishnamurti, <em>' + q.source + '</em></cite>';
+                rotatingQuote.innerHTML = '&ldquo;' + wisdomQuotes[quoteIdx] + '&rdquo;';
             }
         }
         setInterval(rotateQuote, 15000);
@@ -5867,15 +5865,15 @@ function escapeHtml(str) {
             var html = text;
             if (extras) {
                 if (extras.insight) {
-                    html += '<span class="k-insight">' + extras.insight + '</span>';
+                    html += '<span class="counsel-insight">' + extras.insight + '</span>';
                 }
                 if (extras.quote) {
-                    html += '<span class="k-source-quote">&ldquo;' + extras.quote + '&rdquo; &mdash; Krishnamurti</span>';
+                    html += '<span class="counsel-source-quote">&ldquo;' + extras.quote + '&rdquo;</span>';
                 }
             }
             /* Add speak button to counsellor messages */
             if (type === 'counsellor' && synthesis) {
-                html += '<button class="speak-btn" type="button" onclick="window._kSpeakText(this.parentElement)" aria-label="Speak this response">' +
+                html += '<button class="speak-btn" type="button" onclick="window._counselSpeakText(this.parentElement)" aria-label="Speak this response">' +
                     '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">' +
                     '<path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"/>' +
                     '</svg> Listen</button>';
@@ -6070,11 +6068,11 @@ function escapeHtml(str) {
         }
 
         /* Global function for speak buttons in chat messages */
-        window._kSpeakText = function(msgEl) {
+        window._counselSpeakText = function(msgEl) {
             if (!msgEl || !synthesis) return;
             /* Extract just the main text (not insight/quote spans) */
             var clone = msgEl.cloneNode(true);
-            var extras = clone.querySelectorAll('.k-insight, .k-source-quote, .speak-btn');
+            var extras = clone.querySelectorAll('.counsel-insight, .counsel-source-quote, .speak-btn');
             extras.forEach(function(el) { el.remove(); });
             speakText(clone.textContent.trim());
         };

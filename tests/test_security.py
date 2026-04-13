@@ -555,7 +555,7 @@ class TestPsychiatryThemesEndpoint:
 
 
 class TestPsychiatryCounselEndpoint:
-    """Verify /api/psychiatry/counsel returns Krishnamurti-style responses."""
+    """Verify /api/psychiatry/counsel returns inquiry-based responses."""
 
     def test_counsel_fear_message(self, client):
         resp = client.post(
@@ -695,7 +695,7 @@ class TestPsychiatrySectionInUI:
         text = resp.text
         assert 'id="psychiatry-section"' in text
         assert "Voice Counselling" in text
-        assert "Krishnamurti" in text
+        assert "Krishnamurti" not in text  # No name attribution in UI
 
     def test_psychiatry_nav_item_in_sidebar(self, client):
         resp = client.get("/")
