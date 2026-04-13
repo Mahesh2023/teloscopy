@@ -5998,6 +5998,10 @@ function escapeHtml(str) {
             var message = counselInput.value.trim();
             if (!message) return;
 
+            /* Unlock speech synthesis on the first user gesture (click/Enter)
+             * so that auto-speak from the fetch callback actually works. */
+            _unlockSynthesis();
+
             counselInput.value = '';
             counselInput.style.height = 'auto';
             counselSendBtn.disabled = true;
@@ -6307,6 +6311,7 @@ function escapeHtml(str) {
         }
 
         voiceBtn.addEventListener('click', function() {
+            _unlockSynthesis(); /* Warm up synthesis on user gesture */
             if (!recognition) {
                 if (typeof toast === 'function') toast('Voice input is not available. ' +
                     (_secureContext ? 'Try Chrome or Edge.' : 'HTTPS is required.'), 'warning');
@@ -6356,12 +6361,12 @@ function escapeHtml(str) {
          * 5. Fallback: any English local voice, then any English voice.
          *
          * Speech parameters tuned for calm delivery:
-         *   rate  : 0.74  — slow and deliberate, gives weight to every word
-         *   pitch : 0.72  — noticeably deeper, like a calm low voice that grounds you
-         *   volume: 0.78  — softer, like a quiet room — intimate and safe
+         *   rate  : 0.78  — slow and deliberate, gives weight to every word
+         *   pitch : 0.85  — gently deeper, warm without cracking or distortion
+         *   volume: 0.82  — soft, intimate — present but not loud
          *
          * Paragraph pauses: text is split on double-newlines. Each paragraph is
-         * spoken as a separate utterance with a 950ms silence between them,
+         * spoken as a separate utterance with a 900ms silence between them,
          * creating the natural rhythm of someone who speaks with care and presence.
          */
 
@@ -6432,11 +6437,28 @@ function escapeHtml(str) {
             return null;
         }
 
-        /* Calm speech parameters — tuned for deeply soothing delivery */
-        var _calmRate   = 0.74;   /* slow, deliberate — each word carries weight */
-        var _calmPitch  = 0.72;   /* deep, grounding — like a voice that settles you */
-        var _calmVolume = 0.78;   /* soft, intimate — a quiet room, just for you */
-        var _paragraphPause = 950; /* ms silence between paragraphs — unhurried breathing space */
+        /* Calm speech parameters — tuned for a deep, gentle, settled male voice.
+         * Pitch 0.85 gives subtle deepening without distortion/cracking.
+         * Extreme values (<0.8) cause TTS artifacts on most engines — the
+         * real depth comes from voice selection (Daniel, Guy, etc.). */
+        var _calmRate   = 0.78;   /* slow, deliberate — each word carries weight */
+        var _calmPitch  = 0.85;   /* gently deeper — warm without cracking */
+        var _calmVolume = 0.82;   /* soft, intimate — present but not loud */
+        var _paragraphPause = 900; /* ms silence between paragraphs — breathing room */
+
+        /* Chrome requires the first speechSynthesis.speak() to happen during a
+         * direct user gesture (click/keypress). Without this "warm-up", any
+         * speak() called from a fetch() callback is silently swallowed.
+         * We fire a zero-volume silent utterance on the very first interaction. */
+        var _synthUnlocked = false;
+        function _unlockSynthesis() {
+            if (_synthUnlocked || !synthesis) return;
+            var silentUtterance = new SpeechSynthesisUtterance('');
+            silentUtterance.volume = 0;
+            silentUtterance.rate = 4; /* fastest possible so it's instant */
+            synthesis.speak(silentUtterance);
+            _synthUnlocked = true;
+        }
 
         function _markSpeakingStart() {
             isSpeaking = true;
@@ -6453,14 +6475,43 @@ function escapeHtml(str) {
         }
 
         /**
-         * Speak text with calm, settled delivery.
+         * Speak text with a deep, gentle, calm and settled delivery.
          * Splits on paragraph breaks (\n\n) and speaks each paragraph
          * as a separate utterance with a pause between them.
+         *
+         * Workarounds included:
+         *  - Small delay after cancel() so Chrome doesn't silently drop speak()
+         *  - Chrome resume timer: Chrome pauses synthesis after ~15s of speech;
+         *    we periodically call resume() to keep it going.
          */
+        var _chromeResumeTimer = null;
+
+        function _startChromeResume() {
+            _stopChromeResume();
+            /* Chrome bug: synthesis pauses after ~15s. Periodic resume() fixes it. */
+            _chromeResumeTimer = setInterval(function() {
+                if (synthesis && synthesis.speaking && !synthesis.paused) {
+                    synthesis.pause();
+                    synthesis.resume();
+                }
+            }, 10000); /* every 10s — well before the 15s cutoff */
+        }
+
+        function _stopChromeResume() {
+            if (_chromeResumeTimer) {
+                clearInterval(_chromeResumeTimer);
+                _chromeResumeTimer = null;
+            }
+        }
+
         function speakText(text) {
             if (!synthesis) return;
-            /* Cancel any ongoing speech */
-            if (synthesis.speaking) synthesis.cancel();
+
+            /* Cancel any ongoing speech with a small delay — Chrome silently
+             * drops speak() if called immediately after cancel(). */
+            if (synthesis.speaking) {
+                synthesis.cancel();
+            }
 
             var voice = _selectCalmVoice();
 
@@ -6475,6 +6526,7 @@ function escapeHtml(str) {
 
             function speakNext() {
                 if (cancelled || currentIdx >= paragraphs.length) {
+                    _stopChromeResume();
                     _markSpeakingEnd();
                     return;
                 }
@@ -6491,7 +6543,10 @@ function escapeHtml(str) {
                 if (voice) utterance.voice = voice;
 
                 utterance.onstart = function() {
-                    if (currentIdx === 0) _markSpeakingStart();
+                    if (currentIdx === 0) {
+                        _markSpeakingStart();
+                        _startChromeResume();
+                    }
                 };
 
                 utterance.onend = function() {
@@ -6501,6 +6556,7 @@ function escapeHtml(str) {
                            thoughtful speaker gathering the next thought */
                         setTimeout(speakNext, _paragraphPause);
                     } else {
+                        _stopChromeResume();
                         _markSpeakingEnd();
                     }
                 };
@@ -6509,6 +6565,7 @@ function escapeHtml(str) {
                     /* 'interrupted' and 'cancelled' are expected when user
                        clicks stop or sends a new message */
                     if (e.error !== 'interrupted' && e.error !== 'canceled') {
+                        _stopChromeResume();
                         _markSpeakingEnd();
                     }
                 };
@@ -6516,11 +6573,13 @@ function escapeHtml(str) {
                 synthesis.speak(utterance);
             }
 
-            speakNext();
+            /* Small delay after cancel() to let Chrome reset its internal state */
+            setTimeout(speakNext, synthesis.speaking ? 120 : 10);
 
             /* Return a cancel function so callers can stop mid-speech */
             return function() {
                 cancelled = true;
+                _stopChromeResume();
                 if (synthesis.speaking) synthesis.cancel();
                 _markSpeakingEnd();
             };
