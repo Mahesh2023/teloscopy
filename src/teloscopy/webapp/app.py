@@ -2100,20 +2100,128 @@ _COUNSEL_KEYWORD_MAP: list[tuple[list[str], str]] = [
     for entry in _load_json("counselling_keyword_map.json")
 ]
 
+# ── Pre-compile word-boundary regex patterns for theme keywords ──
+# (Same approach as crisis detection — prevents "hurt" matching "hurdle" etc.)
+
+def _compile_theme_patterns(
+    keyword_map: list[tuple[list[str], str]],
+) -> list[tuple[list[tuple["_re_crisis.Pattern[str]", str]], str]]:
+    """Return [([(compiled_regex, raw_kw), ...], theme), ...] with \\b boundaries.
+
+    Multi-word keywords (containing a space) get full \\b boundaries on both
+    ends.  Single-word keywords that look like truncated stems (not ending in
+    a common English word-ending) get \\b only at the start so they match all
+    inflected forms (e.g. "compar" matches comparing, comparison, compared).
+    """
+    # Common word endings that indicate a complete word, not a stem
+    _WORD_ENDINGS = {"ed", "er", "ly", "al", "le", "ty", "ry", "nt", "ng", "nd", "st", "ss", "ck", "sh", "ch", "th", "se", "ce", "ve", "te", "de", "fe", "ge", "ke", "me", "ne", "pe", "re", "we", "ze", "ld", "lf", "lk", "lp", "lt", "mp", "nk", "pt", "rd", "rk", "rn", "rp", "rt", "sk", "sp", "wn", "wl", "ws"}
+
+    compiled: list[tuple[list[tuple[_re_crisis.Pattern[str], str]], str]] = []
+    for keywords, theme in keyword_map:
+        pats: list[tuple[_re_crisis.Pattern[str], str]] = []
+        for kw in keywords:
+            if " " in kw:
+                # Multi-word phrase: full boundaries
+                pat = _re_crisis.compile(r"\b" + _re_crisis.escape(kw) + r"\b", _re_crisis.IGNORECASE)
+            elif len(kw) >= 3 and kw[-2:].lower() not in _WORD_ENDINGS:
+                # Likely a stem (truncated): prefix-only boundary
+                pat = _re_crisis.compile(r"\b" + _re_crisis.escape(kw), _re_crisis.IGNORECASE)
+            else:
+                # Complete word: full boundaries
+                pat = _re_crisis.compile(r"\b" + _re_crisis.escape(kw) + r"\b", _re_crisis.IGNORECASE)
+            pats.append((pat, kw))
+        compiled.append((pats, theme))
+    return compiled
+
+_THEME_PATTERNS = _compile_theme_patterns(_COUNSEL_KEYWORD_MAP)
+
+# ── VADER Sentiment Analyser ──
+# Lightweight lexicon-based sentiment scoring — no GPU, no network, ~1ms per call.
+try:
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer as _VaderAnalyzer
+    _vader = _VaderAnalyzer()
+    logger.info("VADER sentiment analyser loaded successfully")
+except ImportError:
+    _vader = None
+    logger.warning("vaderSentiment not installed — sentiment scoring disabled (pip install vaderSentiment)")
+
+
+def _analyze_sentiment(user_message: str) -> dict[str, Any]:
+    """Analyse a user message for sentiment valence, intensity, and emotional themes.
+
+    Returns a dict with:
+        compound   : float [-1, +1]  — overall sentiment (negative to positive)
+        positive   : float [0, 1]    — proportion of positive sentiment
+        negative   : float [0, 1]    — proportion of negative sentiment
+        neutral    : float [0, 1]    — proportion of neutral sentiment
+        intensity  : str             — "severe" | "high" | "moderate" | "mild" | "neutral" | "positive"
+        themes     : list[str]       — ALL matched theme keys (multi-label)
+        primary_theme : str          — highest-priority matched theme
+        theme_scores  : dict[str,int]— theme → match count for ranking
+    """
+    # ── VADER scoring ──
+    if _vader:
+        scores = _vader.polarity_scores(user_message)
+        compound = scores["compound"]
+        pos = scores["pos"]
+        neg = scores["neg"]
+        neu = scores["neu"]
+    else:
+        # Graceful fallback if VADER is unavailable
+        compound, pos, neg, neu = 0.0, 0.0, 0.0, 1.0
+
+    # ── Intensity classification based on compound score ──
+    if compound <= -0.6:
+        intensity = "severe"
+    elif compound <= -0.35:
+        intensity = "high"
+    elif compound <= -0.15:
+        intensity = "moderate"
+    elif compound < 0.0:
+        intensity = "mild"
+    elif compound < 0.15:
+        intensity = "neutral"
+    else:
+        intensity = "positive"
+
+    # ── Multi-label theme detection (word-boundary regex) ──
+    msg_normalised = _normalize_crisis_text(user_message)
+    themes: list[str] = []
+    theme_scores: dict[str, int] = {}
+
+    for patterns, theme in _THEME_PATTERNS:
+        match_count = 0
+        for pat, _kw in patterns:
+            if pat.search(msg_normalised):
+                match_count += 1
+        if match_count > 0:
+            themes.append(theme)
+            theme_scores[theme] = match_count
+
+    # Primary theme = most keyword matches; ties broken by map order (priority)
+    if themes:
+        primary_theme = max(themes, key=lambda t: theme_scores[t])
+    else:
+        primary_theme = "self_knowledge"
+
+    return {
+        "compound": round(compound, 4),
+        "positive": round(pos, 4),
+        "negative": round(neg, 4),
+        "neutral": round(neu, 4),
+        "intensity": intensity,
+        "themes": themes,
+        "primary_theme": primary_theme,
+        "theme_scores": theme_scores,
+    }
 
 
 def _match_counselling_theme(user_message: str) -> str:
-    """Return the best-matching counselling theme key for a user message."""
-    msg = user_message.lower()
+    """Return the best-matching counselling theme key for a user message.
 
-    keyword_map = _COUNSEL_KEYWORD_MAP
-
-    for keywords, theme in keyword_map:
-        for kw in keywords:
-            if kw in msg:
-                return theme
-
-    return "self_knowledge"
+    Backward-compatible wrapper around :func:`_analyze_sentiment`.
+    """
+    return _analyze_sentiment(user_message)["primary_theme"]
 
 
 def _normalize_crisis_text(text: str) -> str:
@@ -2175,14 +2283,21 @@ def _build_counselling_response(
     theme_key: str,
     user_message: str,
     history: list[dict[str, Any]] | None = None,
+    sentiment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build an inquiry-based counselling response for the matched theme.
 
     Uses randomised selection with history-aware de-duplication so the user
     never receives the same quote, inquiry, or opening twice in a row.
+
+    When *sentiment* is provided, the response adapts its warmth and depth
+    to the user's emotional intensity:
+      - severe/high → gentler opening, prioritise reflective acknowledgment
+      - mild/neutral/positive → standard inquiry-led approach
     """
     theme = _COUNSEL_THEMES.get(theme_key, _COUNSEL_THEMES["self_knowledge"])
     history = history or []
+    intensity = (sentiment or {}).get("intensity", "neutral")
 
     # ── Collect previously-used indices to avoid repetition ──
     used_quotes: set[int] = set()
@@ -2210,6 +2325,25 @@ def _build_counselling_response(
     # ── Select components ──
     opening, opening_idx = _pick(_OPENING_PHRASES, used_openings)
     acknowledgment = random.choice(_ACKNOWLEDGMENT_PHRASES)
+
+    # ── Intensity-aware warmth: prefix gentle holding phrases for distress ──
+    if intensity in ("severe", "high"):
+        _warm_prefixes = [
+            "I hear you, and what you're feeling matters deeply. ",
+            "Thank you for sharing something so painful. ",
+            "That sounds incredibly difficult, and I want you to know I'm here. ",
+            "I can sense the weight of what you're carrying. ",
+            "There's no rush — let's be with this together. ",
+        ]
+        acknowledgment = random.choice(_warm_prefixes) + acknowledgment
+    elif intensity == "moderate":
+        _gentle_prefixes = [
+            "I appreciate you sharing that. ",
+            "What you're feeling is valid. ",
+            "Let's look at this together, gently. ",
+        ]
+        if random.random() < 0.6:  # not always, to avoid repetitiveness
+            acknowledgment = random.choice(_gentle_prefixes) + acknowledgment
 
     # Personalise the acknowledgment by echoing back the user's words
     # Extract a short, meaningful snippet (first sentence or ~80 chars)
@@ -2536,11 +2670,41 @@ def _llm_chat(messages: list[dict[str, str]], temperature: float = 0.75) -> str 
 def _build_llm_messages(
     conversation: list[dict[str, str]],
     current_message: str,
+    sentiment: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     """Build the messages array for the LLM from conversation history."""
     msgs: list[dict[str, str]] = [
         {"role": "system", "content": _COUNSELLING_SYSTEM_PROMPT},
     ]
+
+    # ── Inject sentiment context so the LLM can calibrate intensity ──
+    if sentiment:
+        themes_str = ", ".join(sentiment.get("themes", [])) or "none detected"
+        intensity = sentiment.get("intensity", "neutral")
+        compound = sentiment.get("compound", 0.0)
+        sentiment_hint = (
+            f"[Sentiment context — for calibration only, do NOT reference these numbers to the user] "
+            f"Emotional intensity: {intensity} (compound={compound:.2f}). "
+            f"Detected themes: {themes_str}. "
+        )
+        if intensity in ("severe", "high"):
+            sentiment_hint += (
+                "The user appears to be in significant distress. Respond with extra warmth, "
+                "gentleness, and holding. Prioritise acknowledgment over inquiry. "
+                "Do not push reflective questions too quickly — sit with the pain first."
+            )
+        elif intensity == "moderate":
+            sentiment_hint += (
+                "The user is experiencing moderate emotional difficulty. "
+                "Balance gentle acknowledgment with reflective inquiry."
+            )
+        elif intensity == "positive":
+            sentiment_hint += (
+                "The user's tone is positive. You may explore with curiosity and lightness, "
+                "while still inviting depth."
+            )
+        msgs.append({"role": "system", "content": sentiment_hint})
+
     # Include up to the last 20 turns of conversation for context
     for turn in conversation[-20:]:
         role = turn.get("role", "user")
@@ -2768,20 +2932,24 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
     # ── Crisis detection (keyword-based, always runs first) ──
     crisis = _detect_crisis(message)
 
+    # ── Sentiment analysis (VADER scoring + multi-label theme detection) ──
+    sentiment = _analyze_sentiment(message)
+    theme_key = sentiment["primary_theme"]
+
     # ── Try AI-powered response first ──
     llm_response = None
     if _LLM_API_KEY or _LLM_BACKEND == "ollama":
-        msgs = _build_llm_messages(conversation, message)
+        msgs = _build_llm_messages(conversation, message, sentiment=sentiment)
         llm_response = _llm_chat(msgs)
 
     if llm_response:
         # AI response — return a simpler structure
-        theme_key = _match_counselling_theme(message)
         result: dict[str, Any] = {
             "theme": theme_key,
             "theme_title": _COUNSEL_THEMES.get(theme_key, {}).get("title", ""),
             "ai_response": llm_response,
             "mode": "ai",
+            "sentiment": sentiment,
             "followups": _suggest_followups(theme_key, len(conversation)),
         }
         if crisis:
@@ -2790,9 +2958,9 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
         return result
 
     # ── Fallback to template-based engine ──
-    theme_key = _match_counselling_theme(message)
-    response = _build_counselling_response(theme_key, message, history=history)
+    response = _build_counselling_response(theme_key, message, history=history, sentiment=sentiment)
     response["mode"] = "template"
+    response["sentiment"] = sentiment
     response["followups"] = _suggest_followups(theme_key, len(history))
     if crisis:
         response["crisis_detected"] = True
