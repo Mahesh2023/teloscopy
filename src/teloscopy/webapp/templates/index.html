@@ -2747,12 +2747,15 @@
 <!-- ================================================================
      CONSENT & LEGAL NOTICE MODAL (DPDP Act 2023 Section 5 & 6)
      ================================================================ -->
-<div class="consent-overlay" id="consent-overlay" role="dialog" aria-modal="true" aria-label="Data consent and privacy notice">
+<div class="consent-overlay" id="consent-overlay" role="dialog" aria-modal="true" aria-label="Data consent and privacy notice" onclick="if(event.target===this && !document.body.classList.contains('consent-pending')){this.classList.remove('visible');}">
     <div class="consent-modal">
-        <h2>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
-            Privacy Notice &amp; Data Consent
-        </h2>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
+            <h2 style="flex:1;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
+                Privacy Notice &amp; Data Consent
+            </h2>
+            <button type="button" id="consent-close-btn" onclick="document.getElementById('consent-overlay').classList.remove('visible');" aria-label="Close" style="display:none;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.4rem;padding:.2rem .5rem;line-height:1;">&times;</button>
+        </div>
         <p class="consent-subtitle">
             Before using Teloscopy, please review this notice and provide your consent for data processing.
             Your consent is free, specific, and can be withdrawn at any time.
@@ -2894,14 +2897,29 @@
     });
 
     window.openConsentModal = function () {
-        document.body.classList.add('consent-pending');
         var overlay = document.getElementById('consent-overlay');
-        if (overlay) overlay.classList.add('visible');
+        if (!overlay) return;
+        var closeBtn = document.getElementById('consent-close-btn');
+        var alreadyConsented = hasValidConsent();
+        if (alreadyConsented) {
+            /* User already consented — open modal in "review" mode without
+               blocking the page.  Don't add consent-pending; just show the
+               overlay so they can review or withdraw. */
+            overlay.classList.add('visible');
+            if (closeBtn) closeBtn.style.display = 'block';
+        } else {
+            /* First visit or expired — full blocking mode */
+            document.body.classList.add('consent-pending');
+            overlay.classList.add('visible');
+            if (closeBtn) closeBtn.style.display = 'none';
+        }
         /* Close sidebar on mobile */
         var sb = document.getElementById('sidebar');
         var ov = document.getElementById('sidebar-overlay');
         if (sb) sb.classList.remove('mobile-open');
         if (ov) ov.classList.remove('visible');
+        /* Sync the accept button state with current checkbox values */
+        updateAcceptBtn();
     };
 
     window.acceptConsent = async function () {
@@ -2944,6 +2962,8 @@
     };
 
     window.declineConsent = function () {
+        /* Close the consent overlay first */
+        document.getElementById('consent-overlay').classList.remove('visible');
         /* Keep consent-pending on body — user CANNOT use the app without consent.
            Replace main content with a message but sidebar stays locked. */
         var main = document.getElementById('main-content');
@@ -4044,8 +4064,10 @@ function escapeHtml(str) {
                 res = await fetchFn();  /* retry with fresh token */
             }
             if (res.status === 403) {
-                /* Still 403 — force full re-consent */
+                /* Still 403 — force full re-consent (clear both keys so
+                   hasValidConsent() returns false and modal opens in gate mode) */
                 try { localStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
+                try { localStorage.removeItem('teloscopy_consent_v1'); } catch (_) {}
                 window.openConsentModal();
                 toast('Please accept the privacy notice to continue.', 'warning');
                 return null;
