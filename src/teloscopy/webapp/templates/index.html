@@ -6995,11 +6995,12 @@ function escapeHtml(str) {
             } else {
                 /* Try to unlock synthesis on this user gesture */
                 if (typeof _trySynthUnlock === 'function') _trySynthUnlock();
-                /* Stop any ongoing REAL speech (not unlock utterances) */
-                if (isSpeaking && synthesis && synthesis.speaking) {
-                    synthesis.cancel();
-                    isSpeaking = false;
-                    voiceBtn.classList.remove('speaking');
+                /* Stop any ongoing speech via the proper cancel function */
+                if (isSpeaking && typeof _speakCancelFn === 'function' && _speakCancelFn) {
+                    _speakCancelFn(); _speakCancelFn = null;
+                } else if (synthesis && synthesis.speaking) {
+                    try { synthesis.cancel(); } catch(e) {}
+                    _markSpeakingEnd();
                 }
                 _voiceState = 'requesting';
                 if (voiceStatusText) voiceStatusText.textContent = 'Requesting microphone\u2026';
@@ -7087,40 +7088,41 @@ function escapeHtml(str) {
          * We call this from Send button, Listen button, and mic button clicks.
          * The utterance is a single space at near-zero volume — completes
          * in milliseconds without audible output.  No capture-phase listeners,
-         * no callback queues, no complexity. */
+         * no callback queues, no complexity.
+         * _unlockInFlight prevents speakText from canceling this utterance. */
+        var _unlockInFlight = false;
         function _trySynthUnlock() {
-            if (_synthUnlocked || !synthesis) return;
+            if (_synthUnlocked || _unlockInFlight || !synthesis) return;
+            _unlockInFlight = true;
             try {
                 var u = new SpeechSynthesisUtterance(' ');
                 u.volume = 0.01;
                 u.rate = 10;
                 u.onend = function() {
                     _synthUnlocked = true;
+                    _unlockInFlight = false;
                     console.log('[Teloscopy voice] Synthesis unlocked');
                 };
-                u.onerror = function() { _synthUnlocked = true; };
+                u.onerror = function() {
+                    _synthUnlocked = true;
+                    _unlockInFlight = false;
+                };
                 synthesis.speak(u);
             } catch (e) {
                 _synthUnlocked = true;
+                _unlockInFlight = false;
             }
         }
 
-        /* ---- Chrome 15-second pause workaround ----
-         * Chrome kills utterances after ~15s of continuous speech.
-         * Pause/resume resets the timer.  We use 5s intervals to stay
-         * well within the limit.  Guard against browsers where pause()
-         * throws or triggers 'interrupted' — wrapped in try-catch. */
-        function _startResume() {
-            _stopResume();
-            _resumeTimer = setInterval(function() {
-                try {
-                    if (synthesis && synthesis.speaking && !synthesis.paused) {
-                        synthesis.pause();
-                        synthesis.resume();
-                    }
-                } catch(e) { /* some browsers throw on pause/resume */ }
-            }, 5000);
-        }
+        /* ---- Chrome 15-second pause workaround (REMOVED) ----
+         * Previously we used pause()/resume() every 5s to reset Chrome's
+         * 15-second utterance timeout.  However, on mobile browsers
+         * pause() triggers 'interrupted' errors or leaves the utterance
+         * permanently paused because resume() is unreliable.  Since
+         * chunks are now capped at 150 chars (~10s of speech at rate 0.88),
+         * we stay well within the 15s limit without needing this hack.
+         * Stub functions kept for backward compatibility. */
+        function _startResume() { /* no-op */ }
         function _stopResume() {
             if (_resumeTimer) { clearInterval(_resumeTimer); _resumeTimer = null; }
         }
@@ -7141,7 +7143,7 @@ function escapeHtml(str) {
 
         /* ---- Sentence splitter (no lookbehind — all-browser safe) ---- */
         function _splitText(text) {
-            var MAX = 180;
+            var MAX = 150;   /* ~10s at rate 0.88, well under Chrome's 15s limit */
             var paras = text.split(/\n\s*\n/);
             var chunks = [];
 
@@ -7186,9 +7188,12 @@ function escapeHtml(str) {
         function speakText(text) {
             if (!synthesis || !text) return;
 
-            /* Cancel previous speech */
+            /* Cancel previous speech only if actually active (skip unlock utterance) */
+            var wasSpeaking = (synthesis.speaking || synthesis.pending) && !_unlockInFlight;
             if (_speakCancelFn) { _speakCancelFn(); _speakCancelFn = null; }
-            synthesis.cancel();
+            if (wasSpeaking) {
+                try { synthesis.cancel(); } catch(e) {}
+            }
 
             if (!_calmVoice) _calmVoice = _pickVoice();
             var voice = _calmVoice;
@@ -7213,6 +7218,7 @@ function escapeHtml(str) {
                 idx++;
                 if (cancelled || idx >= chunks.length) {
                     _stopResume(); _markSpeakingEnd();
+                    console.log('[Teloscopy voice] Speech chain ended at chunk', idx, '/', chunks.length);
                     return;
                 }
                 setTimeout(next, gap);
@@ -7232,41 +7238,35 @@ function escapeHtml(str) {
                 } else {
                     u.lang = 'en-GB';
                 }
-                /* Voice parameters — close to defaults for natural sound.
-                 * Less modification = less robotic. */
                 u.rate   = 0.88;
                 u.pitch  = 0.95;
                 u.volume = 0.9;
 
                 u.onstart = function() {
-                    if (idx === 0) { _markSpeakingStart(); _startResume(); }
-                    /* Watchdog: if no onend/onerror within 20s, force-advance.
-                     * Catches Chrome silently killing utterances. Each chunk
-                     * is <=180 chars so ~12s at rate 0.88 is generous. */
+                    if (idx === 0) { _markSpeakingStart(); }
+                    /* Watchdog: if no onend/onerror within 15s, force-advance.
+                     * Each chunk is <=150 chars so ~10s at rate 0.88. */
                     _clearWatchdog();
                     _watchdog = setTimeout(function() {
                         if (!_chunkHandled && !cancelled) {
                             console.warn('[Teloscopy voice] Watchdog: chunk', idx, 'stalled — forcing advance');
                             try { synthesis.cancel(); } catch(e) {}
-                            advance(300);
+                            advance(200);
                         }
-                    }, 20000);
+                    }, 15000);
                 };
                 u.onend = function() {
-                    var gap = c.paraEnd ? 1000 : 400;
+                    var gap = c.paraEnd ? 800 : 300;
                     advance(gap);
                 };
                 u.onerror = function(e) {
                     console.warn('[Teloscopy voice] Utterance error:', e.error, 'chunk:', idx);
-                    /* 'canceled' means deliberate user cancel — stop entirely */
                     if (e.error === 'canceled') {
                         _clearWatchdog();
                         _stopResume(); _markSpeakingEnd();
                         return;
                     }
-                    /* 'interrupted' or any other error — skip to next chunk
-                     * so the speech chain stays alive */
-                    advance(300);
+                    advance(200);
                 };
 
                 synthesis.speak(u);
@@ -7278,14 +7278,15 @@ function escapeHtml(str) {
                         if (!_chunkHandled && !cancelled) {
                             console.warn('[Teloscopy voice] Watchdog (no-start): chunk', idx, '— forcing advance');
                             try { synthesis.cancel(); } catch(e) {}
-                            advance(300);
+                            advance(200);
                         }
-                    }, 25000);
+                    }, 18000);
                 }
             }
 
-            /* 250ms settle time after cancel() — longer for mobile reliability */
-            setTimeout(next, 250);
+            /* Short settle time if we weren't canceling previous speech;
+             * longer settle if we just cancelled to let the engine reset */
+            setTimeout(next, wasSpeaking ? 300 : 50);
 
             _speakCancelFn = function() {
                 cancelled = true;
@@ -7298,23 +7299,37 @@ function escapeHtml(str) {
 
         /* Global function for speak/Listen buttons on chat messages */
         window._counselSpeakText = function(msgEl) {
-            if (!msgEl || !synthesis) return;
+            if (!msgEl || !synthesis) {
+                console.warn('[Teloscopy voice] _counselSpeakText: no msgEl or no synthesis');
+                return;
+            }
             /* This is called from a direct click — use it to unlock */
             _trySynthUnlock();
             var clone = msgEl.cloneNode(true);
             var extras = clone.querySelectorAll('.counsel-insight, .counsel-source-quote, .speak-btn');
             extras.forEach(function(el) { el.remove(); });
             var text = clone.textContent.trim();
-            /* Small delay lets the unlock utterance start before we cancel+speak */
-            setTimeout(function() { speakText(text); }, 120);
+            if (!text) {
+                console.warn('[Teloscopy voice] _counselSpeakText: empty text');
+                return;
+            }
+            console.log('[Teloscopy voice] Listen button: text length =', text.length, 'chars');
+            /* Short delay lets the unlock utterance complete before we speak */
+            setTimeout(function() { speakText(text); }, 150);
         };
 
-        /* Load voices */
+        /* Load voices eagerly and retry — some browsers take time */
         if (synthesis) {
-            var _loadVoices = function() { _calmVoice = _pickVoice(); };
+            var _loadVoices = function() {
+                _calmVoice = _pickVoice();
+                if (_calmVoice) {
+                    console.log('[Teloscopy voice] Voice loaded:', _calmVoice.name, _calmVoice.lang);
+                }
+            };
             synthesis.onvoiceschanged = _loadVoices;
             _loadVoices();
             setTimeout(_loadVoices, 500);
+            setTimeout(_loadVoices, 2000);  /* extra retry for slow-loading engines */
         }
 
     })();
