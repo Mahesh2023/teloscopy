@@ -3357,7 +3357,7 @@
     window.getConsentHeaders = function () {
         var token = '';
         try { token = sessionStorage.getItem('teloscopy_consent_token') || ''; } catch (_) {}
-        var headers = {};
+        var headers = { 'X-Requested-With': 'XMLHttpRequest' };
         if (token) headers['X-Consent-Token'] = token;
         return headers;
     };
@@ -4402,6 +4402,17 @@ function escapeHtml(str) {
     async function consentFetch(fetchFn) {
         var res = await fetchFn();
         if (res.status === 403) {
+            /* Check if this is actually a consent issue (not CSRF or rate limit) */
+            var body = null;
+            try { body = await res.clone().json(); } catch (_) {}
+            var detail = (body && (body.detail || (body.error && body.error.message))) || '';
+            var isConsentIssue = /consent/i.test(detail);
+
+            if (!isConsentIssue) {
+                /* Not a consent problem (e.g. CSRF) — don't nuke consent data */
+                return res;
+            }
+
             var newToken = await window.refreshConsentToken();
             if (newToken) {
                 res = await fetchFn();  /* retry with fresh token */
