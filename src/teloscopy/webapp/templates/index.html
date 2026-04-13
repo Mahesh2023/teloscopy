@@ -3276,6 +3276,22 @@
         if (!hasValidConsent()) {
             document.body.classList.add('consent-pending');
             document.getElementById('consent-overlay').classList.add('visible');
+        } else {
+            /* Migrate stale consent data — older versions may lack the
+               'psychiatry' purpose.  Silently upgrade localStorage and
+               refresh the server-side token so all features work. */
+            try {
+                var raw = localStorage.getItem(CONSENT_KEY);
+                if (raw) {
+                    var saved = JSON.parse(raw);
+                    if (saved.purposes && saved.purposes.indexOf('psychiatry') === -1) {
+                        saved.purposes.push('psychiatry');
+                        localStorage.setItem(CONSENT_KEY, JSON.stringify(saved));
+                        /* Refresh the consent token in the background */
+                        if (window.refreshConsentToken) window.refreshConsentToken();
+                    }
+                }
+            } catch (_) {}
         }
     }
     /* Run as early as possible — DOMContentLoaded for element access */
@@ -3441,11 +3457,24 @@
             if (!raw) return '';
             var saved = JSON.parse(raw);
             if (!saved.accepted || !saved.purposes) return '';
+            /* Ensure all current purposes are included — handles migration
+               from older consent data that predates the psychiatry feature */
+            var ALL_PURPOSES = ['telomere_analysis', 'disease_risk', 'nutrition_plan',
+                'facial_analysis', 'health_report', 'genetic_data', 'profile_data', 'psychiatry'];
+            var purposes = saved.purposes.slice();
+            ALL_PURPOSES.forEach(function (p) {
+                if (purposes.indexOf(p) === -1) purposes.push(p);
+            });
+            /* Persist the updated purposes so future refreshes don't need migration */
+            if (purposes.length !== saved.purposes.length) {
+                saved.purposes = purposes;
+                try { localStorage.setItem(CONSENT_KEY, JSON.stringify(saved)); } catch (_) {}
+            }
             var r = await fetch('/api/legal/consent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    consents: saved.purposes.map(function (p) {
+                    consents: purposes.map(function (p) {
                         return { purpose: p, granted: true, notice_version: '1.0' };
                     }),
                     data_principal_age_confirmed: true,
@@ -6367,12 +6396,15 @@ function escapeHtml(str) {
             fetch('/api/psychiatry/themes', { headers: headers })
                 .then(function(r) {
                     if (r.status === 403) {
-                        /* No consent yet — retry after token refresh */
+                        /* No consent yet or stale token — retry after token refresh */
                         if (window.refreshConsentToken) {
                             return window.refreshConsentToken().then(function(tok) {
                                 if (!tok) return null;
+                                /* Use the fresh token directly */
+                                var hdrs = { 'X-Requested-With': 'XMLHttpRequest' };
+                                if (tok) hdrs['X-Consent-Token'] = tok;
                                 return fetch('/api/psychiatry/themes', {
-                                    headers: window.getConsentHeaders()
+                                    headers: hdrs
                                 }).then(function(r2) { return r2.ok ? r2.json() : null; });
                             });
                         }
