@@ -5998,6 +5998,10 @@ function escapeHtml(str) {
             var message = counselInput.value.trim();
             if (!message) return;
 
+            /* Unlock synthesis on this user gesture so the response
+               can auto-speak even though the fetch callback is async */
+            if (typeof _trySynthUnlock === 'function') _trySynthUnlock();
+
             counselInput.value = '';
             counselInput.style.height = 'auto';
             counselSendBtn.disabled = true;
@@ -6319,8 +6323,10 @@ function escapeHtml(str) {
                 _voiceState = 'stopping';
                 recognition.stop();
             } else {
-                /* Stop any ongoing speech synthesis */
-                if (synthesis && synthesis.speaking) {
+                /* Try to unlock synthesis on this user gesture */
+                if (typeof _trySynthUnlock === 'function') _trySynthUnlock();
+                /* Stop any ongoing REAL speech (not unlock utterances) */
+                if (isSpeaking && synthesis && synthesis.speaking) {
                     synthesis.cancel();
                     isSpeaking = false;
                     voiceBtn.classList.remove('speaking');
@@ -6341,29 +6347,31 @@ function escapeHtml(str) {
             }
         });
 
-        /* ---- Web Speech API — Speech Synthesis (serene, natural voice) ---- */
+        /* ---- Web Speech API — Speech Synthesis ---- */
 
         /*
-         * Design goal: a warm, natural human voice — calm as a Buddha sitting
-         * in stillness.  Not a machine.  Every word is given space to land.
+         * Design: warm, natural voice — calm and measured.
          *
-         * Architecture:
-         *  - Text is split into short sentence-sized chunks (<180 chars) so
-         *    Chrome Android doesn't cut off mid-sentence.
-         *  - Each chunk is a separate SpeechSynthesisUtterance.
-         *  - 550ms pause between sentences, 1300ms between paragraphs.
-         *  - Voices queued ONLY after voices are loaded and selected.
-         *  - Chrome synthesis unlock happens on first page interaction
-         *    (click/touch anywhere in counselling area) and WAITS for
-         *    the unlock utterance to complete before marking as ready.
-         *  - Chrome 15-second pause bug: periodic pause/resume keeps it alive.
+         * Architecture (deliberately simple for reliability):
+         *  - Sentence-level chunking (<180 chars) for Chrome Android.
+         *  - Sequential utterances with pauses between sentences.
+         *  - Chrome 15-second pause workaround (pause/resume timer).
+         *  - Minimal unlock: silent utterance called from user gestures
+         *    (Send button, Listen button, mic button).  NO capture-phase
+         *    listeners, NO callback queues.
+         *  - Voice params close to defaults — less modification = more natural.
+         *
+         * Entire section wrapped in try-catch so synthesis bugs
+         * can never break voice INPUT.
          */
 
         var _calmVoice = null;
-        var _voicesReady = false;   /* true once we have at least one voice */
+        var _synthUnlocked = false;
+        var _speakCancelFn = null;
+        var _resumeTimer = null;
 
-        /* ---- Voice preferences: natural deep male voices first ---- */
-        var _calmVoicePrefs = [
+        /* ---- Voice preferences: natural voices ---- */
+        var _voicePrefs = [
             'Daniel', 'Evan', 'Rishi',
             'Moira', 'Fiona', 'Samantha', 'Karen', 'Zoe',
             'Microsoft Guy Online (Natural)', 'Microsoft Eric Online (Natural)',
@@ -6378,8 +6386,8 @@ function escapeHtml(str) {
         function _pickVoice() {
             var voices = synthesis ? synthesis.getVoices() : [];
             if (!voices.length) return null;
-            for (var i = 0; i < _calmVoicePrefs.length; i++) {
-                var p = _calmVoicePrefs[i].toLowerCase();
+            for (var i = 0; i < _voicePrefs.length; i++) {
+                var p = _voicePrefs[i].toLowerCase();
                 for (var j = 0; j < voices.length; j++) {
                     if (voices[j].name.toLowerCase().indexOf(p) > -1 &&
                         voices[j].lang.indexOf('en') === 0) {
@@ -6388,14 +6396,12 @@ function escapeHtml(str) {
                     }
                 }
             }
-            /* Fallback: any local English voice */
             for (var k = 0; k < voices.length; k++) {
                 if (voices[k].lang.indexOf('en') === 0 && voices[k].localService) {
                     console.log('[Teloscopy voice] Fallback local:', voices[k].name);
                     return voices[k];
                 }
             }
-            /* Last resort: any English */
             for (var m = 0; m < voices.length; m++) {
                 if (voices[m].lang.indexOf('en') === 0) {
                     console.log('[Teloscopy voice] Fallback any:', voices[m].name);
@@ -6406,81 +6412,34 @@ function escapeHtml(str) {
             return null;
         }
 
-        function _ensureVoice() {
-            if (!_calmVoice) _calmVoice = _pickVoice();
-            _voicesReady = !!_calmVoice;
-            return _calmVoice;
-        }
-
-        /* ---- Speech parameters ---- */
-        var _rate          = 0.84;
-        var _pitch         = 0.92;
-        var _volume        = 0.88;
-        var _sentGap       = 550;    /* ms between sentences */
-        var _paraGap       = 1300;   /* ms between paragraphs */
-
         /* ---- Synthesis unlock ----
-         * Chrome requires the FIRST speechSynthesis.speak() to both:
-         *   (a) happen during a user gesture, AND
-         *   (b) COMPLETE (not be cancelled).
-         * We attach a one-time listener on the counselling container that
-         * speaks a real short word at near-zero volume and waits for onend. */
-        var _synthReady = false;
-        var _synthReadyCallbacks = [];
-
-        function _onSynthReady(fn) {
-            if (_synthReady) { fn(); return; }
-            _synthReadyCallbacks.push(fn);
-        }
-
-        function _doUnlock() {
-            if (_synthReady || !synthesis) return;
+         * Chrome requires the first speak() to happen during a user gesture.
+         * We call this from Send button, Listen button, and mic button clicks.
+         * The utterance is a single space at near-zero volume — completes
+         * in milliseconds without audible output.  No capture-phase listeners,
+         * no callback queues, no complexity. */
+        function _trySynthUnlock() {
+            if (_synthUnlocked || !synthesis) return;
             try {
-                _ensureVoice();
-                var u = new SpeechSynthesisUtterance('ready');
+                var u = new SpeechSynthesisUtterance(' ');
                 u.volume = 0.01;
-                u.rate = 4;
-                if (_calmVoice) u.voice = _calmVoice;
+                u.rate = 10;
                 u.onend = function() {
-                    _synthReady = true;
+                    _synthUnlocked = true;
                     console.log('[Teloscopy voice] Synthesis unlocked');
-                    _synthReadyCallbacks.forEach(function(cb) { try { cb(); } catch(e){} });
-                    _synthReadyCallbacks = [];
                 };
-                u.onerror = function() {
-                    /* Even on error, mark ready — some browsers don't need unlock */
-                    _synthReady = true;
-                    _synthReadyCallbacks.forEach(function(cb) { try { cb(); } catch(e){} });
-                    _synthReadyCallbacks = [];
-                };
+                u.onerror = function() { _synthUnlocked = true; };
                 synthesis.speak(u);
             } catch (e) {
-                _synthReady = true; /* best effort */
+                _synthUnlocked = true;
             }
         }
 
-        /* Attach unlock to multiple user gestures for reliability */
-        var _unlockAttached = false;
-        function _attachUnlock() {
-            if (_unlockAttached) return;
-            _unlockAttached = true;
-            var area = counselChat.parentElement || document;
-            var handler = function() {
-                _doUnlock();
-                area.removeEventListener('click', handler, true);
-                area.removeEventListener('touchstart', handler, true);
-            };
-            area.addEventListener('click', handler, true);
-            area.addEventListener('touchstart', handler, true);
-        }
-        _attachUnlock();
-
         /* ---- Chrome 15-second pause workaround ---- */
-        var _resumeTimer = null;
         function _startResume() {
             _stopResume();
             _resumeTimer = setInterval(function() {
-                if (synthesis && synthesis.speaking) {
+                if (synthesis && synthesis.speaking && !synthesis.paused) {
                     synthesis.pause();
                     synthesis.resume();
                 }
@@ -6504,23 +6463,16 @@ function escapeHtml(str) {
             if (voiceStatusText) voiceStatusText.textContent = 'Voice ready \u2014 click the microphone to speak';
         }
 
-        /* ---- Sentence splitter (no lookbehind — works in all browsers) ----
-         * 1. Split on paragraph breaks (\n\n).
-         * 2. Within each paragraph, split on '. ' / '! ' / '? '
-         *    by replacing them with a sentinel, then splitting.
-         * 3. If a sentence exceeds 180 chars, split on ', ' or '; '.
-         */
+        /* ---- Sentence splitter (no lookbehind — all-browser safe) ---- */
         function _splitText(text) {
             var MAX = 180;
             var paras = text.split(/\n\s*\n/);
-            var chunks = []; /* { text, paraEnd } */
+            var chunks = [];
 
             for (var p = 0; p < paras.length; p++) {
                 var raw = paras[p].replace(/\s+/g, ' ').trim();
                 if (!raw) continue;
 
-                /* Split into sentences: replace '. ' with '.\x00' etc,
-                 * then split on \x00.  Keeps the punctuation with the sentence. */
                 var marked = raw
                     .replace(/\. /g, '.\x00')
                     .replace(/\! /g, '!\x00')
@@ -6535,7 +6487,6 @@ function escapeHtml(str) {
                     if (sent.length <= MAX) {
                         chunks.push({ text: sent, paraEnd: paraEnd });
                     } else {
-                        /* Split on commas / semicolons */
                         var subMarked = sent.replace(/, /g, ',\x00').replace(/; /g, ';\x00');
                         var parts = subMarked.split('\x00');
                         var buf = '';
@@ -6556,16 +6507,17 @@ function escapeHtml(str) {
         }
 
         /* ---- Main speak function ---- */
-        var _speaking = false;
-        var _cancelFn = null;
+        function speakText(text) {
+            if (!synthesis || !text) return;
 
-        function _speakNow(text) {
-            if (!synthesis) return null;
+            /* Cancel previous speech */
+            if (_speakCancelFn) { _speakCancelFn(); _speakCancelFn = null; }
             synthesis.cancel();
 
-            var voice = _ensureVoice();
+            if (!_calmVoice) _calmVoice = _pickVoice();
+            var voice = _calmVoice;
             var chunks = _splitText(text);
-            if (!chunks.length) return null;
+            if (!chunks.length) return;
 
             console.log('[Teloscopy voice] Speaking', chunks.length, 'chunks, voice:', voice ? voice.name : 'default');
 
@@ -6574,9 +6526,7 @@ function escapeHtml(str) {
 
             function next() {
                 if (cancelled || idx >= chunks.length) {
-                    _stopResume();
-                    _markSpeakingEnd();
-                    _speaking = false;
+                    _stopResume(); _markSpeakingEnd();
                     return;
                 }
                 var c = chunks[idx];
@@ -6587,9 +6537,11 @@ function escapeHtml(str) {
                 } else {
                     u.lang = 'en-GB';
                 }
-                u.rate = _rate;
-                u.pitch = _pitch;
-                u.volume = _volume;
+                /* Voice parameters — close to defaults for natural sound.
+                 * Less modification = less robotic. */
+                u.rate   = 0.88;
+                u.pitch  = 0.95;
+                u.volume = 0.9;
 
                 u.onstart = function() {
                     if (idx === 0) { _markSpeakingStart(); _startResume(); }
@@ -6597,77 +6549,56 @@ function escapeHtml(str) {
                 u.onend = function() {
                     idx++;
                     if (cancelled || idx >= chunks.length) {
-                        _stopResume(); _markSpeakingEnd(); _speaking = false;
+                        _stopResume(); _markSpeakingEnd();
                         return;
                     }
-                    var gap = c.paraEnd ? _paraGap : _sentGap;
+                    var gap = c.paraEnd ? 1000 : 400;
                     setTimeout(next, gap);
                 };
                 u.onerror = function(e) {
                     console.warn('[Teloscopy voice] Utterance error:', e.error, 'chunk:', idx);
                     if (e.error === 'interrupted' || e.error === 'canceled') return;
-                    /* Try to continue with next chunk on error */
                     idx++;
                     if (!cancelled && idx < chunks.length) {
-                        setTimeout(next, 300);
+                        setTimeout(next, 200);
                     } else {
-                        _stopResume(); _markSpeakingEnd(); _speaking = false;
+                        _stopResume(); _markSpeakingEnd();
                     }
                 };
 
                 synthesis.speak(u);
             }
 
-            _speaking = true;
-            /* 250ms settle time after cancel() — reliable on all platforms */
-            setTimeout(next, 250);
+            /* 150ms settle time after cancel() */
+            setTimeout(next, 150);
 
-            return function() {
+            _speakCancelFn = function() {
                 cancelled = true;
                 _stopResume();
                 try { synthesis.cancel(); } catch(e){}
                 _markSpeakingEnd();
-                _speaking = false;
             };
         }
 
-        /* Public speakText: waits for synthesis unlock, then speaks */
-        function speakText(text) {
-            if (!synthesis || !text) return;
-            /* Cancel any ongoing speech */
-            if (_cancelFn) { _cancelFn(); _cancelFn = null; }
-
-            if (_synthReady) {
-                _cancelFn = _speakNow(text);
-            } else {
-                /* Queue for after unlock completes */
-                _onSynthReady(function() {
-                    _cancelFn = _speakNow(text);
-                });
-                /* Trigger unlock in case it hasn't happened yet */
-                _doUnlock();
-            }
-        }
-
-        /* Global function for speak buttons in chat messages */
+        /* Global function for speak/Listen buttons on chat messages */
         window._counselSpeakText = function(msgEl) {
             if (!msgEl || !synthesis) return;
+            /* This is called from a direct click — use it to unlock */
+            _trySynthUnlock();
             var clone = msgEl.cloneNode(true);
             var extras = clone.querySelectorAll('.counsel-insight, .counsel-source-quote, .speak-btn');
             extras.forEach(function(el) { el.remove(); });
-            speakText(clone.textContent.trim());
+            var text = clone.textContent.trim();
+            /* Small delay lets the unlock utterance start before we cancel+speak */
+            setTimeout(function() { speakText(text); }, 120);
         };
 
-        /* Load voices — some browsers fire onvoiceschanged async */
+        /* Load voices */
         if (synthesis) {
-            var _tryLoadVoices = function() {
-                _calmVoice = null;
-                _ensureVoice();
-            };
-            synthesis.onvoiceschanged = _tryLoadVoices;
-            _tryLoadVoices();
-            /* Some browsers need a small delay */
-            setTimeout(_tryLoadVoices, 500);
+            var _loadVoices = function() { _calmVoice = _pickVoice(); };
+            synthesis.onvoiceschanged = _loadVoices;
+            _loadVoices();
+            setTimeout(_loadVoices, 500);
         }
 
     })();
