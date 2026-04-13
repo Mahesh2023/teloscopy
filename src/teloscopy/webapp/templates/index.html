@@ -5967,7 +5967,56 @@ function escapeHtml(str) {
 
         /* ---- Web Speech API — Speech Recognition ---- */
         var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
+        var _voiceState = 'idle'; /* idle | requesting | listening | stopping */
+        var _micPermissionGranted = false;
+
+        /* Pre-check: secure context required for microphone access */
+        var _secureContext = window.isSecureContext ||
+            location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+        function _setVoiceUnavailable(msg) {
+            if (voiceStatusText) voiceStatusText.textContent = msg;
+            voiceBtn.style.opacity = '0.4';
+            voiceBtn.style.cursor = 'not-allowed';
+            voiceBtn.title = msg;
+        }
+
+        function _resetVoiceUI() {
+            _voiceState = 'idle';
+            isListening = false;
+            voiceBtn.classList.remove('listening');
+            if (voiceStatusDot) voiceStatusDot.classList.remove('active');
+        }
+
+        /* Request microphone permission explicitly before using SpeechRecognition */
+        function _requestMicPermission() {
+            return new Promise(function(resolve) {
+                if (_micPermissionGranted) { resolve(true); return; }
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    resolve(false); return;
+                }
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(function(stream) {
+                        /* Permission granted — stop the stream immediately */
+                        stream.getTracks().forEach(function(t) { t.stop(); });
+                        _micPermissionGranted = true;
+                        if (voiceStatusDot) voiceStatusDot.classList.remove('error');
+                        resolve(true);
+                    })
+                    .catch(function() {
+                        if (voiceStatusDot) voiceStatusDot.classList.add('error');
+                        if (voiceStatusText) voiceStatusText.textContent =
+                            'Microphone access denied. Please allow microphone in browser settings and reload.';
+                        resolve(false);
+                    });
+            });
+        }
+
+        if (!_secureContext) {
+            _setVoiceUnavailable('Voice requires HTTPS or localhost. Serve over HTTPS to enable.');
+        } else if (!SpeechRecognition) {
+            _setVoiceUnavailable('Voice input not supported in this browser (try Chrome or Edge)');
+        } else {
             recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.interimResults = true;
@@ -5975,10 +6024,11 @@ function escapeHtml(str) {
             recognition.maxAlternatives = 1;
 
             recognition.onstart = function() {
+                _voiceState = 'listening';
                 isListening = true;
                 voiceBtn.classList.add('listening');
-                voiceStatusDot.classList.add('active');
-                voiceStatusText.textContent = 'Listening... speak now';
+                if (voiceStatusDot) voiceStatusDot.classList.add('active');
+                if (voiceStatusText) voiceStatusText.textContent = 'Listening\u2026 speak now';
             };
 
             recognition.onresult = function(event) {
@@ -5987,7 +6037,7 @@ function escapeHtml(str) {
                     transcript += event.results[i][0].transcript;
                 }
                 counselInput.value = transcript;
-                /* If this is a final result, auto-send */
+                /* Auto-send on final result */
                 if (event.results[event.results.length - 1].isFinal) {
                     setTimeout(function() {
                         if (counselInput.value.trim()) sendCounselMessage();
@@ -5996,37 +6046,46 @@ function escapeHtml(str) {
             };
 
             recognition.onerror = function(event) {
-                isListening = false;
-                voiceBtn.classList.remove('listening');
-                voiceStatusDot.classList.remove('active');
-                if (event.error === 'not-allowed') {
-                    voiceStatusDot.classList.add('error');
-                    voiceStatusText.textContent = 'Microphone access denied. Please allow microphone in browser settings.';
+                _resetVoiceUI();
+                if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                    _micPermissionGranted = false;
+                    if (voiceStatusDot) voiceStatusDot.classList.add('error');
+                    if (voiceStatusText) voiceStatusText.textContent =
+                        'Microphone blocked. Check browser permissions & ensure HTTPS, then reload.';
                 } else if (event.error === 'no-speech') {
-                    voiceStatusText.textContent = 'No speech detected. Click microphone to try again.';
+                    if (voiceStatusText) voiceStatusText.textContent =
+                        'No speech detected. Click microphone to try again.';
+                } else if (event.error === 'aborted') {
+                    if (voiceStatusText) voiceStatusText.textContent =
+                        'Voice input stopped. Click microphone to try again.';
+                } else if (event.error === 'network') {
+                    if (voiceStatusText) voiceStatusText.textContent =
+                        'Network error \u2014 speech service unavailable. Check your connection.';
                 } else {
-                    voiceStatusText.textContent = 'Voice error: ' + event.error + '. Click microphone to retry.';
+                    if (voiceStatusText) voiceStatusText.textContent =
+                        'Voice error: ' + event.error + '. Click microphone to retry.';
                 }
             };
 
             recognition.onend = function() {
-                isListening = false;
-                voiceBtn.classList.remove('listening');
-                voiceStatusDot.classList.remove('active');
-                voiceStatusText.textContent = 'Voice ready \u2014 click the microphone to speak';
+                _resetVoiceUI();
+                if (voiceStatusText && !voiceStatusDot.classList.contains('error')) {
+                    voiceStatusText.textContent = 'Voice ready \u2014 click the microphone to speak';
+                }
             };
-        } else {
-            voiceStatusText.textContent = 'Voice input not supported in this browser';
-            voiceBtn.style.opacity = '0.4';
-            voiceBtn.style.cursor = 'not-allowed';
         }
 
         voiceBtn.addEventListener('click', function() {
             if (!recognition) {
-                if (typeof toast === 'function') toast('Voice input is not supported in this browser.', 'warning');
+                if (typeof toast === 'function') toast('Voice input is not available. ' +
+                    (_secureContext ? 'Try Chrome or Edge.' : 'HTTPS is required.'), 'warning');
                 return;
             }
+            /* Prevent rapid double-clicks */
+            if (_voiceState === 'requesting' || _voiceState === 'stopping') return;
+
             if (isListening) {
+                _voiceState = 'stopping';
                 recognition.stop();
             } else {
                 /* Stop any ongoing speech synthesis */
@@ -6035,11 +6094,19 @@ function escapeHtml(str) {
                     isSpeaking = false;
                     voiceBtn.classList.remove('speaking');
                 }
-                try {
-                    recognition.start();
-                } catch (e) {
-                    voiceStatusText.textContent = 'Could not start voice input. Please try again.';
-                }
+                _voiceState = 'requesting';
+                if (voiceStatusText) voiceStatusText.textContent = 'Requesting microphone\u2026';
+
+                _requestMicPermission().then(function(granted) {
+                    if (!granted) { _voiceState = 'idle'; return; }
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        _voiceState = 'idle';
+                        if (voiceStatusText) voiceStatusText.textContent =
+                            'Could not start voice input. Please try again.';
+                    }
+                });
             }
         });
 

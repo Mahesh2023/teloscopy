@@ -540,7 +540,7 @@ async def security_headers_middleware(request: Request, call_next: Any) -> Any:
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
     response.headers["Content-Security-Policy"] = _CSP_POLICY
     if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
