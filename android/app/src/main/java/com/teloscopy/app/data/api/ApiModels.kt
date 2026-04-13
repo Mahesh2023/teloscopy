@@ -485,7 +485,9 @@ data class CounselResponse(
     @Json(name = "source_quote") val sourceQuote: String? = null,
     @Json(name = "source_author") val sourceAuthor: String? = null,
     @Json(name = "mode") val mode: String = "template",
-    @Json(name = "followups") val followups: List<String> = emptyList()
+    @Json(name = "followups") val followups: List<String> = emptyList(),
+    @Json(name = "crisis_detected") val crisisDetected: Boolean? = null,
+    @Json(name = "crisis_resources") val crisisResources: CrisisResources? = null
 ) {
     /** Get the best available response text */
     val displayText: String
@@ -493,6 +495,44 @@ data class CounselResponse(
             ?: response
             ?: listOfNotNull(inquiry, insight).joinToString("\n\n").ifEmpty { "I hear you. Let's explore that together." }
 }
+
+@JsonClass(generateAdapter = true)
+data class CrisisResources(
+    @Json(name = "is_crisis") val isCrisis: Boolean = false,
+    @Json(name = "severity") val severity: String = "",
+    @Json(name = "response") val response: CrisisResponseMessage? = null,
+    @Json(name = "hotlines") val hotlines: List<CrisisHotline> = emptyList(),
+)
+
+@JsonClass(generateAdapter = true)
+data class CrisisResponseMessage(
+    @Json(name = "banner") val banner: String = "",
+    @Json(name = "message") val message: String = "",
+    @Json(name = "primary_action") val primaryAction: String = "",
+    @Json(name = "primary_number") val primaryNumber: String? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class CrisisHotline(
+    @Json(name = "id") val id: String = "",
+    @Json(name = "name") val name: String = "",
+    @Json(name = "number") val number: String = "",
+    @Json(name = "method") val method: String = "",
+    @Json(name = "region") val region: String = "",
+    @Json(name = "hours") val hours: String = "",
+    @Json(name = "description") val description: String = "",
+    @Json(name = "priority") val priority: Int = 99,
+)
+
+@JsonClass(generateAdapter = true)
+data class TraumaFirstAidData(
+    @Json(name = "crisis_hotlines") val crisisHotlines: List<CrisisHotline> = emptyList(),
+    @Json(name = "grounding_exercises") val groundingExercises: Map<String, Any> = emptyMap(),
+    @Json(name = "safety_plan") val safetyPlan: Map<String, Any> = emptyMap(),
+    @Json(name = "deescalation") val deescalation: Map<String, Any> = emptyMap(),
+    @Json(name = "psychoeducation") val psychoeducation: Map<String, Any> = emptyMap(),
+    @Json(name = "disclaimer") val disclaimer: String = "",
+)
 
 @JsonClass(generateAdapter = true)
 data class ThemesResponse(

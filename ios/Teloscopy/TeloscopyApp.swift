@@ -109,6 +109,8 @@ struct MainTabView: View {
     @EnvironmentObject var syncManager: SyncManager
     @State private var selectedTab = 0
     @State private var showLoginSheet = false
+    @State private var showTraumaSheet = false
+    @State private var crisisSeverity: String? = nil
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -167,6 +169,30 @@ struct MainTabView: View {
             .tag(6)
         }
         .tint(TeloscopyTheme.primaryBlue)
+        .overlay(alignment: .bottomTrailing) {
+            Button(action: { showTraumaSheet = true }) {
+                Image(systemName: "heart.text.square.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.white)
+                    .frame(width: 56, height: 56)
+                    .background(
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(red: 1.0, green: 0.42, blue: 0.42), Color(red: 0.9, green: 0.22, blue: 0.27)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .shadow(color: Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.4), radius: 10, x: 0, y: 4)
+                    )
+            }
+            .padding(.trailing, 20)
+            .padding(.bottom, 90)
+        }
+        .sheet(isPresented: $showTraumaSheet) {
+            TraumaFirstAidView(crisisSeverity: crisisSeverity)
+        }
         .sheet(isPresented: $showLoginSheet) {
             LoginView()
                 .environmentObject(apiService)

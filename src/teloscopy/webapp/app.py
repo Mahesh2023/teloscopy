@@ -2062,6 +2062,13 @@ async def get_research() -> dict[str, Any]:
 
 _COUNSEL_THEMES: dict[str, dict[str, Any]] = _load_json("counselling_themes.json")
 
+# ── Trauma First-Aid data (crisis hotlines, grounding, safety plan, etc.) ──
+_TRAUMA_FIRSTAID: dict[str, Any] = _load_json("trauma_firstaid.json")
+_CRISIS_KEYWORDS_HIGH: list[str] = _TRAUMA_FIRSTAID.get("crisis_keywords", {}).get("high_severity", [])
+_CRISIS_KEYWORDS_MOD: list[str] = _TRAUMA_FIRSTAID.get("crisis_keywords", {}).get("moderate_severity", [])
+_CRISIS_KEYWORDS_LOW: list[str] = _TRAUMA_FIRSTAID.get("crisis_keywords", {}).get("low_severity", [])
+_CRISIS_RESPONSE_MSGS: dict[str, dict[str, Any]] = _TRAUMA_FIRSTAID.get("crisis_response_messages", {})
+
 _counsel_phrases: dict[str, list[str]] = _load_json("counselling_phrases.json")
 _OPENING_PHRASES: list[str] = _counsel_phrases["opening_phrases"]
 _ACKNOWLEDGMENT_PHRASES: list[str] = _counsel_phrases["acknowledgment_phrases"]
@@ -2088,6 +2095,41 @@ def _match_counselling_theme(user_message: str) -> str:
                 return theme
 
     return "self_knowledge"
+
+
+def _detect_crisis(user_message: str) -> dict[str, Any] | None:
+    """Scan a message for crisis-related language and return severity + resources.
+
+    Returns ``None`` if no crisis indicators are found, otherwise a dict with
+    ``severity``, ``response``, and ``hotlines`` suitable for immediate display.
+    This uses keyword matching (not LLM) for reliability — it must never fail.
+    """
+    msg = user_message.lower()
+    for kw in _CRISIS_KEYWORDS_HIGH:
+        if kw in msg:
+            return {
+                "is_crisis": True,
+                "severity": "high",
+                "response": _CRISIS_RESPONSE_MSGS.get("high", {}),
+                "hotlines": _TRAUMA_FIRSTAID.get("crisis_hotlines", [])[:5],
+            }
+    for kw in _CRISIS_KEYWORDS_MOD:
+        if kw in msg:
+            return {
+                "is_crisis": True,
+                "severity": "moderate",
+                "response": _CRISIS_RESPONSE_MSGS.get("moderate", {}),
+                "hotlines": _TRAUMA_FIRSTAID.get("crisis_hotlines", [])[:5],
+            }
+    for kw in _CRISIS_KEYWORDS_LOW:
+        if kw in msg:
+            return {
+                "is_crisis": True,
+                "severity": "low",
+                "response": _CRISIS_RESPONSE_MSGS.get("low", {}),
+                "hotlines": _TRAUMA_FIRSTAID.get("crisis_hotlines", [])[:3],
+            }
+    return None
 
 
 def _build_counselling_response(
@@ -2684,6 +2726,9 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
     conversation: list[dict[str, str]] = body.get("conversation", [])
     history: list[dict[str, Any]] = body.get("history", [])
 
+    # ── Crisis detection (keyword-based, always runs first) ──
+    crisis = _detect_crisis(message)
+
     # ── Try AI-powered response first ──
     llm_response = None
     if _LLM_API_KEY or _LLM_BACKEND == "ollama":
@@ -2693,19 +2738,26 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
     if llm_response:
         # AI response — return a simpler structure
         theme_key = _match_counselling_theme(message)
-        return {
+        result: dict[str, Any] = {
             "theme": theme_key,
             "theme_title": _COUNSEL_THEMES.get(theme_key, {}).get("title", ""),
             "ai_response": llm_response,
             "mode": "ai",
             "followups": _suggest_followups(theme_key, len(conversation)),
         }
+        if crisis:
+            result["crisis_detected"] = True
+            result["crisis_resources"] = crisis
+        return result
 
     # ── Fallback to template-based engine ──
     theme_key = _match_counselling_theme(message)
     response = _build_counselling_response(theme_key, message, history=history)
     response["mode"] = "template"
     response["followups"] = _suggest_followups(theme_key, len(history))
+    if crisis:
+        response["crisis_detected"] = True
+        response["crisis_resources"] = crisis
     return response
 
 
@@ -2716,6 +2768,44 @@ async def get_psychiatry_knowledge_base() -> dict[str, Any]:
         if doc.get("id") == "psychiatry-knowledge-base":
             return {"document": doc}
     return {"document": None, "message": "Psychiatry knowledge base not found in cache"}
+
+
+@app.get("/api/trauma-firstaid", tags=["Trauma First Aid"], dependencies=[Depends(rate_limit(120, 60))])
+async def get_trauma_firstaid() -> dict[str, Any]:
+    """Return trauma first-aid content (hotlines, grounding, safety plan, etc.).
+
+    This endpoint requires NO consent — crisis resources must be freely
+    accessible to anyone at any time.
+    """
+    return {
+        "crisis_hotlines": _TRAUMA_FIRSTAID.get("crisis_hotlines", []),
+        "grounding_exercises": _TRAUMA_FIRSTAID.get("grounding_exercises", {}),
+        "safety_plan": _TRAUMA_FIRSTAID.get("safety_plan", {}),
+        "deescalation": _TRAUMA_FIRSTAID.get("deescalation", {}),
+        "psychoeducation": _TRAUMA_FIRSTAID.get("psychoeducation", {}),
+        "disclaimer": _TRAUMA_FIRSTAID.get("disclaimer", ""),
+    }
+
+
+@app.post("/api/psychiatry/crisis-check", tags=["Trauma First Aid"], dependencies=[Depends(rate_limit(60, 60))])
+async def crisis_check(request: Request) -> dict[str, Any]:
+    """Check a message for crisis language and return appropriate resources.
+
+    This endpoint requires NO consent — crisis detection must always be
+    available.  Uses keyword matching (not LLM) for reliability.
+
+    Expects JSON body::
+
+        {"message": "text to check"}
+    """
+    body = await request.json()
+    message = body.get("message", "").strip()
+    if not message:
+        return {"is_crisis": False}
+    crisis = _detect_crisis(message)
+    if crisis:
+        return crisis
+    return {"is_crisis": False}
 
 
 @app.get("/api/debug/templates")

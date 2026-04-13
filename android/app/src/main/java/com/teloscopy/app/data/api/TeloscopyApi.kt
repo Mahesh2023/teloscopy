@@ -147,4 +147,13 @@ interface TeloscopyApi {
     suspend fun submitConsent(
         @Body request: ConsentTokenRequest
     ): Response<ConsentTokenResponse>
+
+    // ----- Trauma First Aid -----
+
+    /**
+     * Retrieve trauma first-aid resources including crisis hotlines,
+     * grounding exercises, and safety planning data.
+     */
+    @GET("api/trauma-firstaid")
+    suspend fun getTraumaFirstAid(): Response<TraumaFirstAidData>
 }

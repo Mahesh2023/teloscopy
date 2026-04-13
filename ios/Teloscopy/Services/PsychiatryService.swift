@@ -14,6 +14,7 @@ class PsychiatryService: ObservableObject {
     @Published var error: String?
     @Published var themes: [String: ThemeInfo] = [:]
     @Published var currentTheme = ""
+    @Published var crisisAlert: CrisisResources? = nil
     
     private var consentToken: String? {
         get { UserDefaults.standard.string(forKey: "consent_token") }
@@ -150,6 +151,11 @@ class PsychiatryService: ObservableObject {
                 followups: responseBody.followups
             )
             messages.append(counsellorMsg)
+            
+            if responseBody.crisisDetected == true, let resources = responseBody.crisisResources {
+                self.crisisAlert = resources
+            }
+            
             isLoading = false
             
         } catch {
@@ -201,4 +207,6 @@ class PsychiatryService: ObservableObject {
     func clearError() {
         error = nil
     }
+    
+    func clearCrisisAlert() { crisisAlert = nil }
 }

@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Help
 import androidx.compose.material.icons.outlined.Home
@@ -19,6 +22,7 @@ import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
@@ -34,7 +38,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -46,6 +53,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.teloscopy.app.ui.components.TraumaFirstAidSheet
 import com.teloscopy.app.ui.navigation.Screen
 import com.teloscopy.app.ui.navigation.TeloscopyNavHost
 import com.teloscopy.app.ui.theme.Background
@@ -78,6 +86,9 @@ class MainActivity : ComponentActivity() {
                 val currentBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = currentBackStackEntry?.destination?.route
 
+                var showTraumaSheet by remember { mutableStateOf(false) }
+                var crisisSeverity by remember { mutableStateOf<String?>(null) }
+
                 ModalNavigationDrawer(
                     drawerState = drawerState,
                     gesturesEnabled = currentRoute == Screen.Home.route,
@@ -102,6 +113,17 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Scaffold(
                         containerColor = Background,
+                        floatingActionButton = {
+                            FloatingActionButton(
+                                onClick = { showTraumaSheet = true },
+                                containerColor = Color(0xFFFF6B6B),
+                                contentColor = Color.White,
+                                shape = CircleShape,
+                                modifier = Modifier.size(56.dp)
+                            ) {
+                                Icon(Icons.Filled.Favorite, contentDescription = "Trauma First Aid", modifier = Modifier.size(26.dp))
+                            }
+                        },
                         bottomBar = {
                             if (currentRoute != null && currentRoute != Screen.Consent.route && currentRoute in listOf(
                                     Screen.Home.route,
@@ -227,6 +249,12 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+
+                TraumaFirstAidSheet(
+                    isVisible = showTraumaSheet,
+                    onDismiss = { showTraumaSheet = false; crisisSeverity = null },
+                    crisisSeverity = crisisSeverity
+                )
             }
         }
     }

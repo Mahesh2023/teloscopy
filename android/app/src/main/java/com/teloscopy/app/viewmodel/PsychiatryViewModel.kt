@@ -11,6 +11,7 @@ import com.teloscopy.app.data.api.ConsentTokenRequest
 import com.teloscopy.app.data.api.CounselMessage
 import com.teloscopy.app.data.api.CounselRequest
 import com.teloscopy.app.data.api.CounselResponse
+import com.teloscopy.app.data.api.CrisisResources
 import com.teloscopy.app.data.api.TeloscopyApi
 import com.teloscopy.app.data.api.ThemeInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -63,6 +64,11 @@ class PsychiatryViewModel @Inject constructor(
 
     private val _currentTheme = MutableStateFlow("")
     val currentTheme: StateFlow<String> = _currentTheme.asStateFlow()
+
+    private val _crisisAlert = MutableStateFlow<CrisisResources?>(null)
+    val crisisAlert: StateFlow<CrisisResources?> = _crisisAlert.asStateFlow()
+
+    fun clearCrisisAlert() { _crisisAlert.value = null }
 
     init {
         viewModelScope.launch {
@@ -173,6 +179,11 @@ class PsychiatryViewModel @Inject constructor(
                             followups = body.followups
                         )
                         _messages.value = _messages.value + counsellorMsg
+
+                        // Check for crisis detection
+                        if (response.body()?.crisisDetected == true) {
+                            _crisisAlert.value = response.body()?.crisisResources
+                        }
                     }
                     _uiState.value = PsychiatryUiState.Ready
                 } else if (response.code() == 403) {
@@ -188,6 +199,11 @@ class PsychiatryViewModel @Inject constructor(
                                 followups = body.followups
                             )
                             _messages.value = _messages.value + counsellorMsg
+
+                            // Check for crisis detection
+                            if (retry.body()?.crisisDetected == true) {
+                                _crisisAlert.value = retry.body()?.crisisResources
+                            }
                         }
                         _uiState.value = PsychiatryUiState.Ready
                     } else {

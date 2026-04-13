@@ -1,0 +1,587 @@
+{
+  "version": "1.0",
+  "disclaimer": "This content is for educational and immediate support purposes only. It is NOT a substitute for professional mental health care. If you are in immediate danger, call your local emergency number.",
+
+  "crisis_hotlines": [
+    {
+      "id": "988",
+      "name": "988 Suicide & Crisis Lifeline",
+      "number": "988",
+      "method": "call_or_text",
+      "region": "US",
+      "hours": "24/7/365",
+      "description": "Free, confidential support for people in suicidal crisis or emotional distress.",
+      "languages": ["English", "Spanish (press 2)"],
+      "chat_url": "https://988lifeline.org/chat",
+      "priority": 1
+    },
+    {
+      "id": "crisis_text",
+      "name": "Crisis Text Line",
+      "number": "741741",
+      "method": "text",
+      "keyword": "HELLO",
+      "region": "US/CA/UK/IE",
+      "hours": "24/7/365",
+      "description": "Free crisis counseling via text message. Text HELLO to 741741.",
+      "languages": ["English"],
+      "priority": 2
+    },
+    {
+      "id": "veterans",
+      "name": "Veterans Crisis Line",
+      "number": "988",
+      "method": "call_or_text",
+      "note": "Press 1 after dialing 988",
+      "text_number": "838255",
+      "region": "US",
+      "hours": "24/7/365",
+      "description": "Specialized support for veterans, service members, and their families.",
+      "languages": ["English"],
+      "priority": 3
+    },
+    {
+      "id": "trevor",
+      "name": "Trevor Project",
+      "number": "1-866-488-7386",
+      "method": "call",
+      "text_number": "678-678",
+      "text_keyword": "START",
+      "region": "US",
+      "hours": "24/7/365",
+      "description": "Crisis intervention and suicide prevention for LGBTQ+ young people.",
+      "languages": ["English"],
+      "chat_url": "https://www.thetrevorproject.org/get-help",
+      "priority": 4
+    },
+    {
+      "id": "samhsa",
+      "name": "SAMHSA National Helpline",
+      "number": "1-800-662-4357",
+      "method": "call",
+      "region": "US",
+      "hours": "24/7/365",
+      "description": "Free referrals and information for mental health and substance use disorders.",
+      "languages": ["English", "Spanish"],
+      "priority": 5
+    },
+    {
+      "id": "trans_lifeline",
+      "name": "Trans Lifeline",
+      "number": "1-877-565-8860",
+      "method": "call",
+      "region": "US",
+      "hours": "Staffed hours vary",
+      "description": "Peer support by and for trans people. No non-consensual active rescue.",
+      "languages": ["English"],
+      "priority": 6
+    },
+    {
+      "id": "disaster",
+      "name": "Disaster Distress Helpline",
+      "number": "1-800-985-5990",
+      "method": "call_or_text",
+      "text_keyword": "TalkWithUs",
+      "text_number": "66746",
+      "region": "US",
+      "hours": "24/7/365",
+      "description": "Immediate crisis counseling for people experiencing emotional distress from disasters.",
+      "languages": ["English", "Spanish"],
+      "priority": 7
+    },
+    {
+      "id": "domestic_violence",
+      "name": "National Domestic Violence Hotline",
+      "number": "1-800-799-7233",
+      "method": "call_or_text",
+      "text_keyword": "START",
+      "text_number": "88788",
+      "region": "US",
+      "hours": "24/7/365",
+      "description": "Support for victims and survivors of domestic violence.",
+      "languages": ["English", "Spanish", "200+ via interpreters"],
+      "priority": 8
+    },
+    {
+      "id": "rainn",
+      "name": "RAINN (Sexual Assault)",
+      "number": "1-800-656-4673",
+      "method": "call",
+      "region": "US",
+      "hours": "24/7/365",
+      "description": "Nation's largest anti-sexual violence organization. Routes to local provider.",
+      "languages": ["English", "Spanish"],
+      "chat_url": "https://hotline.rainn.org",
+      "priority": 9
+    },
+    {
+      "id": "child_abuse",
+      "name": "Childhelp National Child Abuse Hotline",
+      "number": "1-800-422-4453",
+      "method": "call_or_text",
+      "region": "US",
+      "hours": "24/7/365",
+      "description": "Crisis intervention, information, and referrals for child abuse situations.",
+      "languages": ["English", "Spanish"],
+      "priority": 10
+    },
+    {
+      "id": "nami",
+      "name": "NAMI Helpline",
+      "number": "1-800-950-6264",
+      "method": "call",
+      "text_number": "741741",
+      "text_keyword": "NAMI",
+      "region": "US",
+      "hours": "Mon-Fri 10am-10pm ET",
+      "description": "Free information, referrals, and support for mental health conditions.",
+      "languages": ["English"],
+      "priority": 11
+    },
+    {
+      "id": "icall_india",
+      "name": "iCall (India)",
+      "number": "9152987821",
+      "method": "call",
+      "region": "India",
+      "hours": "Mon-Sat 8am-10pm IST",
+      "description": "Psychosocial helpline by TISS for emotional support and crisis intervention.",
+      "languages": ["English", "Hindi", "Marathi"],
+      "priority": 12
+    },
+    {
+      "id": "vandrevala_india",
+      "name": "Vandrevala Foundation (India)",
+      "number": "1860-2662-345",
+      "method": "call",
+      "region": "India",
+      "hours": "24/7/365",
+      "description": "Mental health support helpline available across India.",
+      "languages": ["English", "Hindi", "Multiple Indian languages"],
+      "priority": 13
+    },
+    {
+      "id": "samaritans_uk",
+      "name": "Samaritans (UK/Ireland)",
+      "number": "116 123",
+      "method": "call",
+      "region": "UK/Ireland",
+      "hours": "24/7/365",
+      "description": "Emotional support for anyone in distress or at risk of suicide.",
+      "languages": ["English"],
+      "email": "jo@samaritans.org",
+      "priority": 14
+    },
+    {
+      "id": "beyond_blue_au",
+      "name": "Beyond Blue (Australia)",
+      "number": "1300 22 4636",
+      "method": "call",
+      "region": "Australia",
+      "hours": "24/7/365",
+      "description": "Support for anxiety, depression, and suicide prevention.",
+      "languages": ["English"],
+      "chat_url": "https://www.beyondblue.org.au/get-support",
+      "priority": 15
+    },
+    {
+      "id": "emergency",
+      "name": "Emergency Services",
+      "number": "911",
+      "method": "call",
+      "region": "US",
+      "hours": "24/7/365",
+      "description": "For immediate life-threatening emergencies. Other regions: 999 (UK), 000 (AU), 112 (EU), 108 (India).",
+      "priority": 0
+    }
+  ],
+
+  "grounding_exercises": {
+    "five_four_three_two_one": {
+      "id": "54321",
+      "title": "5-4-3-2-1 Sensory Grounding",
+      "subtitle": "Bring yourself back to the present moment",
+      "duration_minutes": 3,
+      "evidence": "Engages the prefrontal cortex and activates the parasympathetic nervous system by shifting attention from internal distress to external sensory input.",
+      "steps": [
+        {
+          "count": 5,
+          "sense": "SEE",
+          "icon": "eye",
+          "instruction": "Look around and name 5 things you can see.",
+          "examples": "A clock on the wall, light from a window, a book, your hands, a pattern on the floor.",
+          "color": "#FF6B6B"
+        },
+        {
+          "count": 4,
+          "sense": "TOUCH",
+          "icon": "hand",
+          "instruction": "Notice 4 things you can physically feel.",
+          "examples": "The texture of your clothing, the chair beneath you, the floor under your feet, a breeze on your skin.",
+          "color": "#FFA726"
+        },
+        {
+          "count": 3,
+          "sense": "HEAR",
+          "icon": "ear",
+          "instruction": "Listen for 3 things you can hear.",
+          "examples": "Traffic outside, a clock ticking, your own breathing, birds, an air conditioner.",
+          "color": "#66BB6A"
+        },
+        {
+          "count": 2,
+          "sense": "SMELL",
+          "icon": "nose",
+          "instruction": "Notice 2 things you can smell.",
+          "examples": "Coffee, soap on your hands, fresh air, the scent of a nearby plant.",
+          "color": "#42A5F5"
+        },
+        {
+          "count": 1,
+          "sense": "TASTE",
+          "icon": "mouth",
+          "instruction": "Notice 1 thing you can taste.",
+          "examples": "A sip of water, mint from toothpaste, the taste in your mouth right now.",
+          "color": "#AB47BC"
+        }
+      ]
+    },
+    "box_breathing": {
+      "id": "box",
+      "title": "Box Breathing",
+      "subtitle": "Used by Navy SEALs and first responders",
+      "duration_minutes": 4,
+      "evidence": "Activates the vagus nerve and parasympathetic nervous system. Reduces cortisol levels and heart rate within 2-3 cycles.",
+      "phases": [
+        {"label": "Breathe In", "seconds": 4, "color": "#42A5F5", "icon": "arrow_up"},
+        {"label": "Hold", "seconds": 4, "color": "#66BB6A", "icon": "pause"},
+        {"label": "Breathe Out", "seconds": 4, "color": "#FFA726", "icon": "arrow_down"},
+        {"label": "Hold", "seconds": 4, "color": "#AB47BC", "icon": "pause"}
+      ],
+      "recommended_cycles": 4,
+      "variation_478": {
+        "title": "4-7-8 Breathing (deeper calming)",
+        "inhale": 4,
+        "hold": 7,
+        "exhale": 8
+      }
+    },
+    "butterfly_hug": {
+      "id": "butterfly",
+      "title": "Butterfly Hug",
+      "subtitle": "Bilateral stimulation for self-soothing",
+      "duration_minutes": 2,
+      "evidence": "Based on EMDR bilateral stimulation principles. Activates both brain hemispheres to reduce emotional intensity.",
+      "steps": [
+        "Cross your arms over your chest so your fingertips rest on the front of your shoulders.",
+        "Close or half-close your eyes.",
+        "Alternately tap your shoulders with your hands, like a butterfly flapping its wings.",
+        "Tap slowly and gently at a pace that feels comfortable.",
+        "As you tap, breathe slowly. Notice what you feel without judgment.",
+        "Continue for 1-2 minutes or until you feel calmer."
+      ]
+    },
+    "body_scan": {
+      "id": "body_scan",
+      "title": "Grounding Body Scan",
+      "subtitle": "Reconnect with your physical body",
+      "duration_minutes": 5,
+      "evidence": "Shifts attention from rumination to somatic awareness. Activates interoceptive pathways in the insula.",
+      "steps": [
+        "Sit or lie in a comfortable position. Close your eyes if that feels safe.",
+        "Bring your attention to your feet. Notice any sensation — warmth, pressure, tingling. Just observe.",
+        "Slowly move your attention up through your calves, knees, thighs. Notice without judging.",
+        "Continue through your hips, belly, chest. Notice your breathing. You don't need to change it.",
+        "Bring awareness to your hands, arms, shoulders. Notice any tension. Let it soften if it wants to.",
+        "Move attention to your neck, jaw, face, forehead. Unclench your jaw. Soften your brow.",
+        "Expand awareness to your whole body at once. You are here. You are present. You are safe in this moment."
+      ]
+    },
+    "temperature_grounding": {
+      "id": "temperature",
+      "title": "Temperature Reset",
+      "subtitle": "Use cold to activate the dive reflex",
+      "duration_minutes": 1,
+      "evidence": "Cold water on the face triggers the mammalian dive reflex, immediately activating the parasympathetic nervous system and lowering heart rate. Part of DBT TIPP skills.",
+      "steps": [
+        "Hold ice cubes in your hands, or splash cold water on your face.",
+        "If available, press a cold object (drink can, ice pack) against the back of your neck.",
+        "Hold a cold drink and focus on the sensation in your hands.",
+        "The shock of cold redirects your nervous system from fight-or-flight to calm."
+      ]
+    },
+    "cognitive_grounding": {
+      "id": "cognitive",
+      "title": "Mental Anchoring",
+      "subtitle": "Give your thinking brain a task",
+      "duration_minutes": 2,
+      "evidence": "Engages the prefrontal cortex by requiring focused cognitive effort, interrupting amygdala-driven emotional spirals.",
+      "exercises": [
+        "Count backwards from 100 by 7s (100, 93, 86, 79...)",
+        "Name as many animals as you can that start with the letter B",
+        "Pick a color and find everything around you that is that color",
+        "Recite lyrics to a favorite song",
+        "Describe in detail how to make your favorite meal",
+        "Name the capitals of as many countries as you can"
+      ]
+    }
+  },
+
+  "safety_plan": {
+    "title": "My Safety Plan",
+    "subtitle": "Based on the Stanley-Brown Safety Planning Intervention",
+    "evidence": "The Stanley-Brown Safety Planning Intervention is recommended by the VA, SAMHSA, Joint Commission, and 988 Lifeline. Studies show it reduces suicidal behavior by 43% compared to standard care.",
+    "instructions": "Complete this plan when you are feeling calm. Keep it somewhere easily accessible — your phone, wallet, or refrigerator. Review and update it regularly.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "My Warning Signs",
+        "icon": "warning",
+        "prompt": "What thoughts, feelings, moods, images, or situations tell me a crisis may be developing?",
+        "examples": ["Thinking 'Nobody cares'", "Feeling numb or disconnected", "Isolating from friends", "Not sleeping", "Increased drinking"],
+        "placeholder": "e.g., When I start thinking everyone would be better off without me..."
+      },
+      {
+        "step": 2,
+        "title": "My Coping Strategies",
+        "icon": "self_care",
+        "prompt": "Things I can do on my own to take my mind off my problems without contacting another person:",
+        "examples": ["Go for a walk or run", "Listen to music", "Take a shower", "Practice box breathing", "Journal", "Play with a pet", "Watch a comfort show"],
+        "placeholder": "e.g., Take a 15-minute walk, do the 5-4-3-2-1 exercise..."
+      },
+      {
+        "step": 3,
+        "title": "Social Distractions",
+        "icon": "people",
+        "prompt": "People and places that provide healthy distraction (I don't need to tell them I'm in crisis):",
+        "examples": ["Go to a coffee shop", "Visit a friend", "Call a family member to chat about their day", "Go to a gym or class", "Spend time in a public place"],
+        "placeholder": "e.g., Call my friend Alex to talk about football..."
+      },
+      {
+        "step": 4,
+        "title": "People I Trust",
+        "icon": "trusted_people",
+        "prompt": "Specific people I can tell I'm struggling. Include their name and phone number:",
+        "examples": ["Mom — 555-1234", "Best friend Sam — 555-5678", "Partner — 555-9012", "Therapist — 555-3456"],
+        "placeholder": "e.g., My sister Priya — 98765-43210"
+      },
+      {
+        "step": 5,
+        "title": "Professional Resources",
+        "icon": "professional",
+        "prompt": "Professionals and agencies I can contact during a crisis:",
+        "defaults": [
+          "988 Suicide & Crisis Lifeline — call or text 988",
+          "Crisis Text Line — text HELLO to 741741",
+          "My therapist/counselor: ___",
+          "Nearest emergency room: ___",
+          "Emergency services: 911"
+        ],
+        "placeholder": "e.g., My therapist Dr. Sharma — 98765-12345"
+      },
+      {
+        "step": 6,
+        "title": "Making My Environment Safe",
+        "icon": "safe_environment",
+        "prompt": "Steps I can take to reduce access to things I could use to hurt myself:",
+        "examples": ["Ask someone to hold my medications", "Store sharp objects elsewhere", "Have a friend keep my firearms", "Delete harmful content from my phone"],
+        "placeholder": "e.g., Give extra medication to my roommate to hold..."
+      }
+    ]
+  },
+
+  "deescalation": {
+    "title": "De-escalation Guide",
+    "subtitle": "How to help someone (or yourself) during intense distress",
+    "leap_method": {
+      "title": "LEAP Method",
+      "steps": [
+        {"letter": "L", "word": "Listen", "description": "Listen actively without interrupting. Pay attention to both words and body language. Allow silence. Reflect what you hear."},
+        {"letter": "E", "word": "Empathise", "description": "Acknowledge their feelings: 'I can see you're really going through something difficult right now. That makes sense.'"},
+        {"letter": "A", "word": "Agree", "description": "Find common ground. You don't have to agree with everything — agree on the goal: 'We both want you to feel better.'"},
+        {"letter": "P", "word": "Partner", "description": "Work together to find next steps. 'What do you think would help right now?' Restore their sense of control."}
+      ]
+    },
+    "dos": [
+      "Speak calmly, slowly, and at low volume",
+      "Respect personal space — stay at arm's length",
+      "Keep your body language open and non-threatening",
+      "Validate their emotions without agreeing with harmful actions: 'I hear how angry you are'",
+      "Offer simple choices to restore sense of control: 'Would you like to sit or stand?'",
+      "Name the emotion (affect labeling): 'It sounds like you're feeling overwhelmed' — this reduces amygdala activation",
+      "Allow silence and processing time",
+      "Acknowledge their pain before trying to problem-solve",
+      "Ask what they need: 'What would help right now?'",
+      "Stay present and patient — de-escalation takes time"
+    ],
+    "donts": [
+      "Don't say 'calm down' or 'relax' — this invalidates their experience",
+      "Don't argue about facts during peak distress",
+      "Don't cross arms, point fingers, or stand over them",
+      "Don't make sudden movements",
+      "Don't challenge, mock, or shame",
+      "Don't crowd the person or block exits",
+      "Don't touch without explicit permission",
+      "Don't escalate with threats or consequences",
+      "Don't tell them how they 'should' feel",
+      "Don't engage bystanders or create an audience"
+    ],
+    "when_to_call_911": [
+      "The person has a weapon",
+      "The person is actively hurting themselves or others",
+      "The person is unconscious or unresponsive",
+      "The person has taken an overdose or ingested something harmful",
+      "You feel unsafe",
+      "The person is threatening imminent violence"
+    ]
+  },
+
+  "psychoeducation": {
+    "title": "Understanding Trauma Responses",
+    "common_responses": {
+      "title": "Common Trauma Responses Are Normal",
+      "subtitle": "These are normal reactions to abnormal situations — they are not signs of weakness or mental illness.",
+      "categories": [
+        {
+          "category": "Emotional",
+          "icon": "heart",
+          "responses": ["Anxiety or fear", "Anger or irritability", "Sadness or grief", "Shame or guilt", "Emotional numbness", "Mood swings", "Feeling disconnected"]
+        },
+        {
+          "category": "Physical",
+          "icon": "body",
+          "responses": ["Racing heart or palpitations", "Difficulty sleeping or nightmares", "Fatigue or exhaustion", "Headaches or body aches", "Startling easily", "Appetite changes", "Nausea or stomach problems"]
+        },
+        {
+          "category": "Cognitive",
+          "icon": "brain",
+          "responses": ["Difficulty concentrating", "Intrusive memories or flashbacks", "Confusion or disorientation", "Negative thoughts about self or world", "Foreshortened sense of future", "Memory problems", "Difficulty making decisions"]
+        },
+        {
+          "category": "Behavioral",
+          "icon": "activity",
+          "responses": ["Withdrawal from others", "Avoidance of reminders", "Hypervigilance", "Increased substance use", "Changes in daily routine", "Risk-taking behavior", "Difficulty maintaining relationships"]
+        }
+      ]
+    },
+    "samhsa_principles": {
+      "title": "SAMHSA's 6 Principles of Trauma-Informed Care",
+      "principles": [
+        {"name": "Safety", "description": "Feeling physically and psychologically safe is the foundation of recovery."},
+        {"name": "Trustworthiness & Transparency", "description": "Building trust through honesty, consistency, and clear communication."},
+        {"name": "Peer Support", "description": "Shared experiences create trust, safety, and hope for recovery."},
+        {"name": "Collaboration", "description": "Healing happens in relationships. Sharing power and decision-making."},
+        {"name": "Empowerment", "description": "Building on strengths. Fostering belief in resilience and ability to heal."},
+        {"name": "Cultural Sensitivity", "description": "Recognizing cultural context, historical trauma, and gender-responsive needs."}
+      ]
+    },
+    "harmful_practices": {
+      "title": "What NOT to Do",
+      "subtitle": "Well-intentioned actions that can actually cause harm",
+      "items": [
+        {"practice": "Forcing someone to talk about what happened", "why_harmful": "Can re-traumatize. Let people share at their own pace and only what they choose."},
+        {"practice": "Saying 'Everything will be okay' or 'It could be worse'", "why_harmful": "Minimizes their experience. Acknowledge their pain instead."},
+        {"practice": "Asking 'Why didn't you just leave/fight back/say something?'", "why_harmful": "Implies blame. Trauma responses (freeze, fawn) are involuntary survival mechanisms."},
+        {"practice": "Mandatory debriefing after trauma", "why_harmful": "Research shows single-session mandatory debriefing can increase PTSD risk (Cochrane review)."},
+        {"practice": "Using 'tough love' or shame-based approaches", "why_harmful": "Increases distress and suicidality. Shame is already a core trauma response."},
+        {"practice": "Over-promising confidentiality when safety is at risk", "why_harmful": "Be transparent about limits. If someone is in danger, others may need to know."},
+        {"practice": "No-suicide contracts", "why_harmful": "No evidence base. Creates false security. Use evidence-based safety plans instead."},
+        {"practice": "Offering alcohol to 'take the edge off'", "why_harmful": "Worsens trauma outcomes, increases risk of substance use disorder."}
+      ]
+    },
+    "when_to_seek_help": {
+      "title": "When to Seek Professional Help",
+      "signs": [
+        "Symptoms persist or worsen after 4 weeks",
+        "Unable to perform daily activities (work, school, self-care)",
+        "Persistent nightmares or flashbacks that don't decrease",
+        "Increasing substance use to cope",
+        "Thoughts of self-harm or suicide",
+        "Persistent dissociation (feeling disconnected from reality)",
+        "Inability to maintain basic self-care",
+        "Difficulty caring for dependents",
+        "Pre-existing mental health conditions that have worsened"
+      ],
+      "evidence_based_treatments": [
+        {"name": "CPT", "full_name": "Cognitive Processing Therapy", "evidence_level": "Strong (A)"},
+        {"name": "PE", "full_name": "Prolonged Exposure Therapy", "evidence_level": "Strong (A)"},
+        {"name": "EMDR", "full_name": "Eye Movement Desensitization and Reprocessing", "evidence_level": "Strong (A)"},
+        {"name": "TF-CBT", "full_name": "Trauma-Focused CBT (for children/adolescents)", "evidence_level": "Strong (A)"},
+        {"name": "STAIR", "full_name": "Skills Training in Affective and Interpersonal Regulation", "evidence_level": "Moderate (B)"}
+      ]
+    },
+    "pfa_overview": {
+      "title": "Psychological First Aid (PFA)",
+      "subtitle": "What anyone can do — no clinical training required",
+      "who_framework": {
+        "title": "WHO's Look-Listen-Link",
+        "steps": [
+          {"action": "LOOK", "items": ["Check for safety", "Check for urgent basic needs", "Check for serious distress reactions"]},
+          {"action": "LISTEN", "items": ["Approach with compassion", "Ask about needs and concerns", "Listen actively and help them feel calm"]},
+          {"action": "LINK", "items": ["Help address basic needs", "Help people cope with problems", "Connect with loved ones and services"]}
+        ]
+      },
+      "five_step_model": {
+        "title": "Listen-Protect-Connect-Model-Teach",
+        "steps": [
+          {"word": "Listen", "description": "Listen with your eyes, ears, and heart. Allow silence."},
+          {"word": "Protect", "description": "Shield from further harm. Establish a sense of safety."},
+          {"word": "Connect", "description": "Reconnect with family, friends, and community."},
+          {"word": "Model", "description": "Demonstrate calm, healthy behavior. Show recovery is possible."},
+          {"word": "Teach", "description": "Teach about normal stress reactions and simple coping techniques."}
+        ]
+      }
+    }
+  },
+
+  "crisis_keywords": {
+    "high_severity": [
+      "kill myself", "kill me", "killing myself", "end my life", "end it all",
+      "want to die", "wanna die", "wish i was dead", "wish i were dead",
+      "better off dead", "suicide", "suicidal", "take my own life",
+      "don't want to be alive", "don't want to live", "not worth living",
+      "going to die", "plan to die", "overdose", "jump off", "hang myself",
+      "slit my", "cut my wrists", "shoot myself", "swallow pills",
+      "no reason to live", "goodbye forever", "final goodbye",
+      "can't take it anymore", "can't do this anymore"
+    ],
+    "moderate_severity": [
+      "self-harm", "self harm", "cutting myself", "hurting myself",
+      "hurt myself", "harm myself", "burn myself", "punish myself",
+      "can't go on", "give up on life", "no way out", "trapped",
+      "nobody would miss me", "nobody cares about me", "burden to everyone",
+      "everyone hates me", "nothing matters", "what's the point",
+      "i deserve to suffer", "i deserve pain", "i'm broken",
+      "voices telling me", "hearing voices", "seeing things that aren't there"
+    ],
+    "low_severity": [
+      "hopeless", "helpless", "worthless", "useless", "no point",
+      "give up", "falling apart", "can't cope", "overwhelmed",
+      "panic attack", "can't breathe", "losing my mind", "going crazy",
+      "flashback", "nightmare", "can't sleep", "afraid to sleep",
+      "triggered", "dissociating", "numb", "empty inside",
+      "nobody understands", "alone", "isolated", "abandoned"
+    ]
+  },
+
+  "crisis_response_messages": {
+    "high": {
+      "banner": "You are not alone. Help is available right now.",
+      "message": "It sounds like you may be going through an incredibly difficult time. Your life matters, and support is available 24/7. Please reach out to a crisis service — a trained counselor is ready to listen without judgment.",
+      "primary_action": "Call or text 988 now",
+      "primary_number": "988"
+    },
+    "moderate": {
+      "banner": "Support is available if you need it.",
+      "message": "What you're feeling is real and valid. You don't have to go through this alone. If you're in distress, trained crisis counselors are available anytime.",
+      "primary_action": "Text HELLO to 741741",
+      "primary_number": "741741"
+    },
+    "low": {
+      "banner": "It's okay to ask for help.",
+      "message": "It sounds like you're going through a tough time. That takes courage to express. If these feelings persist or intensify, please consider reaching out to a professional or crisis service.",
+      "primary_action": "View crisis resources",
+      "primary_number": null
+    }
+  }
+}

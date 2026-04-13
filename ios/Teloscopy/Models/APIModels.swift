@@ -877,6 +877,8 @@ struct CounselResponse: Codable {
     let sourceAuthor: String?
     let mode: String
     let followups: [String]
+    let crisisDetected: Bool?
+    let crisisResources: CrisisResources?
     
     enum CodingKeys: String, CodingKey {
         case theme
@@ -886,6 +888,8 @@ struct CounselResponse: Codable {
         case sourceQuote = "source_quote"
         case sourceAuthor = "source_author"
         case mode, followups
+        case crisisDetected = "crisis_detected"
+        case crisisResources = "crisis_resources"
     }
     
     var displayText: String {
@@ -944,5 +948,57 @@ struct ConsentTokenResponse: Codable {
         case consentToken = "consent_token"
         case sessionId = "session_id"
         case grantedPurposes = "granted_purposes"
+    }
+}
+
+// MARK: - Trauma First Aid Models
+
+struct CrisisResources: Codable {
+    let isCrisis: Bool
+    let severity: String
+    let response: CrisisResponseMessage?
+    let hotlines: [CrisisHotline]
+
+    enum CodingKeys: String, CodingKey {
+        case isCrisis = "is_crisis"
+        case severity, response, hotlines
+    }
+
+    init(isCrisis: Bool = false, severity: String = "", response: CrisisResponseMessage? = nil, hotlines: [CrisisHotline] = []) {
+        self.isCrisis = isCrisis; self.severity = severity; self.response = response; self.hotlines = hotlines
+    }
+}
+
+struct CrisisResponseMessage: Codable {
+    let banner: String
+    let message: String
+    let primaryAction: String
+    let primaryNumber: String?
+
+    enum CodingKeys: String, CodingKey {
+        case banner, message
+        case primaryAction = "primary_action"
+        case primaryNumber = "primary_number"
+    }
+}
+
+struct CrisisHotline: Codable, Identifiable {
+    var id: String { hotlineId }
+    let hotlineId: String
+    let name: String
+    let number: String
+    let method: String
+    let region: String
+    let hours: String
+    let description: String
+    let priority: Int
+
+    enum CodingKeys: String, CodingKey {
+        case hotlineId = "id"
+        case name, number, method, region, hours, description, priority
+    }
+
+    init(hotlineId: String = "", name: String = "", number: String = "", method: String = "", region: String = "", hours: String = "", description: String = "", priority: Int = 99) {
+        self.hotlineId = hotlineId; self.name = name; self.number = number; self.method = method; self.region = region; self.hours = hours; self.description = description; self.priority = priority
     }
 }
