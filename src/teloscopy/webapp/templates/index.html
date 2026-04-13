@@ -3298,6 +3298,11 @@
 
         document.body.classList.remove('consent-pending');
         document.getElementById('consent-overlay').classList.remove('visible');
+
+        /* Re-load consent-gated content now that we have a token */
+        if (typeof window._loadCounselThemes === 'function') {
+            window._loadCounselThemes();
+        }
     };
 
     window.declineConsent = function () {
@@ -6305,10 +6310,25 @@ function escapeHtml(str) {
 
         /* ---- Load themes from API ---- */
         function loadThemes() {
-            fetch('/api/psychiatry/themes')
-                .then(function(r) { return r.json(); })
+            var headers = window.getConsentHeaders ? window.getConsentHeaders() : {};
+            fetch('/api/psychiatry/themes', { headers: headers })
+                .then(function(r) {
+                    if (r.status === 403) {
+                        /* No consent yet — retry after token refresh */
+                        if (window.refreshConsentToken) {
+                            return window.refreshConsentToken().then(function(tok) {
+                                if (!tok) return null;
+                                return fetch('/api/psychiatry/themes', {
+                                    headers: window.getConsentHeaders()
+                                }).then(function(r2) { return r2.ok ? r2.json() : null; });
+                            });
+                        }
+                        return null;
+                    }
+                    return r.json();
+                })
                 .then(function(data) {
-                    if (!data.themes || !themeGrid) return;
+                    if (!data || !data.themes || !themeGrid) return;
                     themeGrid.innerHTML = '';
                     var themeKeys = Object.keys(data.themes);
                     themeKeys.forEach(function(key) {
@@ -6330,8 +6350,10 @@ function escapeHtml(str) {
                         themeGrid.appendChild(card);
                     });
                 })
-                .catch(function() { /* silent */ });
+                .catch(function() { /* silent — themes are optional at load time */ });
         }
+        /* Expose globally so acceptConsent can re-trigger */
+        window._loadCounselThemes = loadThemes;
         loadThemes();
 
         /* ---- Add message to chat ---- */
