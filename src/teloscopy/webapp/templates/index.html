@@ -6413,7 +6413,9 @@ function escapeHtml(str) {
         function addMessage(text, type, extras) {
             var div = document.createElement('div');
             div.className = 'counsel-msg ' + type;
-            var html = text;
+            /* Escape user messages to prevent self-XSS; counsellor/system messages
+               are server-generated and may contain safe formatting */
+            var html = (type === 'user') ? escapeHtml(text) : text;
             if (extras) {
                 if (extras.insight) {
                     html += '<span class="counsel-insight">' + escapeHtml(extras.insight) + '</span>';
@@ -6613,7 +6615,7 @@ function escapeHtml(str) {
                 counsellingHistory.push({ role: 'counsellor', text: fullText, theme: data.theme });
             })
             .catch(function(err) {
-                counselChat.removeChild(typingDiv);
+                if (typingDiv.parentNode === counselChat) counselChat.removeChild(typingDiv);
                 addMessage('Something went wrong. Please try again.', 'system');
             })
             .finally(function() {
@@ -6714,7 +6716,7 @@ function escapeHtml(str) {
             _micPermSteps.innerHTML = '';
             info.steps.forEach(function(s) {
                 var li = document.createElement('li');
-                li.innerHTML = DOMPurify.sanitize(s, { ALLOWED_TAGS: ['strong', 'em'] });
+                li.innerHTML = (typeof DOMPurify !== 'undefined') ? DOMPurify.sanitize(s, { ALLOWED_TAGS: ['strong', 'em'] }) : s;
                 _micPermSteps.appendChild(li);
             });
             /* "Open Settings" button — for Chrome/Edge/Opera we can try opening
@@ -6856,7 +6858,7 @@ function escapeHtml(str) {
 
             recognition.onend = function() {
                 _resetVoiceUI();
-                if (voiceStatusText && !voiceStatusDot.classList.contains('error')) {
+                if (voiceStatusText && voiceStatusDot && !voiceStatusDot.classList.contains('error')) {
                     voiceStatusText.textContent = 'Voice ready \u2014 click the microphone to speak';
                 }
             };
