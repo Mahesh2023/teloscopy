@@ -6346,47 +6346,49 @@ function escapeHtml(str) {
             }
         });
 
-        /* ---- Web Speech API — Speech Synthesis (Calm Counselling Voice) ---- */
+        /* ---- Web Speech API — Speech Synthesis (Buddha-like serene voice) ---- */
 
         /*
-         * Voice selection strategy for a calm, settled counselling tone:
+         * Voice design: imagine a calm, settled presence — like listening to
+         * a wise teacher who speaks slowly, with care, giving each word room
+         * to breathe.  The voice is deep and warm but never strained.
          *
-         * 1. Prefer "natural" / "neural" voices (Microsoft Edge, newer macOS)
-         *    — these sound human, warm, and unhurried.
-         * 2. On macOS/iOS: Daniel (UK, resonant), Samantha (warm), Karen (AU, gentle),
-         *    Moira (Irish, soft), Rishi (Indian English, measured).
-         * 3. On Windows: Microsoft Jenny Natural, Microsoft Aria Natural,
-         *    Microsoft Guy Natural — deeply human neural voices.
-         * 4. On Chrome: "Google UK English Male" (deeper, measured) over US voices.
-         * 5. Fallback: any English local voice, then any English voice.
+         * Key design decisions:
+         *  1. Split into SENTENCES (not paragraphs). Each sentence is a
+         *     separate SpeechSynthesisUtterance. This:
+         *       - Fixes Chrome Android's ~250-char utterance cutoff
+         *       - Creates natural meditative pacing
+         *       - Prevents the "abrupt stop" on mobile
+         *  2. Short pause (500ms) between sentences within a paragraph.
+         *     Longer pause (1200ms) between paragraphs — a full breath.
+         *  3. Warm-up: Chrome requires the first speak() in a direct user
+         *     gesture. We speak a tiny word on first click to unlock.
+         *  4. Chrome resume timer: Chrome pauses after ~15s. Periodic
+         *     pause/resume keeps it alive.
+         *  5. Voice preference: naturally deep male voices first; the depth
+         *     comes from voice choice, not extreme pitch shifting.
          *
-         * Speech parameters tuned for calm delivery:
-         *   rate  : 0.78  — slow and deliberate, gives weight to every word
-         *   pitch : 0.85  — gently deeper, warm without cracking or distortion
-         *   volume: 0.82  — soft, intimate — present but not loud
-         *
-         * Paragraph pauses: text is split on double-newlines. Each paragraph is
-         * spoken as a separate utterance with a 900ms silence between them,
-         * creating the natural rhythm of someone who speaks with care and presence.
+         * Parameters:
+         *   rate   : 0.82  — unhurried, measured
+         *   pitch  : 0.88  — natural depth without distortion
+         *   volume : 0.85  — soft, present
          */
 
-        var _calmVoice = null;  /* cached after first lookup */
+        var _calmVoice = null;
         var _voicesLoaded = false;
 
-        /* Ranked voice preferences — order matters (first match wins).
-         * Deep, warm male voices prioritised for soothing quality;
-         * then warm female voices; then generic fallbacks. */
+        /* Ranked voice preferences — deep calm male voices first */
         var _calmVoicePreferences = [
-            /* macOS / iOS — deep male voices first */
-            'Daniel',           /* British English — deep, resonant, unhurried */
+            /* macOS / iOS */
+            'Daniel',           /* British male — deep, resonant */
             'Evan',             /* macOS Sequoia — calm male */
-            'Rishi',            /* Indian English — measured, deep, thoughtful */
-            'Zoe',              /* macOS Sequoia — warm, modern */
+            'Rishi',            /* Indian English — measured, deep */
             'Moira',            /* Irish — soft, contemplative */
             'Fiona',            /* Scottish — warm */
-            'Samantha',         /* Classic macOS — warm, clear */
-            'Karen',            /* Australian — gentle, measured */
-            /* Windows neural / natural voices — deep male first */
+            'Samantha',         /* macOS — warm, clear */
+            'Karen',            /* Australian — gentle */
+            'Zoe',              /* macOS Sequoia — warm */
+            /* Windows neural / natural */
             'Microsoft Guy Online (Natural)',
             'Microsoft Eric Online (Natural)',
             'Microsoft Guy',
@@ -6394,14 +6396,14 @@ function escapeHtml(str) {
             'Microsoft Aria Online (Natural)',
             'Microsoft Jenny',
             'Microsoft Aria',
-            /* Google Chrome network voices — male first for depth */
+            /* Chrome network */
             'Google UK English Male',
             'Google UK English Female',
             'Google US English',
             /* Android */
             'English United Kingdom',
             'English (United Kingdom)',
-            /* Linux espeak fallbacks */
+            /* Linux espeak */
             'English (Great Britain)',
             'english_rp',
             'english-us',
@@ -6412,7 +6414,6 @@ function escapeHtml(str) {
             var voices = synthesis ? synthesis.getVoices() : [];
             if (voices.length === 0) return null;
 
-            /* Try each preferred name (substring match, case-insensitive) */
             for (var i = 0; i < _calmVoicePreferences.length; i++) {
                 var pref = _calmVoicePreferences[i].toLowerCase();
                 var match = voices.find(function(v) {
@@ -6421,52 +6422,66 @@ function escapeHtml(str) {
                 });
                 if (match) { _calmVoice = match; return match; }
             }
-
-            /* Fallback: any English local voice (local sounds more natural) */
+            /* Fallback: any local English voice */
             var localEn = voices.find(function(v) {
                 return v.lang.indexOf('en') === 0 && v.localService;
             });
             if (localEn) { _calmVoice = localEn; return localEn; }
-
-            /* Last resort: any English voice */
+            /* Last resort */
             var anyEn = voices.find(function(v) {
                 return v.lang.indexOf('en') === 0;
             });
             if (anyEn) { _calmVoice = anyEn; return anyEn; }
-
             return null;
         }
 
-        /* Calm speech parameters — tuned for a deep, gentle, settled male voice.
-         * Pitch 0.85 gives subtle deepening without distortion/cracking.
-         * Extreme values (<0.8) cause TTS artifacts on most engines — the
-         * real depth comes from voice selection (Daniel, Guy, etc.). */
-        var _calmRate   = 0.78;   /* slow, deliberate — each word carries weight */
-        var _calmPitch  = 0.85;   /* gently deeper — warm without cracking */
-        var _calmVolume = 0.82;   /* soft, intimate — present but not loud */
-        var _paragraphPause = 900; /* ms silence between paragraphs — breathing room */
+        /* ---- Speech parameters ---- */
+        var _calmRate        = 0.82;
+        var _calmPitch       = 0.88;
+        var _calmVolume      = 0.85;
+        var _sentencePause   = 500;   /* ms between sentences — a breath */
+        var _paragraphPause  = 1200;  /* ms between paragraphs — a full breath */
 
-        /* Chrome requires the first speechSynthesis.speak() to happen during a
-         * direct user gesture (click/keypress). Without this "warm-up", any
-         * speak() called from a fetch() callback is silently swallowed.
-         * We fire a zero-volume silent utterance on the very first interaction. */
+        /* ---- Synthesis unlock ----
+         * Chrome blocks speak() from async callbacks unless one speak()
+         * has already occurred during a direct user gesture.
+         * We speak a tiny real word (empty strings are sometimes ignored). */
         var _synthUnlocked = false;
         function _unlockSynthesis() {
             if (_synthUnlocked || !synthesis) return;
-            var silentUtterance = new SpeechSynthesisUtterance('');
-            silentUtterance.volume = 0;
-            silentUtterance.rate = 4; /* fastest possible so it's instant */
-            synthesis.speak(silentUtterance);
-            _synthUnlocked = true;
+            try {
+                var u = new SpeechSynthesisUtterance('.');
+                u.volume = 0.01;   /* near-silent */
+                u.rate = 10;       /* fastest — over in milliseconds */
+                var v = _selectCalmVoice();
+                if (v) u.voice = v;
+                synthesis.speak(u);
+                _synthUnlocked = true;
+            } catch (e) { /* swallow */ }
         }
 
+        /* ---- Chrome 15-second pause workaround ---- */
+        var _chromeResumeTimer = null;
+        function _startChromeResume() {
+            _stopChromeResume();
+            _chromeResumeTimer = setInterval(function() {
+                if (synthesis && synthesis.speaking) {
+                    synthesis.pause();
+                    synthesis.resume();
+                }
+            }, 8000);
+        }
+        function _stopChromeResume() {
+            if (_chromeResumeTimer) { clearInterval(_chromeResumeTimer); _chromeResumeTimer = null; }
+        }
+
+        /* ---- UI helpers ---- */
         function _markSpeakingStart() {
             isSpeaking = true;
             if (voiceBtn) voiceBtn.classList.add('speaking');
             if (voiceStatusDot) voiceStatusDot.classList.add('active');
             if (voiceStatusText) voiceStatusText.textContent = 'Speaking\u2026';
         }
-
         function _markSpeakingEnd() {
             isSpeaking = false;
             if (voiceBtn) voiceBtn.classList.remove('speaking');
@@ -6474,96 +6489,99 @@ function escapeHtml(str) {
             if (voiceStatusText) voiceStatusText.textContent = 'Voice ready \u2014 click the microphone to speak';
         }
 
-        /**
-         * Speak text with a deep, gentle, calm and settled delivery.
-         * Splits on paragraph breaks (\n\n) and speaks each paragraph
-         * as a separate utterance with a pause between them.
-         *
-         * Workarounds included:
-         *  - Small delay after cancel() so Chrome doesn't silently drop speak()
-         *  - Chrome resume timer: Chrome pauses synthesis after ~15s of speech;
-         *    we periodically call resume() to keep it going.
-         */
-        var _chromeResumeTimer = null;
+        /* ---- Sentence splitter ----
+         * Splits text into short chunks that stay under ~200 characters
+         * (safe for Chrome Android). Splits on sentence boundaries first,
+         * then on commas/semicolons if a sentence is still too long. */
+        function _splitIntoChunks(text) {
+            var MAX_CHUNK = 180;
+            /* First split into paragraphs */
+            var paragraphs = text.split(/\n\s*\n/).filter(function(p) { return p.trim(); });
+            if (paragraphs.length === 0) paragraphs = [text];
 
-        function _startChromeResume() {
-            _stopChromeResume();
-            /* Chrome bug: synthesis pauses after ~15s. Periodic resume() fixes it. */
-            _chromeResumeTimer = setInterval(function() {
-                if (synthesis && synthesis.speaking && !synthesis.paused) {
-                    synthesis.pause();
-                    synthesis.resume();
-                }
-            }, 10000); /* every 10s — well before the 15s cutoff */
+            var result = []; /* each entry: { text: '...', paragraphEnd: bool } */
+
+            paragraphs.forEach(function(para, pIdx) {
+                /* Split paragraph into sentences */
+                var sentences = para.trim().replace(/\s+/g, ' ')
+                    .split(/(?<=[.!?])\s+/)
+                    .filter(function(s) { return s.trim(); });
+
+                sentences.forEach(function(sentence, sIdx) {
+                    var isLast = (sIdx === sentences.length - 1);
+                    if (sentence.length <= MAX_CHUNK) {
+                        result.push({ text: sentence, paragraphEnd: isLast && pIdx < paragraphs.length - 1 });
+                    } else {
+                        /* Split long sentence on commas / semicolons */
+                        var parts = sentence.split(/(?<=[,;])\s+/);
+                        var buf = '';
+                        parts.forEach(function(part, partIdx) {
+                            if (buf && (buf + ' ' + part).length > MAX_CHUNK) {
+                                result.push({ text: buf.trim(), paragraphEnd: false });
+                                buf = part;
+                            } else {
+                                buf = buf ? (buf + ' ' + part) : part;
+                            }
+                            if (partIdx === parts.length - 1 && buf) {
+                                result.push({ text: buf.trim(), paragraphEnd: isLast && pIdx < paragraphs.length - 1 });
+                                buf = '';
+                            }
+                        });
+                    }
+                });
+            });
+            return result;
         }
 
-        function _stopChromeResume() {
-            if (_chromeResumeTimer) {
-                clearInterval(_chromeResumeTimer);
-                _chromeResumeTimer = null;
-            }
-        }
-
+        /* ---- Main speak function ---- */
         function speakText(text) {
-            if (!synthesis) return;
+            if (!synthesis) return null;
 
-            /* Cancel any ongoing speech with a small delay — Chrome silently
-             * drops speak() if called immediately after cancel(). */
-            if (synthesis.speaking) {
-                synthesis.cancel();
-            }
+            /* Always cancel first, then wait for Chrome to settle */
+            synthesis.cancel();
 
             var voice = _selectCalmVoice();
+            var chunks = _splitIntoChunks(text);
+            if (chunks.length === 0) return null;
 
-            /* Split into paragraphs, filter out empty strings */
-            var paragraphs = text.split(/\n\s*\n/).filter(function(p) {
-                return p.trim().length > 0;
-            });
-            if (paragraphs.length === 0) return;
-
-            var currentIdx = 0;
+            var idx = 0;
             var cancelled = false;
 
-            function speakNext() {
-                if (cancelled || currentIdx >= paragraphs.length) {
+            function speakChunk() {
+                if (cancelled || idx >= chunks.length) {
                     _stopChromeResume();
                     _markSpeakingEnd();
                     return;
                 }
 
-                var para = paragraphs[currentIdx].trim();
-                /* Clean up leftover punctuation artifacts */
-                para = para.replace(/\s+/g, ' ');
-
-                var utterance = new SpeechSynthesisUtterance(para);
-                utterance.lang = 'en-GB';  /* British English — calmer cadence */
+                var chunk = chunks[idx];
+                var utterance = new SpeechSynthesisUtterance(chunk.text);
+                if (voice) utterance.voice = voice;
+                utterance.lang = voice ? voice.lang : 'en-GB';
                 utterance.rate = _calmRate;
                 utterance.pitch = _calmPitch;
                 utterance.volume = _calmVolume;
-                if (voice) utterance.voice = voice;
 
                 utterance.onstart = function() {
-                    if (currentIdx === 0) {
+                    if (idx === 0) {
                         _markSpeakingStart();
                         _startChromeResume();
                     }
                 };
 
                 utterance.onend = function() {
-                    currentIdx++;
-                    if (currentIdx < paragraphs.length) {
-                        /* Pause between paragraphs — the silence of a
-                           thoughtful speaker gathering the next thought */
-                        setTimeout(speakNext, _paragraphPause);
-                    } else {
+                    idx++;
+                    if (cancelled || idx >= chunks.length) {
                         _stopChromeResume();
                         _markSpeakingEnd();
+                        return;
                     }
+                    /* Paragraph boundary → long pause; sentence → short pause */
+                    var pause = chunk.paragraphEnd ? _paragraphPause : _sentencePause;
+                    setTimeout(speakChunk, pause);
                 };
 
                 utterance.onerror = function(e) {
-                    /* 'interrupted' and 'cancelled' are expected when user
-                       clicks stop or sends a new message */
                     if (e.error !== 'interrupted' && e.error !== 'canceled') {
                         _stopChromeResume();
                         _markSpeakingEnd();
@@ -6573,36 +6591,39 @@ function escapeHtml(str) {
                 synthesis.speak(utterance);
             }
 
-            /* Small delay after cancel() to let Chrome reset its internal state */
-            setTimeout(speakNext, synthesis.speaking ? 120 : 10);
+            /* Wait after cancel() for Chrome to reset its internal state.
+             * 200ms is conservative but reliable across desktop & mobile. */
+            setTimeout(speakChunk, 200);
 
-            /* Return a cancel function so callers can stop mid-speech */
-            return function() {
+            return function cancelSpeech() {
                 cancelled = true;
                 _stopChromeResume();
-                if (synthesis.speaking) synthesis.cancel();
+                try { synthesis.cancel(); } catch (e) { /* safe */ }
                 _markSpeakingEnd();
             };
         }
 
-        /* Store the cancel function for the current speech */
+        /* Cancel-aware wrapper */
         var _cancelCurrentSpeech = null;
-
-        /* Override speakText to track cancellation */
-        var _originalSpeakText = speakText;
+        var _coreSpeakText = speakText;
         speakText = function(text) {
-            /* Cancel previous speech if still going */
-            if (_cancelCurrentSpeech) _cancelCurrentSpeech();
-            _cancelCurrentSpeech = _originalSpeakText(text);
+            if (_cancelCurrentSpeech) {
+                _cancelCurrentSpeech();
+                _cancelCurrentSpeech = null;
+            }
+            /* Extra settle time after cancel before new speech */
+            setTimeout(function() {
+                _cancelCurrentSpeech = _coreSpeakText(text);
+            }, 50);
         };
 
         /* Global function for speak buttons in chat messages */
         window._counselSpeakText = function(msgEl) {
             if (!msgEl || !synthesis) return;
-            /* Extract just the main text (not insight/quote spans) */
             var clone = msgEl.cloneNode(true);
             var extras = clone.querySelectorAll('.counsel-insight, .counsel-source-quote, .speak-btn');
             extras.forEach(function(el) { el.remove(); });
+            _unlockSynthesis();
             speakText(clone.textContent.trim());
         };
 
@@ -6610,10 +6631,9 @@ function escapeHtml(str) {
         if (synthesis) {
             synthesis.onvoiceschanged = function() {
                 _voicesLoaded = true;
-                _calmVoice = null;  /* re-select with new voice list */
+                _calmVoice = null;
                 _selectCalmVoice();
             };
-            /* Eagerly try to load voices */
             _selectCalmVoice();
         }
 
