@@ -2167,6 +2167,157 @@ def _build_counselling_response(
     }
 
 
+# ===================================================================== #
+#  Psychiatry — AI-powered Counselling (with template fallback)          #
+# ===================================================================== #
+
+_COUNSELLING_SYSTEM_PROMPT = """You are a gentle, deeply empathetic counsellor. Your role is to \
+listen with complete attention and help the person explore their inner experience through \
+thoughtful inquiry.
+
+Guidelines:
+- Listen with full presence. Acknowledge what the person shares before responding.
+- Ask one or two open, reflective questions that invite self-exploration — not advice.
+- Your tone should be warm, calm, unhurried, and grounding — like a quiet conversation by a fireplace.
+- Use simple, clear language. Avoid jargon, clinical terms, or spiritual clichés.
+- Never diagnose, label, or categorize the person. Never say "you should" or "you need to."
+- When someone shares pain, sit with it gently. Do not rush to fix, reframe, or cheer them up.
+- Understanding comes through looking together, not through answers imposed from outside.
+- Keep responses 3 to 6 sentences. Quality of presence matters more than quantity of words.
+- End with a gentle question or an invitation to look deeper into what they are feeling.
+- Speak as a thoughtful, caring human companion — never mention that you are an AI or a program.
+- Do not use bullet points, numbered lists, or markdown headers. Write in flowing, natural prose.
+- If the person seems in crisis or mentions self-harm, gently encourage them to reach out to \
+a trusted person or crisis helpline, while remaining present and compassionate."""
+
+# Environment-driven LLM configuration (reuses same env vars as llm_reports)
+_LLM_BACKEND: str = os.getenv("TELOSCOPY_LLM_BACKEND", "openai")
+_LLM_MODEL: str = os.getenv("TELOSCOPY_LLM_MODEL", "gpt-4o-mini")
+_LLM_BASE_URL: str = os.getenv("TELOSCOPY_LLM_BASE_URL", "https://api.openai.com/v1")
+_LLM_API_KEY: str | None = os.getenv("TELOSCOPY_LLM_API_KEY")
+
+# Lazy-initialised client (created on first counselling request)
+_counselling_llm: Any = None
+_counselling_llm_available: bool | None = None  # None = not yet checked
+
+
+def _get_counselling_llm() -> Any:
+    """Lazily create and return an LLM client for counselling."""
+    global _counselling_llm, _counselling_llm_available
+    if _counselling_llm is not None:
+        return _counselling_llm
+    try:
+        if _LLM_BACKEND == "ollama":
+            from teloscopy.integrations.llm_reports import OllamaClient
+            client = OllamaClient(
+                base_url=_LLM_BASE_URL if _LLM_BASE_URL != "https://api.openai.com/v1"
+                else "http://localhost:11434",
+                model=_LLM_MODEL if _LLM_MODEL != "gpt-4o-mini" else "llama3",
+                timeout=60, max_retries=2, retry_delay=1.0,
+            )
+        else:
+            from teloscopy.integrations.llm_reports import OpenAIClient
+            client = OpenAIClient(
+                base_url=_LLM_BASE_URL,
+                model=_LLM_MODEL,
+                api_key=_LLM_API_KEY,
+                timeout=60, max_retries=2, retry_delay=1.0,
+            )
+        _counselling_llm = client
+        return client
+    except Exception as exc:
+        logger.warning("Failed to initialise counselling LLM: %s", exc)
+        _counselling_llm_available = False
+        return None
+
+
+def _llm_chat(messages: list[dict[str, str]], temperature: float = 0.75) -> str | None:
+    """Send a multi-turn chat to the LLM.  Returns the assistant reply or None."""
+    import json as _json
+    import urllib.request
+    import urllib.error
+
+    client = _get_counselling_llm()
+    if client is None:
+        return None
+
+    try:
+        if _LLM_BACKEND == "ollama":
+            # Ollama /api/chat endpoint supports multi-turn
+            base = client.base_url
+            payload = {
+                "model": client.model,
+                "messages": messages,
+                "stream": False,
+                "options": {"temperature": temperature, "num_predict": 512},
+            }
+            data = _json.dumps(payload).encode()
+            req = urllib.request.Request(
+                f"{base}/api/chat", data=data,
+                headers={"Content-Type": "application/json"}, method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=client.timeout) as resp:
+                body = _json.loads(resp.read().decode())
+            text = body.get("message", {}).get("content", "")
+        else:
+            # OpenAI-compatible /v1/chat/completions
+            base = client.base_url
+            hdrs: dict[str, str] = {"Content-Type": "application/json"}
+            if client.api_key:
+                hdrs["Authorization"] = f"Bearer {client.api_key}"
+            payload = {
+                "model": client.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": 512,
+            }
+            data = _json.dumps(payload).encode()
+            req = urllib.request.Request(
+                f"{base}/chat/completions", data=data,
+                headers=hdrs, method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=client.timeout) as resp:
+                body = _json.loads(resp.read().decode())
+            choices = body.get("choices", [])
+            text = choices[0]["message"]["content"] if choices else ""
+
+        text = (text or "").strip()
+        if not text:
+            return None
+        # Sanitize — strip dangerous HTML from LLM output
+        import re as _re
+        text = _re.sub(r'<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>', '', text, flags=_re.IGNORECASE)
+        text = _re.sub(r'<iframe\b[^>]*>.*?</iframe>', '', text, flags=_re.IGNORECASE | _re.DOTALL)
+        text = _re.sub(r'\bon\w+\s*=\s*["\'][^"\']*["\']', '', text, flags=_re.IGNORECASE)
+        return text
+    except Exception as exc:
+        logger.info("Counselling LLM call failed (falling back to templates): %s", exc)
+        return None
+
+
+def _build_llm_messages(
+    conversation: list[dict[str, str]],
+    current_message: str,
+) -> list[dict[str, str]]:
+    """Build the messages array for the LLM from conversation history."""
+    msgs: list[dict[str, str]] = [
+        {"role": "system", "content": _COUNSELLING_SYSTEM_PROMPT},
+    ]
+    # Include up to the last 20 turns of conversation for context
+    for turn in conversation[-20:]:
+        role = turn.get("role", "user")
+        text = turn.get("text", "").strip()
+        if not text:
+            continue
+        if role == "user":
+            msgs.append({"role": "user", "content": text})
+        else:
+            msgs.append({"role": "assistant", "content": text})
+    # Add the current message if not already the last user message
+    if not msgs or msgs[-1].get("content") != current_message:
+        msgs.append({"role": "user", "content": current_message})
+    return msgs
+
 
 @app.get("/api/psychiatry/themes", tags=["Psychiatry"], dependencies=[Depends(rate_limit(60, 60))])
 async def get_psychiatry_themes() -> dict[str, Any]:
@@ -2187,11 +2338,18 @@ async def get_psychiatry_themes() -> dict[str, Any]:
 async def psychiatry_counsel(request: Request) -> dict[str, Any]:
     """Process a counselling message and return an inquiry-based response.
 
-    Expects JSON body:
-        {"message": "user's message text", "history": [...previous response indices...]}
-    The optional ``history`` list enables de-duplication: each entry is a dict
-    with keys like ``theme``, ``quote_idx``, ``inquiry_idx``, ``opening_idx``,
-    ``closing_idx`` (taken from the ``_indices`` field of prior responses).
+    Expects JSON body::
+
+        {
+            "message": "user's message text",
+            "conversation": [{"role": "user", "text": "..."}, {"role": "counsellor", "text": "..."}],
+            "history": [...previous response indices (for template fallback)...]
+        }
+
+    When an LLM backend is configured (via ``TELOSCOPY_LLM_API_KEY`` or Ollama),
+    the endpoint sends the full conversation to the model for a contextual,
+    interactive response.  If the LLM is unavailable, it falls back to the
+    template-based counselling engine.
     """
     body = await request.json()
     message = body.get("message", "").strip()
@@ -2200,10 +2358,29 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
     if len(message) > 5000:
         raise HTTPException(status_code=400, detail="Message too long (max 5000 characters)")
 
+    conversation: list[dict[str, str]] = body.get("conversation", [])
     history: list[dict[str, Any]] = body.get("history", [])
 
+    # ── Try AI-powered response first ──
+    llm_response = None
+    if _LLM_API_KEY or _LLM_BACKEND == "ollama":
+        msgs = _build_llm_messages(conversation, message)
+        llm_response = _llm_chat(msgs)
+
+    if llm_response:
+        # AI response — return a simpler structure
+        theme_key = _match_counselling_theme(message)
+        return {
+            "theme": theme_key,
+            "theme_title": _COUNSEL_THEMES.get(theme_key, {}).get("title", ""),
+            "ai_response": llm_response,
+            "mode": "ai",
+        }
+
+    # ── Fallback to template-based engine ──
     theme_key = _match_counselling_theme(message)
     response = _build_counselling_response(theme_key, message, history=history)
+    response["mode"] = "template"
     return response
 
 

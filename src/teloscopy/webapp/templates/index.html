@@ -6011,38 +6011,49 @@ function escapeHtml(str) {
             fetch('/api/psychiatry/counsel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: message, history: _counselIndexHistory })
+                body: JSON.stringify({
+                    message: message,
+                    conversation: counsellingHistory,
+                    history: _counselIndexHistory
+                })
             })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 counselChat.removeChild(typingDiv);
-                var resp = data.response;
-                /* Build a multi-paragraph counsellor reply */
-                var parts = [resp.acknowledgment, resp.opening, resp.inquiry];
-                if (resp.deepening) parts.push(resp.deepening);
-                if (resp.reflection) parts.push(resp.reflection);
-                if (resp.closing) parts.push(resp.closing);
-                var fullText = parts.join('\n\n');
-                addMessage(fullText, 'counsellor', {
-                    insight: data.core_insight,
-                    quote: data.quote
-                });
-                counsellingHistory.push({ role: 'counsellor', text: fullText, theme: data.theme });
 
-                /* Track indices for de-duplication in future requests */
-                if (data._indices) {
-                    var entry = { theme: data.theme };
-                    var idx = data._indices;
-                    if (idx.quote_idx !== undefined) entry.quote_idx = idx.quote_idx;
-                    if (idx.inquiry_idx !== undefined) entry.inquiry_idx = idx.inquiry_idx;
-                    if (idx.opening_idx !== undefined) entry.opening_idx = idx.opening_idx;
-                    if (idx.closing_idx !== undefined) entry.closing_idx = idx.closing_idx;
-                    _counselIndexHistory.push(entry);
+                var fullText, extras;
+                if (data.mode === 'ai' && data.ai_response) {
+                    /* AI-powered response — single flowing text */
+                    fullText = data.ai_response;
+                    extras = {};
+                } else {
+                    /* Template fallback — assemble from parts */
+                    var resp = data.response;
+                    var parts = [resp.acknowledgment, resp.opening, resp.inquiry];
+                    if (resp.deepening) parts.push(resp.deepening);
+                    if (resp.reflection) parts.push(resp.reflection);
+                    if (resp.closing) parts.push(resp.closing);
+                    fullText = parts.join('\n\n');
+                    extras = { insight: data.core_insight, quote: data.quote };
+
+                    /* Track indices for de-duplication in future template requests */
+                    if (data._indices) {
+                        var entry = { theme: data.theme };
+                        var idx = data._indices;
+                        if (idx.quote_idx !== undefined) entry.quote_idx = idx.quote_idx;
+                        if (idx.inquiry_idx !== undefined) entry.inquiry_idx = idx.inquiry_idx;
+                        if (idx.opening_idx !== undefined) entry.opening_idx = idx.opening_idx;
+                        if (idx.closing_idx !== undefined) entry.closing_idx = idx.closing_idx;
+                        _counselIndexHistory.push(entry);
+                    }
                 }
+
+                addMessage(fullText, 'counsellor', extras);
+                counsellingHistory.push({ role: 'counsellor', text: fullText, theme: data.theme });
 
                 /* Auto-speak if enabled */
                 if (autoSpeakToggle && autoSpeakToggle.checked && synthesis) {
-                    speakText(resp.acknowledgment + '. ' + resp.opening + '. ' + resp.inquiry + '. ' + (resp.deepening || ''));
+                    speakText(fullText);
                 }
             })
             .catch(function(err) {
@@ -6345,38 +6356,40 @@ function escapeHtml(str) {
          * 5. Fallback: any English local voice, then any English voice.
          *
          * Speech parameters tuned for calm delivery:
-         *   rate  : 0.82  — noticeably slower than default, gives weight to words
-         *   pitch : 0.92  — slightly deeper, grounding, settled
-         *   volume: 0.85  — quieter than full; intimate, non-intrusive
+         *   rate  : 0.74  — slow and deliberate, gives weight to every word
+         *   pitch : 0.72  — noticeably deeper, like a calm low voice that grounds you
+         *   volume: 0.78  — softer, like a quiet room — intimate and safe
          *
          * Paragraph pauses: text is split on double-newlines. Each paragraph is
-         * spoken as a separate utterance with a 600ms silence between them,
-         * creating the natural rhythm of a thoughtful speaker.
+         * spoken as a separate utterance with a 950ms silence between them,
+         * creating the natural rhythm of someone who speaks with care and presence.
          */
 
         var _calmVoice = null;  /* cached after first lookup */
         var _voicesLoaded = false;
 
-        /* Ranked voice preferences — order matters (first match wins) */
+        /* Ranked voice preferences — order matters (first match wins).
+         * Deep, warm male voices prioritised for soothing quality;
+         * then warm female voices; then generic fallbacks. */
         var _calmVoicePreferences = [
-            /* macOS / iOS natural voices (Sequoia+, iOS 17+) */
-            'Zoe',              /* macOS Sequoia — warm, modern */
+            /* macOS / iOS — deep male voices first */
+            'Daniel',           /* British English — deep, resonant, unhurried */
             'Evan',             /* macOS Sequoia — calm male */
-            'Daniel',           /* British English — resonant, unhurried */
+            'Rishi',            /* Indian English — measured, deep, thoughtful */
+            'Zoe',              /* macOS Sequoia — warm, modern */
+            'Moira',            /* Irish — soft, contemplative */
+            'Fiona',            /* Scottish — warm */
             'Samantha',         /* Classic macOS — warm, clear */
             'Karen',            /* Australian — gentle, measured */
-            'Moira',            /* Irish — soft, contemplative */
-            'Rishi',            /* Indian English — measured, thoughtful */
-            'Fiona',            /* Scottish — warm */
-            /* Windows neural / natural voices (Edge) */
-            'Microsoft Jenny Online (Natural)',
-            'Microsoft Aria Online (Natural)',
+            /* Windows neural / natural voices — deep male first */
             'Microsoft Guy Online (Natural)',
             'Microsoft Eric Online (Natural)',
+            'Microsoft Guy',
+            'Microsoft Jenny Online (Natural)',
+            'Microsoft Aria Online (Natural)',
             'Microsoft Jenny',
             'Microsoft Aria',
-            'Microsoft Guy',
-            /* Google Chrome network voices */
+            /* Google Chrome network voices — male first for depth */
             'Google UK English Male',
             'Google UK English Female',
             'Google US English',
@@ -6419,11 +6432,11 @@ function escapeHtml(str) {
             return null;
         }
 
-        /* Calm speech parameters */
-        var _calmRate   = 0.82;   /* noticeably slower — weight to each word */
-        var _calmPitch  = 0.92;   /* slightly deeper — grounding, settled */
-        var _calmVolume = 0.85;   /* quieter — intimate, non-intrusive */
-        var _paragraphPause = 650; /* ms silence between paragraphs */
+        /* Calm speech parameters — tuned for deeply soothing delivery */
+        var _calmRate   = 0.74;   /* slow, deliberate — each word carries weight */
+        var _calmPitch  = 0.72;   /* deep, grounding — like a voice that settles you */
+        var _calmVolume = 0.78;   /* soft, intimate — a quiet room, just for you */
+        var _paragraphPause = 950; /* ms silence between paragraphs — unhurried breathing space */
 
         function _markSpeakingStart() {
             isSpeaking = true;
