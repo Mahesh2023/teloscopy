@@ -81,8 +81,8 @@ def _obtain_consent_token(client: TestClient, purposes: list[str] | None = None)
 
 
 def _consent_headers(token: str) -> dict[str, str]:
-    """Return headers dict with consent token + CSRF-safe content type."""
-    return {"X-Consent-Token": token}
+    """Return headers dict with consent token + CSRF-safe header."""
+    return {"X-Consent-Token": token, "X-Requested-With": "XMLHttpRequest"}
 
 
 def _dummy_image(name: str = "test.tif") -> tuple[str, io.BytesIO, str]:

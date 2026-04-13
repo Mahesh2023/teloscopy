@@ -2846,6 +2846,7 @@
 <!-- ================================================================
      JAVASCRIPT
      ================================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" integrity="sha384-mNAOA/ircSPCEOT33k3NCAjSeXksJbVjVIkP+BEfwnGiFT0VLG3WmrV7sOBs7pFP" crossorigin="anonymous"></script>
 <script>
 /* ==============================================================
    CONSENT MANAGEMENT (DPDP Act 2023 Compliance)
@@ -2953,7 +2954,7 @@
             var data = await r.json();
             /* Store the server-issued consent token for subsequent API calls */
             if (data.consent_token) {
-                try { localStorage.setItem('teloscopy_consent_token', data.consent_token); } catch (_) {}
+                try { sessionStorage.setItem('teloscopy_consent_token', data.consent_token); } catch (_) {}
             }
         } catch (_) { /* offline fallback — user can still browse, re-consent will be attempted on next API call */ }
 
@@ -2988,7 +2989,7 @@
 
     window.withdrawConsent = function () {
         try { localStorage.removeItem(CONSENT_KEY); } catch (_) {}
-        try { localStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
+        try { sessionStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
         /* Notify backend (invalidates consent token server-side) */
         try {
             fetch('/api/legal/consent/withdraw', {
@@ -3017,7 +3018,7 @@
      */
     window.getConsentHeaders = function () {
         var token = '';
-        try { token = localStorage.getItem('teloscopy_consent_token') || ''; } catch (_) {}
+        try { token = sessionStorage.getItem('teloscopy_consent_token') || ''; } catch (_) {}
         var headers = {};
         if (token) headers['X-Consent-Token'] = token;
         return headers;
@@ -3059,7 +3060,7 @@
             if (!r.ok) return '';
             var data = await r.json();
             if (data.consent_token) {
-                try { localStorage.setItem('teloscopy_consent_token', data.consent_token); } catch (_) {}
+                try { sessionStorage.setItem('teloscopy_consent_token', data.consent_token); } catch (_) {}
                 return data.consent_token;
             }
         } catch (_) {}
@@ -3075,7 +3076,7 @@
     window.handleConsent403 = async function (res) {
         if (res.status !== 403) return false;
         /* Try silent refresh first — avoids re-prompting the user */
-        try { localStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
+        try { sessionStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
         var newToken = await window.refreshConsentToken();
         if (newToken) {
             /* Token refreshed — caller should RETRY the request (return false
@@ -3121,7 +3122,7 @@ var _researchData = null;
 var _researchLoaded = false;
 var _EMBEDDED_RESEARCH = null;
 try {
-    _EMBEDDED_RESEARCH = {{ research_json | default('null') | safe }};
+    _EMBEDDED_RESEARCH = {{ research_json | default('null') | safe | replace('</', '<\\/') }};
 } catch (_) {
     _EMBEDDED_RESEARCH = null;
 }
@@ -3460,6 +3461,10 @@ function markdownToHtml(md) {
     html = html.replace(/<link[^>]*>/gi, '');
     html = html.replace(/\bon\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
     html = html.replace(/javascript\s*:/gi, '');
+
+    if (typeof DOMPurify !== 'undefined') {
+        html = DOMPurify.sanitize(html, {ALLOWED_TAGS: ['h1','h2','h3','h4','h5','h6','p','br','hr','ul','ol','li','a','strong','em','b','i','code','pre','blockquote','table','thead','tbody','tr','th','td','span','div','img','sub','sup'], ALLOWED_ATTR: ['href','src','alt','class','id','target','rel']});
+    }
 
     return html;
 }
@@ -4066,7 +4071,7 @@ function escapeHtml(str) {
             if (res.status === 403) {
                 /* Still 403 — force full re-consent (clear both keys so
                    hasValidConsent() returns false and modal opens in gate mode) */
-                try { localStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
+                try { sessionStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
                 try { localStorage.removeItem('teloscopy_consent_v1'); } catch (_) {}
                 window.openConsentModal();
                 toast('Please accept the privacy notice to continue.', 'warning');
@@ -4230,8 +4235,8 @@ function escapeHtml(str) {
             data.disease_risks.forEach(function (d) {
                 var cls = d.risk_level;
                 rl.innerHTML += '<div class="risk-item ' + cls + '">' +
-                    '<span class="risk-name">' + d.disease + '</span>' +
-                    '<span class="risk-badge ' + cls + '">' + d.risk_level.replace('_', ' ') + '</span>' +
+                    '<span class="risk-name">' + escapeHtml(d.disease) + '</span>' +
+                    '<span class="risk-badge ' + cls + '">' + escapeHtml(d.risk_level.replace('_', ' ')) + '</span>' +
                     '<span class="risk-prob">' + (d.probability * 100).toFixed(1) + '%</span></div>';
             });
         }
@@ -4313,28 +4318,28 @@ function escapeHtml(str) {
     /* ---- Render diet helper ---- */
     function renderDiet(diet) {
         var dc = document.getElementById('diet-content');
-        var html = '<p class="diet-summary">' + diet.summary + '</p>';
+        var html = '<p class="diet-summary">' + escapeHtml(diet.summary) + '</p>';
         html += '<div class="nutrient-tags">';
-        diet.key_nutrients.forEach(function (n) { html += '<span class="nutrient-tag">' + n + '</span>'; });
+        diet.key_nutrients.forEach(function (n) { html += '<span class="nutrient-tag">' + escapeHtml(n) + '</span>'; });
         html += '</div>';
         html += '<div class="food-columns">';
         html += '<div class="food-col increase"><h4>Increase</h4><ul>';
-        diet.foods_to_increase.forEach(function (f) { html += '<li>' + f + '</li>'; });
+        diet.foods_to_increase.forEach(function (f) { html += '<li>' + escapeHtml(f) + '</li>'; });
         html += '</ul></div>';
         html += '<div class="food-col avoid"><h4>Avoid / Reduce</h4><ul>';
-        diet.foods_to_avoid.forEach(function (f) { html += '<li>' + f + '</li>'; });
+        diet.foods_to_avoid.forEach(function (f) { html += '<li>' + escapeHtml(f) + '</li>'; });
         html += '</ul></div></div>';
 
         if (diet.meal_plans && diet.meal_plans.length) {
             html += '<h4 style="margin-bottom:.5rem;color:var(--text-dim);">Sample Meal Plans</h4><div class="meal-plans">';
             diet.meal_plans.forEach(function (mp, i) {
                 html += '<div class="meal-day" id="meal-' + i + '">' +
-                    '<div class="meal-day-header" onclick="toggleMeal(' + i + ')" role="button" tabindex="0" aria-expanded="false" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();toggleMeal(' + i + ')}">' + mp.day + ' <span aria-hidden="true">&#9660;</span></div>' +
+                    '<div class="meal-day-header" onclick="toggleMeal(' + i + ')" role="button" tabindex="0" aria-expanded="false" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();toggleMeal(' + i + ')}">' + escapeHtml(mp.day) + ' <span aria-hidden="true">&#9660;</span></div>' +
                     '<div class="meal-day-body">' +
-                    '<p><span class="meal-label">Breakfast:</span> ' + mp.breakfast + '</p>' +
-                    '<p><span class="meal-label">Lunch:</span> ' + mp.lunch + '</p>' +
-                    '<p><span class="meal-label">Dinner:</span> ' + mp.dinner + '</p>' +
-                    (mp.snacks.length ? '<p><span class="meal-label">Snacks:</span> ' + mp.snacks.join(', ') + '</p>' : '') +
+                    '<p><span class="meal-label">Breakfast:</span> ' + escapeHtml(mp.breakfast) + '</p>' +
+                    '<p><span class="meal-label">Lunch:</span> ' + escapeHtml(mp.lunch) + '</p>' +
+                    '<p><span class="meal-label">Dinner:</span> ' + escapeHtml(mp.dinner) + '</p>' +
+                    (mp.snacks.length ? '<p><span class="meal-label">Snacks:</span> ' + escapeHtml(mp.snacks.join(', ')) + '</p>' : '') +
                     '</div></div>';
             });
             html += '</div>';
@@ -4390,12 +4395,12 @@ function escapeHtml(str) {
                 else if (phenoLower.indexOf('poor') !== -1 || phenoLower.indexOf('high sensitivity') !== -1) phenoClass = 'poor';
                 else if (phenoLower.indexOf('ultra') !== -1 || phenoLower.indexOf('rapid') !== -1) phenoClass = 'ultra-rapid';
                 pgxHtml += '<tr>' +
-                    '<td style="font-weight:600;">' + (p.gene || '') + '</td>' +
-                    '<td style="font-family:var(--mono);font-size:.78rem;">' + (p.rsid || '') + '</td>' +
-                    '<td><span class="pheno-badge ' + phenoClass + '">' + (p.predicted_phenotype || '') + '</span></td>' +
+                    '<td style="font-weight:600;">' + escapeHtml(p.gene || '') + '</td>' +
+                    '<td style="font-family:var(--mono);font-size:.78rem;">' + escapeHtml(p.rsid || '') + '</td>' +
+                    '<td><span class="pheno-badge ' + phenoClass + '">' + escapeHtml(p.predicted_phenotype || '') + '</span></td>' +
                     '<td>' + ((p.confidence || 0) * 100).toFixed(0) + '%</td>' +
-                    '<td style="font-size:.8rem;">' + (p.affected_drugs || []).join(', ') + '</td>' +
-                    '<td style="font-size:.8rem;color:var(--text-dim);">' + (p.clinical_recommendation || '') + '</td>' +
+                    '<td style="font-size:.8rem;">' + escapeHtml((p.affected_drugs || []).join(', ')) + '</td>' +
+                    '<td style="font-size:.8rem;color:var(--text-dim);">' + escapeHtml(p.clinical_recommendation || '') + '</td>' +
                     '</tr>';
             });
             pgxHtml += '</tbody></table>';
@@ -4414,7 +4419,7 @@ function escapeHtml(str) {
 
             /* BMI Category */
             hsHtml += '<div class="health-dash-item"><h4>Estimated BMI Category</h4>' +
-                '<div style="font-size:1.2rem;font-weight:700;color:var(--text);">' + (hs.estimated_bmi_category || 'N/A') + '</div>' +
+                '<div style="font-size:1.2rem;font-weight:700;color:var(--text);">' + escapeHtml(hs.estimated_bmi_category || 'N/A') + '</div>' +
                 '<div style="font-size:.78rem;color:var(--text-dim);margin-top:.25rem;">Confidence: ' + ((hs.bmi_confidence || 0) * 100).toFixed(0) + '%</div></div>';
 
             /* Anemia Risk */
@@ -4577,7 +4582,7 @@ function escapeHtml(str) {
             if (ad.population_specific_risks && ad.population_specific_risks.length) {
                 adHtml += '<div class="health-dash-item mt-2"><h4>Population-Specific Risks</h4><ul style="list-style:none;padding:0;margin:0;">';
                 ad.population_specific_risks.forEach(function (r) {
-                    adHtml += '<li style="padding:.25rem 0;font-size:.85rem;color:var(--text-dim);"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warning);margin-right:.5rem;vertical-align:middle;"></span>' + r + '</li>';
+                    adHtml += '<li style="padding:.25rem 0;font-size:.85rem;color:var(--text-dim);"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warning);margin-right:.5rem;vertical-align:middle;"></span>' + escapeHtml(r) + '</li>';
                 });
                 adHtml += '</ul></div>';
             }
@@ -4599,10 +4604,10 @@ function escapeHtml(str) {
         /* Telomere stats */
         var t = r.telomere_results;
         document.getElementById('telomere-stats').innerHTML =
-            '<div class="stat-item"><div class="stat-label">Mean Length</div><div class="stat-value">' + t.mean_length + ' kb</div></div>' +
-            '<div class="stat-item"><div class="stat-label">Std Dev</div><div class="stat-value">' + t.std_dev + ' kb</div></div>' +
-            '<div class="stat-item"><div class="stat-label">T/S Ratio</div><div class="stat-value">' + t.t_s_ratio + '</div></div>' +
-            '<div class="stat-item"><div class="stat-label">Bio Age Est.</div><div class="stat-value">' + t.biological_age_estimate + ' yr</div></div>';
+            '<div class="stat-item"><div class="stat-label">Mean Length</div><div class="stat-value">' + escapeHtml(String(t.mean_length)) + ' kb</div></div>' +
+            '<div class="stat-item"><div class="stat-label">Std Dev</div><div class="stat-value">' + escapeHtml(String(t.std_dev)) + ' kb</div></div>' +
+            '<div class="stat-item"><div class="stat-label">T/S Ratio</div><div class="stat-value">' + escapeHtml(String(t.t_s_ratio)) + '</div></div>' +
+            '<div class="stat-item"><div class="stat-label">Bio Age Est.</div><div class="stat-value">' + escapeHtml(String(t.biological_age_estimate)) + ' yr</div></div>';
 
         /* Facial analysis (if present) */
         var facialCard = document.getElementById('facial-card');
@@ -4618,9 +4623,9 @@ function escapeHtml(str) {
             fhtml += '</div>';
             if (fa.predicted_eye_colour !== 'unknown' || fa.predicted_hair_colour !== 'unknown') {
                 fhtml += '<div class="mt-2" style="font-size:.88rem;color:var(--text-dim);">';
-                if (fa.predicted_eye_colour !== 'unknown') fhtml += 'Eye colour: <strong style="color:var(--text);">' + fa.predicted_eye_colour + '</strong> &nbsp; ';
-                if (fa.predicted_hair_colour !== 'unknown') fhtml += 'Hair colour: <strong style="color:var(--text);">' + fa.predicted_hair_colour + '</strong> &nbsp; ';
-                if (fa.predicted_skin_type !== 'unknown') fhtml += 'Skin type: <strong style="color:var(--text);">' + fa.predicted_skin_type + '</strong>';
+                if (fa.predicted_eye_colour !== 'unknown') fhtml += 'Eye colour: <strong style="color:var(--text);">' + escapeHtml(fa.predicted_eye_colour) + '</strong> &nbsp; ';
+                if (fa.predicted_hair_colour !== 'unknown') fhtml += 'Hair colour: <strong style="color:var(--text);">' + escapeHtml(fa.predicted_hair_colour) + '</strong> &nbsp; ';
+                if (fa.predicted_skin_type !== 'unknown') fhtml += 'Skin type: <strong style="color:var(--text);">' + escapeHtml(fa.predicted_skin_type) + '</strong>';
                 fhtml += '</div>';
             }
             if (fa.ancestry && fa.ancestry.confidence > 0) {
@@ -4637,7 +4642,7 @@ function escapeHtml(str) {
             }
             if (fa.analysis_warnings && fa.analysis_warnings.length) {
                 fhtml += '<div class="mt-2" style="font-size:.82rem;color:var(--warning);">';
-                fa.analysis_warnings.forEach(function (w) { fhtml += '<p>' + w + '</p>'; });
+                fa.analysis_warnings.forEach(function (w) { fhtml += '<p>' + escapeHtml(w) + '</p>'; });
                 fhtml += '</div>';
             }
             document.getElementById('facial-content').innerHTML = fhtml;
@@ -4683,11 +4688,11 @@ function escapeHtml(str) {
                 var genoColor = (s.predicted_allele_1 === s.ref_allele && s.predicted_allele_2 === s.ref_allele) ? 'var(--accent)' :
                     (s.predicted_allele_1 !== s.predicted_allele_2) ? 'var(--warning)' : '#e06c75';
                 tbl += '<tr style="border-bottom:1px solid var(--glass-border);">' +
-                    '<td style="padding:.4rem .6rem;font-family:monospace;">' + s.rsid + '</td>' +
-                    '<td style="padding:.4rem .6rem;font-weight:600;">' + s.gene + '</td>' +
+                    '<td style="padding:.4rem .6rem;font-family:monospace;">' + escapeHtml(s.rsid) + '</td>' +
+                    '<td style="padding:.4rem .6rem;font-weight:600;">' + escapeHtml(s.gene) + '</td>' +
                     '<td style="padding:.4rem .6rem;font-family:monospace;">chr' + s.chromosome + ':' + s.position.toLocaleString() + '</td>' +
-                    '<td style="padding:.4rem .6rem;font-family:monospace;">' + s.ref_allele + '</td>' +
-                    '<td style="padding:.4rem .6rem;font-family:monospace;color:' + genoColor + ';font-weight:600;">' + s.predicted_allele_1 + '/' + s.predicted_allele_2 + '</td>' +
+                    '<td style="padding:.4rem .6rem;font-family:monospace;">' + escapeHtml(s.ref_allele) + '</td>' +
+                    '<td style="padding:.4rem .6rem;font-family:monospace;color:' + genoColor + ';font-weight:600;">' + escapeHtml(s.predicted_allele_1) + '/' + escapeHtml(s.predicted_allele_2) + '</td>' +
                     '<td style="padding:.4rem .6rem;">' + (s.confidence * 100).toFixed(0) + '%</td></tr>';
             });
             tbl += '</tbody></table></div>';
@@ -4699,8 +4704,8 @@ function escapeHtml(str) {
             var fastaHtml = '<details><summary style="cursor:pointer;font-size:.85rem;color:var(--accent);margin-bottom:.5rem;">View FASTA sequences (' + dna.total_variants + ' fragments)</summary>' +
                 '<pre style="background:rgba(0,0,0,.3);padding:1rem;border-radius:var(--radius-sm);font-size:.75rem;overflow-x:auto;max-height:400px;overflow-y:auto;line-height:1.5;color:var(--text-dim);">';
             dna.sequences.forEach(function (s) {
-                fastaHtml += '<span style="color:var(--accent);">&gt;' + s.rsid + '|' + s.gene + '|chr' + s.chromosome + ':' + s.position + '|predicted=' + s.predicted_allele_1 + '/' + s.predicted_allele_2 + '|confidence=' + s.confidence.toFixed(2) + '</span>\n';
-                fastaHtml += s.flanking_5prime + '<span style="color:#e06c75;font-weight:bold;">[' + s.predicted_allele_1 + '/' + s.predicted_allele_2 + ']</span>' + s.flanking_3prime + '\n';
+                fastaHtml += '<span style="color:var(--accent);">&gt;' + escapeHtml(s.rsid) + '|' + escapeHtml(s.gene) + '|chr' + s.chromosome + ':' + s.position + '|predicted=' + escapeHtml(s.predicted_allele_1) + '/' + escapeHtml(s.predicted_allele_2) + '|confidence=' + s.confidence.toFixed(2) + '</span>\n';
+                fastaHtml += escapeHtml(s.flanking_5prime) + '<span style="color:#e06c75;font-weight:bold;">[' + escapeHtml(s.predicted_allele_1) + '/' + escapeHtml(s.predicted_allele_2) + ']</span>' + escapeHtml(s.flanking_3prime) + '\n';
             });
             fastaHtml += '</pre></details>';
             document.getElementById('dna-fasta-block').innerHTML = fastaHtml;
@@ -4710,7 +4715,7 @@ function escapeHtml(str) {
                 '<button class="btn btn-outline" onclick="downloadDnaFasta()">Download FASTA</button>';
 
             /* Disclaimer */
-            document.getElementById('dna-disclaimer').innerHTML = dna.disclaimer;
+            document.getElementById('dna-disclaimer').textContent = dna.disclaimer;
 
             /* Store FASTA globally for download */
             window._dnaFastaContent = dna.fasta;
@@ -4725,8 +4730,8 @@ function escapeHtml(str) {
         r.disease_risks.forEach(function (d) {
             var cls = d.risk_level;
             rl.innerHTML += '<div class="risk-item ' + cls + '">' +
-                '<span class="risk-name">' + d.disease + '</span>' +
-                '<span class="risk-badge ' + cls + '">' + d.risk_level.replace('_', ' ') + '</span>' +
+                '<span class="risk-name">' + escapeHtml(d.disease) + '</span>' +
+                '<span class="risk-badge ' + cls + '">' + escapeHtml(d.risk_level.replace('_', ' ')) + '</span>' +
                 '<span class="risk-prob">' + (d.probability * 100).toFixed(1) + '%</span></div>';
         });
 
@@ -5864,8 +5869,8 @@ function escapeHtml(str) {
                         card.className = 'theme-card';
                         card.setAttribute('role', 'button');
                         card.setAttribute('tabindex', '0');
-                        card.innerHTML = '<div class="theme-title">' + t.title + '</div>' +
-                            '<div class="theme-desc">' + t.description + '</div>';
+                        card.innerHTML = '<div class="theme-title">' + escapeHtml(t.title) + '</div>' +
+                            '<div class="theme-desc">' + escapeHtml(t.description) + '</div>';
                         card.addEventListener('click', function() {
                             counselInput.value = "I'd like to explore the theme of " + t.title.toLowerCase() + ".";
                             counselInput.focus();
@@ -5888,10 +5893,10 @@ function escapeHtml(str) {
             var html = text;
             if (extras) {
                 if (extras.insight) {
-                    html += '<span class="counsel-insight">' + extras.insight + '</span>';
+                    html += '<span class="counsel-insight">' + escapeHtml(extras.insight) + '</span>';
                 }
                 if (extras.quote) {
-                    html += '<span class="counsel-source-quote">&ldquo;' + extras.quote + '&rdquo;</span>';
+                    html += '<span class="counsel-source-quote">&ldquo;' + escapeHtml(extras.quote) + '&rdquo;</span>';
                 }
             }
             /* Add speak button to counsellor messages */
@@ -6127,51 +6132,199 @@ function escapeHtml(str) {
             }
         });
 
-        /* ---- Web Speech API — Speech Synthesis ---- */
+        /* ---- Web Speech API — Speech Synthesis (Calm Counselling Voice) ---- */
+
+        /*
+         * Voice selection strategy for a calm, settled counselling tone:
+         *
+         * 1. Prefer "natural" / "neural" voices (Microsoft Edge, newer macOS)
+         *    — these sound human, warm, and unhurried.
+         * 2. On macOS/iOS: Daniel (UK, resonant), Samantha (warm), Karen (AU, gentle),
+         *    Moira (Irish, soft), Rishi (Indian English, measured).
+         * 3. On Windows: Microsoft Jenny Natural, Microsoft Aria Natural,
+         *    Microsoft Guy Natural — deeply human neural voices.
+         * 4. On Chrome: "Google UK English Male" (deeper, measured) over US voices.
+         * 5. Fallback: any English local voice, then any English voice.
+         *
+         * Speech parameters tuned for calm delivery:
+         *   rate  : 0.82  — noticeably slower than default, gives weight to words
+         *   pitch : 0.92  — slightly deeper, grounding, settled
+         *   volume: 0.85  — quieter than full; intimate, non-intrusive
+         *
+         * Paragraph pauses: text is split on double-newlines. Each paragraph is
+         * spoken as a separate utterance with a 600ms silence between them,
+         * creating the natural rhythm of a thoughtful speaker.
+         */
+
+        var _calmVoice = null;  /* cached after first lookup */
+        var _voicesLoaded = false;
+
+        /* Ranked voice preferences — order matters (first match wins) */
+        var _calmVoicePreferences = [
+            /* macOS / iOS natural voices (Sequoia+, iOS 17+) */
+            'Zoe',              /* macOS Sequoia — warm, modern */
+            'Evan',             /* macOS Sequoia — calm male */
+            'Daniel',           /* British English — resonant, unhurried */
+            'Samantha',         /* Classic macOS — warm, clear */
+            'Karen',            /* Australian — gentle, measured */
+            'Moira',            /* Irish — soft, contemplative */
+            'Rishi',            /* Indian English — measured, thoughtful */
+            'Fiona',            /* Scottish — warm */
+            /* Windows neural / natural voices (Edge) */
+            'Microsoft Jenny Online (Natural)',
+            'Microsoft Aria Online (Natural)',
+            'Microsoft Guy Online (Natural)',
+            'Microsoft Eric Online (Natural)',
+            'Microsoft Jenny',
+            'Microsoft Aria',
+            'Microsoft Guy',
+            /* Google Chrome network voices */
+            'Google UK English Male',
+            'Google UK English Female',
+            'Google US English',
+            /* Android */
+            'English United Kingdom',
+            'English (United Kingdom)',
+            /* Linux espeak fallbacks */
+            'English (Great Britain)',
+            'english_rp',
+            'english-us',
+        ];
+
+        function _selectCalmVoice() {
+            if (_calmVoice) return _calmVoice;
+            var voices = synthesis ? synthesis.getVoices() : [];
+            if (voices.length === 0) return null;
+
+            /* Try each preferred name (substring match, case-insensitive) */
+            for (var i = 0; i < _calmVoicePreferences.length; i++) {
+                var pref = _calmVoicePreferences[i].toLowerCase();
+                var match = voices.find(function(v) {
+                    return v.name.toLowerCase().indexOf(pref) > -1 &&
+                           v.lang.indexOf('en') === 0;
+                });
+                if (match) { _calmVoice = match; return match; }
+            }
+
+            /* Fallback: any English local voice (local sounds more natural) */
+            var localEn = voices.find(function(v) {
+                return v.lang.indexOf('en') === 0 && v.localService;
+            });
+            if (localEn) { _calmVoice = localEn; return localEn; }
+
+            /* Last resort: any English voice */
+            var anyEn = voices.find(function(v) {
+                return v.lang.indexOf('en') === 0;
+            });
+            if (anyEn) { _calmVoice = anyEn; return anyEn; }
+
+            return null;
+        }
+
+        /* Calm speech parameters */
+        var _calmRate   = 0.82;   /* noticeably slower — weight to each word */
+        var _calmPitch  = 0.92;   /* slightly deeper — grounding, settled */
+        var _calmVolume = 0.85;   /* quieter — intimate, non-intrusive */
+        var _paragraphPause = 650; /* ms silence between paragraphs */
+
+        function _markSpeakingStart() {
+            isSpeaking = true;
+            if (voiceBtn) voiceBtn.classList.add('speaking');
+            if (voiceStatusDot) voiceStatusDot.classList.add('active');
+            if (voiceStatusText) voiceStatusText.textContent = 'Speaking\u2026';
+        }
+
+        function _markSpeakingEnd() {
+            isSpeaking = false;
+            if (voiceBtn) voiceBtn.classList.remove('speaking');
+            if (voiceStatusDot) voiceStatusDot.classList.remove('active');
+            if (voiceStatusText) voiceStatusText.textContent = 'Voice ready \u2014 click the microphone to speak';
+        }
+
+        /**
+         * Speak text with calm, settled delivery.
+         * Splits on paragraph breaks (\n\n) and speaks each paragraph
+         * as a separate utterance with a pause between them.
+         */
         function speakText(text) {
             if (!synthesis) return;
             /* Cancel any ongoing speech */
             if (synthesis.speaking) synthesis.cancel();
 
-            var utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.9;
-            utterance.pitch = 1.0;
-            utterance.volume = 1.0;
+            var voice = _selectCalmVoice();
 
-            /* Try to pick a calm, thoughtful voice */
-            var voices = synthesis.getVoices();
-            if (voices.length > 0) {
-                var preferred = voices.find(function(v) {
-                    return v.name.indexOf('Google') > -1 && v.lang.indexOf('en') === 0;
-                }) || voices.find(function(v) {
-                    return v.lang.indexOf('en') === 0 && v.localService;
-                }) || voices.find(function(v) {
-                    return v.lang.indexOf('en') === 0;
-                });
-                if (preferred) utterance.voice = preferred;
+            /* Split into paragraphs, filter out empty strings */
+            var paragraphs = text.split(/\n\s*\n/).filter(function(p) {
+                return p.trim().length > 0;
+            });
+            if (paragraphs.length === 0) return;
+
+            var currentIdx = 0;
+            var cancelled = false;
+
+            function speakNext() {
+                if (cancelled || currentIdx >= paragraphs.length) {
+                    _markSpeakingEnd();
+                    return;
+                }
+
+                var para = paragraphs[currentIdx].trim();
+                /* Clean up leftover punctuation artifacts */
+                para = para.replace(/\s+/g, ' ');
+
+                var utterance = new SpeechSynthesisUtterance(para);
+                utterance.lang = 'en-GB';  /* British English — calmer cadence */
+                utterance.rate = _calmRate;
+                utterance.pitch = _calmPitch;
+                utterance.volume = _calmVolume;
+                if (voice) utterance.voice = voice;
+
+                utterance.onstart = function() {
+                    if (currentIdx === 0) _markSpeakingStart();
+                };
+
+                utterance.onend = function() {
+                    currentIdx++;
+                    if (currentIdx < paragraphs.length) {
+                        /* Pause between paragraphs — the silence of a
+                           thoughtful speaker gathering the next thought */
+                        setTimeout(speakNext, _paragraphPause);
+                    } else {
+                        _markSpeakingEnd();
+                    }
+                };
+
+                utterance.onerror = function(e) {
+                    /* 'interrupted' and 'cancelled' are expected when user
+                       clicks stop or sends a new message */
+                    if (e.error !== 'interrupted' && e.error !== 'canceled') {
+                        _markSpeakingEnd();
+                    }
+                };
+
+                synthesis.speak(utterance);
             }
 
-            utterance.onstart = function() {
-                isSpeaking = true;
-                voiceBtn.classList.add('speaking');
-                voiceStatusDot.classList.add('active');
-                voiceStatusText.textContent = 'Speaking...';
-            };
-            utterance.onend = function() {
-                isSpeaking = false;
-                voiceBtn.classList.remove('speaking');
-                voiceStatusDot.classList.remove('active');
-                voiceStatusText.textContent = 'Voice ready \u2014 click the microphone to speak';
-            };
-            utterance.onerror = function() {
-                isSpeaking = false;
-                voiceBtn.classList.remove('speaking');
-                voiceStatusDot.classList.remove('active');
-            };
+            speakNext();
 
-            synthesis.speak(utterance);
+            /* Return a cancel function so callers can stop mid-speech */
+            return function() {
+                cancelled = true;
+                if (synthesis.speaking) synthesis.cancel();
+                _markSpeakingEnd();
+            };
         }
+
+        /* Store the cancel function for the current speech */
+        var _cancelCurrentSpeech = null;
+
+        /* Override speakText to track cancellation */
+        var _originalSpeakText = speakText;
+        speakText = function(text) {
+            /* Cancel previous speech if still going */
+            if (_cancelCurrentSpeech) _cancelCurrentSpeech();
+            _cancelCurrentSpeech = _originalSpeakText(text);
+        };
 
         /* Global function for speak buttons in chat messages */
         window._counselSpeakText = function(msgEl) {
@@ -6183,9 +6336,15 @@ function escapeHtml(str) {
             speakText(clone.textContent.trim());
         };
 
-        /* Ensure voices are loaded (some browsers need this event) */
+        /* Ensure voices are loaded (some browsers fire this asynchronously) */
         if (synthesis) {
-            synthesis.onvoiceschanged = function() { /* voices now available */ };
+            synthesis.onvoiceschanged = function() {
+                _voicesLoaded = true;
+                _calmVoice = null;  /* re-select with new voice list */
+                _selectCalmVoice();
+            };
+            /* Eagerly try to load voices */
+            _selectCalmVoice();
         }
 
     })();

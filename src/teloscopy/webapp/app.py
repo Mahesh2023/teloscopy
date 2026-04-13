@@ -142,7 +142,7 @@ _BASE_DIR: Path = Path(__file__).resolve().parent
 _TEMPLATES_DIR: Path = _BASE_DIR / "templates"
 _STATIC_DIR: Path = _BASE_DIR / "static"
 _UPLOAD_DIR: Path = Path(os.getenv("TELOSCOPY_UPLOAD_DIR", "/tmp/teloscopy_uploads"))
-_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+_UPLOAD_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
 
 _ALLOWED_EXTENSIONS: set[str] = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}
 _MAX_UPLOAD_BYTES: int = 50 * 1024 * 1024  # 50 MiB
@@ -204,6 +204,7 @@ if "*" in _CORS_ORIGINS:
 # ---------------------------------------------------------------------------
 
 _jobs: dict[str, JobStatus] = {}
+_job_sessions: dict[str, str] = {}  # job_id → consent session_id (IDOR protection)
 _JOB_MAX_COUNT: int = 10_000
 _JOB_TTL_SECONDS: float = 3600.0  # 1 hour
 
@@ -339,6 +340,14 @@ _CONSENT_SECRET: bytes = os.getenv(
     "TELOSCOPY_CONSENT_SECRET", _default_consent_secret()
 ).encode()
 
+if _TELOSCOPY_ENV == "production" and not os.getenv("TELOSCOPY_CONSENT_SECRET"):
+    logger.warning(
+        "SECURITY: TELOSCOPY_CONSENT_SECRET is not set. In production, a strong "
+        "random secret is required. The application is using a machine-derived "
+        "fallback which may be predictable. Set TELOSCOPY_CONSENT_SECRET to a "
+        "cryptographically random value (e.g. python -c 'import secrets; print(secrets.token_hex(32))')."
+    )
+
 # In-memory consent store: token → {session_id, purposes, granted_at, withdrawn}
 _consent_store: dict[str, dict[str, Any]] = {}
 _consent_store_lock: threading.Lock = threading.Lock()
@@ -356,7 +365,7 @@ def _sign_consent_token(session_id: str, purposes: list[str]) -> str:
     """Create an HMAC-signed consent token encoding session + purposes."""
     timestamp = str(int(time.time()))
     payload = f"{session_id}:{','.join(sorted(purposes))}:{timestamp}"
-    sig = hmac.new(_CONSENT_SECRET, payload.encode(), hashlib.sha256).hexdigest()[:32]
+    sig = hmac.new(_CONSENT_SECRET, payload.encode(), hashlib.sha256).hexdigest()
     import base64
     token = base64.urlsafe_b64encode(f"{payload}:{sig}".encode()).decode()
     return token
@@ -373,7 +382,7 @@ def _verify_consent_token(token: str) -> dict[str, Any] | None:
         payload_str, sig = parts
         expected_sig = hmac.new(
             _CONSENT_SECRET, payload_str.encode(), hashlib.sha256
-        ).hexdigest()[:32]
+        ).hexdigest()
         if not hmac.compare_digest(sig, expected_sig):
             return None
         payload_parts = payload_str.split(":", 2)
@@ -477,7 +486,7 @@ async def _check_csrf(request: Request) -> None:
     content_type = request.headers.get("content-type", "")
     # Accept requests with X-Requested-With header, or JSON content type
     # (custom content types cannot be set by cross-origin forms)
-    if xrw or "application/json" in content_type or "multipart/form-data" in content_type:
+    if xrw or "application/json" in content_type:
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -539,7 +548,7 @@ async def security_headers_middleware(request: Request, call_next: Any) -> Any:
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["X-XSS-Protection"] = "0"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
     response.headers["Content-Security-Policy"] = _CSP_POLICY
@@ -569,7 +578,7 @@ async def csrf_middleware(request: Request, call_next: Any) -> Any:
             xrw = request.headers.get("x-requested-with", "")
             ct = request.headers.get("content-type", "")
             # Custom headers/content-types can't be set by cross-origin HTML forms
-            if not (xrw or "application/json" in ct or "multipart/form-data" in ct):
+            if not (xrw or "application/json" in ct):
                 from fastapi.responses import JSONResponse
                 return JSONResponse(
                     status_code=403,
@@ -1582,7 +1591,7 @@ async def record_consent(bundle: ConsentBundle, request: Request, response: Resp
     }
 
 
-@app.post("/api/legal/consent/withdraw", tags=["Legal"])
+@app.post("/api/legal/consent/withdraw", tags=["Legal"], dependencies=[Depends(rate_limit(10, 60))])
 async def withdraw_consent(session_id: str = "", purposes: list[str] = [], response: Response = None):
     """Withdraw consent per DPDP Act 2023 Section 6(6).
     
@@ -1637,6 +1646,7 @@ async def withdraw_consent(session_id: str = "", purposes: list[str] = [], respo
     "/api/legal/data-deletion",
     response_model=DataDeletionResponse,
     tags=["Legal"],
+    dependencies=[Depends(rate_limit(10, 60))],
 )
 async def request_data_deletion(req: DataDeletionRequest):
     """Exercise Right to Erasure under DPDP Act 2023 Section 12(3).
@@ -1665,6 +1675,7 @@ async def request_data_deletion(req: DataDeletionRequest):
     "/api/legal/grievance",
     response_model=GrievanceResponse,
     tags=["Legal"],
+    dependencies=[Depends(rate_limit(10, 60))],
 )
 async def submit_grievance(grievance: GrievanceRequest):
     """Submit a grievance per DPDP Act 2023 Section 13.
@@ -1690,7 +1701,7 @@ async def get_privacy_policy_summary():
         "full_document_url": "/docs/privacy-policy",
         "governing_law": "Digital Personal Data Protection Act, 2023 (India)",
         "data_fiduciary": "Teloscopy Project",
-        "grievance_officer_email": "animaticalpha123@gmail.com",
+        "grievance_officer_email": os.getenv("TELOSCOPY_GRIEVANCE_EMAIL", "grievance@teloscopy.org"),
         "data_protection_board": "Data Protection Board of India",
         "key_points": [
             "All data is processed ephemerally — nothing is stored on servers",
@@ -1899,7 +1910,7 @@ def _render_legal_doc(filename: str, title: str) -> HTMLResponse:
         <p style="margin-top:.4rem;">
             <a href="/docs/privacy-policy">Privacy Policy</a> &middot;
             <a href="/docs/terms-of-service">Terms of Service</a> &middot;
-            <a href="mailto:animaticalpha123@gmail.com">Grievance Officer</a>
+            <a href="mailto:{os.getenv('TELOSCOPY_GRIEVANCE_EMAIL', 'grievance@teloscopy.org')}">Grievance Officer</a>
         </p>
     </div>
 </body>
@@ -2031,7 +2042,7 @@ def _load_research_documents() -> dict[str, Any]:
 _RESEARCH_CACHE: dict[str, Any] = _load_research_documents()
 
 
-@app.get("/api/research")
+@app.get("/api/research", dependencies=[Depends(rate_limit(60, 60))])
 async def get_research() -> dict[str, Any]:
     """Return all research documents as structured sections (served from cache)."""
     return _RESEARCH_CACHE
@@ -2157,7 +2168,7 @@ def _build_counselling_response(
 
 
 
-@app.get("/api/psychiatry/themes", tags=["Psychiatry"])
+@app.get("/api/psychiatry/themes", tags=["Psychiatry"], dependencies=[Depends(rate_limit(60, 60))])
 async def get_psychiatry_themes() -> dict[str, Any]:
     """Return all counselling themes and their metadata."""
     themes = {}
@@ -2172,7 +2183,7 @@ async def get_psychiatry_themes() -> dict[str, Any]:
     return {"themes": themes, "count": len(themes)}
 
 
-@app.post("/api/psychiatry/counsel", tags=["Psychiatry"])
+@app.post("/api/psychiatry/counsel", tags=["Psychiatry"], dependencies=[Depends(rate_limit(20, 60))])
 async def psychiatry_counsel(request: Request) -> dict[str, Any]:
     """Process a counselling message and return an inquiry-based response.
 
@@ -2196,7 +2207,7 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
     return response
 
 
-@app.get("/api/psychiatry/knowledge-base", tags=["Psychiatry"])
+@app.get("/api/psychiatry/knowledge-base", tags=["Psychiatry"], dependencies=[Depends(rate_limit(60, 60))])
 async def get_psychiatry_knowledge_base() -> dict[str, Any]:
     """Return the psychiatry knowledge base document (from research cache)."""
     for doc in _RESEARCH_CACHE.get("documents", []):
@@ -2207,37 +2218,8 @@ async def get_psychiatry_knowledge_base() -> dict[str, Any]:
 
 @app.get("/api/debug/templates")
 async def debug_templates(request: Request) -> dict[str, Any]:
-    """Diagnostic endpoint for template debugging."""
-    if _TELOSCOPY_ENV == "production":
-        raise HTTPException(status_code=404, detail="Not found")
-    import os
-    import traceback
-
-    import starlette
-
-    diag: dict[str, Any] = {
-        "templates_dir": str(_TEMPLATES_DIR),
-        "templates_dir_exists": _TEMPLATES_DIR.exists(),
-        "template_files": (
-            [f.name for f in _TEMPLATES_DIR.iterdir()] if _TEMPLATES_DIR.exists() else []
-        ),
-        "static_dir": str(_STATIC_DIR),
-        "static_dir_exists": _STATIC_DIR.exists(),
-        "cwd": os.getcwd(),
-        "app_file": str(Path(__file__).resolve()),
-        "starlette_version": starlette.__version__,
-    }
-
-    # Try rendering index.html to catch the actual error
-    try:
-        resp = templates.TemplateResponse(request=request, name="index.html")
-        diag["index_render"] = "OK"
-        diag["index_status"] = resp.status_code
-    except Exception as exc:
-        diag["index_render_error"] = f"{type(exc).__name__}: {exc}"
-        diag["index_traceback"] = traceback.format_exc()
-
-    return diag
+    """Diagnostic endpoint disabled for security."""
+    raise HTTPException(status_code=404, detail="Not found")
 
 
 # ===================================================================== #
@@ -2341,7 +2323,7 @@ async def agents_status() -> AgentSystemStatus:
     description="Upload a microscopy or face photograph image and receive a job_id for tracking subsequent analysis.",
     dependencies=[Depends(rate_limit(10, 60)), Depends(require_consent("telomere_analysis", "facial_analysis"))],
 )
-async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
+async def upload_image(request: Request, file: UploadFile = File(...)) -> UploadResponse:
     """Upload a microscopy image and receive a ``job_id``."""
     if not file.filename or not _validate_extension(file.filename):
         raise HTTPException(
@@ -2375,6 +2357,7 @@ async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
 
     _evict_stale_jobs()
     _jobs[job_id] = JobStatus(job_id=job_id)
+    _job_sessions[job_id] = getattr(request.state, "consent_session_id", "")
 
     return UploadResponse(job_id=job_id, filename=file.filename)
 
@@ -2390,10 +2373,17 @@ async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
     description="Return the current status and progress of an analysis job by its job_id.",
     dependencies=[Depends(rate_limit(60, 60)), Depends(require_consent("telomere_analysis"))],
 )
-async def get_job_status(job_id: str) -> JobStatus:
+async def get_job_status(request: Request, job_id: str) -> JobStatus:
     """Return the current status of an analysis job."""
     job: JobStatus | None = _jobs.get(job_id)
     if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} not found.",
+        )
+    expected_session = _job_sessions.get(job_id, "")
+    caller_session = getattr(request.state, "consent_session_id", "")
+    if expected_session and caller_session != expected_session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job {job_id} not found.",
@@ -2409,10 +2399,17 @@ async def get_job_status(job_id: str) -> JobStatus:
     description="Return the full analysis results (telomere, disease risk, nutrition) for a completed job.",
     dependencies=[Depends(rate_limit(60, 60)), Depends(require_consent("telomere_analysis"))],
 )
-async def get_job_results(job_id: str) -> AnalysisResponse:
+async def get_job_results(request: Request, job_id: str) -> AnalysisResponse:
     """Return the full results of a completed analysis job."""
     job: JobStatus | None = _jobs.get(job_id)
     if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} not found.",
+        )
+    expected_session = _job_sessions.get(job_id, "")
+    caller_session = getattr(request.state, "consent_session_id", "")
+    if expected_session and caller_session != expected_session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job {job_id} not found.",
@@ -2438,6 +2435,7 @@ async def get_job_results(job_id: str) -> AnalysisResponse:
     dependencies=[Depends(rate_limit(20, 60)), Depends(require_consent("telomere_analysis", "disease_risk", "nutrition_plan"))],
 )
 async def full_analysis(
+    request: Request,
     file: UploadFile = File(...),
     age: int = Form(...),
     sex: str = Form(...),
@@ -2490,6 +2488,7 @@ async def full_analysis(
     job = JobStatus(job_id=job_id, message="Queued for analysis")
     _evict_stale_jobs()
     _jobs[job_id] = job
+    _job_sessions[job_id] = getattr(request.state, "consent_session_id", "")
 
     # Fire-and-forget background task
     asyncio.create_task(_run_full_analysis_limited(job_id, profile, str(dest)))  # noqa: RUF006

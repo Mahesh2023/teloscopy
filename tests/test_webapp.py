@@ -68,8 +68,8 @@ def _obtain_consent(client: TestClient) -> str:
 
 
 def _ch(token: str) -> dict[str, str]:
-    """Return consent headers dict."""
-    return {"X-Consent-Token": token}
+    """Return consent headers dict (includes CSRF header for multipart uploads)."""
+    return {"X-Consent-Token": token, "X-Requested-With": "XMLHttpRequest"}
 
 
 # ---------------------------------------------------------------------------
