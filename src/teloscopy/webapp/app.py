@@ -147,6 +147,28 @@ _ALLOWED_EXTENSIONS: set[str] = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp
 _MAX_UPLOAD_BYTES: int = 50 * 1024 * 1024  # 50 MiB
 _MIN_IMAGE_DIMENSION: int = 32  # minimum width/height in pixels
 
+
+async def _read_upload_chunked(file: Any, max_bytes: int) -> bytes:
+    """Read an uploaded file in 1 MiB chunks, aborting if *max_bytes* is exceeded.
+
+    Prevents a single oversized upload from exhausting server memory.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File exceeds the {max_bytes // (1024 * 1024)} MiB limit.",
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 # Magic byte signatures for image format validation
 _IMAGE_MAGIC_BYTES: dict[str, list[bytes]] = {
     "png": [b"\x89PNG\r\n\x1a\n"],
@@ -164,6 +186,17 @@ _CORS_ORIGINS: list[str] = os.getenv(
     "TELOSCOPY_CORS_ORIGINS",
     "http://localhost:8000,http://127.0.0.1:8000",
 ).split(",")
+
+# Prevent wildcard CORS with credentials — this is a credential theft risk.
+if "*" in _CORS_ORIGINS:
+    logger.warning(
+        "TELOSCOPY_CORS_ORIGINS contains '*' (wildcard). "
+        "Removing it to prevent credential exposure via CORS. "
+        "Set explicit origins instead."
+    )
+    _CORS_ORIGINS = [o for o in _CORS_ORIGINS if o.strip() != "*"]
+    if not _CORS_ORIGINS:
+        _CORS_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]
 
 # ---------------------------------------------------------------------------
 # In-memory job store (swap for Redis in production)
@@ -259,7 +292,13 @@ def rate_limit(max_requests: int, window_seconds: int = 60):
     """
 
     async def _check_rate_limit(request: Request) -> None:
-        client_ip: str = request.client.host if request.client else "unknown"
+        # Prefer X-Forwarded-For (first hop) when behind a reverse proxy,
+        # falling back to the direct client IP.
+        forwarded = request.headers.get("x-forwarded-for", "")
+        if forwarded:
+            client_ip = forwarded.split(",")[0].strip()
+        else:
+            client_ip = request.client.host if request.client else "unknown"
         key: str = f"{client_ip}:{request.url.path}"
         if not _rate_limiter.is_allowed(key, max_requests, window_seconds):
             raise HTTPException(
@@ -302,12 +341,14 @@ _CONSENT_SECRET: bytes = os.getenv(
 # In-memory consent store: token → {session_id, purposes, granted_at, withdrawn}
 _consent_store: dict[str, dict[str, Any]] = {}
 _consent_store_lock: threading.Lock = threading.Lock()
+_CONSENT_STORE_MAX: int = 50_000  # cap to prevent memory exhaustion
 
 # Tokens older than 24 hours require re-consent.
 _CONSENT_TOKEN_TTL: float = 86_400.0
 
 # Set of session_ids that have withdrawn consent — checked on every request.
 _withdrawn_sessions: set[str] = set()
+_WITHDRAWN_SESSIONS_MAX: int = 100_000  # cap to prevent memory exhaustion
 
 
 def _sign_consent_token(session_id: str, purposes: list[str]) -> str:
@@ -1445,6 +1486,7 @@ def _validate_image_content(contents: bytes, filename: str) -> ImageValidationRe
 _consent_log: list[dict] = []
 _grievance_log: list[dict] = []
 _deletion_log: list[dict] = []
+_AUDIT_LOG_MAX: int = 10_000  # cap each log to prevent memory exhaustion
 
 
 @app.get("/api/legal/notice", response_model=LegalNotice, tags=["Legal"])
@@ -1491,6 +1533,13 @@ async def record_consent(bundle: ConsentBundle, request: Request, response: Resp
     
     # Store in server-side consent store
     with _consent_store_lock:
+        # Evict oldest entries if at capacity
+        if len(_consent_store) >= _CONSENT_STORE_MAX:
+            oldest_keys = sorted(
+                _consent_store, key=lambda k: _consent_store[k].get("granted_at", "")
+            )[: len(_consent_store) - _CONSENT_STORE_MAX + 100]
+            for k in oldest_keys:
+                _consent_store.pop(k, None)
         _consent_store[bundle.session_id] = {
             "purposes": granted_purposes,
             "granted_at": datetime.utcnow().isoformat(),
@@ -1507,6 +1556,8 @@ async def record_consent(bundle: ConsentBundle, request: Request, response: Resp
         "recorded_at": datetime.utcnow().isoformat(),
         "ip_hash": ip_hash,
     }
+    if len(_consent_log) >= _AUDIT_LOG_MAX:
+        _consent_log[:] = _consent_log[-(_AUDIT_LOG_MAX // 2):]
     _consent_log.append(record)
     logger.info("Consent recorded for session %s with %d purposes", bundle.session_id, len(bundle.consents))
     
@@ -1543,6 +1594,12 @@ async def withdraw_consent(session_id: str = "", purposes: list[str] = [], respo
     """
     # Invalidate the session's consent server-side
     if session_id:
+        # Cap withdrawn sessions set to prevent unbounded memory growth
+        if len(_withdrawn_sessions) >= _WITHDRAWN_SESSIONS_MAX:
+            # Remove oldest half (order not preserved in sets, but this
+            # bounds the size which is the primary goal)
+            to_remove = list(_withdrawn_sessions)[:_WITHDRAWN_SESSIONS_MAX // 2]
+            _withdrawn_sessions.difference_update(to_remove)
         _withdrawn_sessions.add(session_id)
         with _consent_store_lock:
             _consent_store.pop(session_id, None)
@@ -1552,6 +1609,8 @@ async def withdraw_consent(session_id: str = "", purposes: list[str] = [], respo
         "purposes_withdrawn": purposes,
         "withdrawn_at": datetime.utcnow().isoformat(),
     }
+    if len(_consent_log) >= _AUDIT_LOG_MAX:
+        _consent_log[:] = _consent_log[-(_AUDIT_LOG_MAX // 2):]
     _consent_log.append(record)
     logger.info("Consent withdrawn for session %s, purposes: %s", session_id, purposes)
     
@@ -1587,6 +1646,8 @@ async def request_data_deletion(req: DataDeletionRequest):
     """
     response = DataDeletionResponse(request_id=req.request_id)
     
+    if len(_deletion_log) >= _AUDIT_LOG_MAX:
+        _deletion_log[:] = _deletion_log[-(_AUDIT_LOG_MAX // 2):]
     _deletion_log.append({
         "request_id": req.request_id,
         "session_id": req.session_id,
@@ -1609,6 +1670,8 @@ async def submit_grievance(grievance: GrievanceRequest):
     
     The Grievance Officer will acknowledge and respond within 30 days.
     """
+    if len(_grievance_log) >= _AUDIT_LOG_MAX:
+        _grievance_log[:] = _grievance_log[-(_AUDIT_LOG_MAX // 2):]
     _grievance_log.append(grievance.dict())
     # Redact email in logs to avoid PII leakage (log hash instead)
     email_hash = hashlib.sha256(grievance.email.encode()).hexdigest()[:8] if grievance.email else "none"
@@ -1674,13 +1737,15 @@ async def results_page(request: Request, job_id: str) -> HTMLResponse:
     """Serve a results page for a specific job."""
     import json as _json
 
-    job: JobStatus | None = _jobs.get(job_id)
+    # NOTE: Do NOT pass the full `job` object here — the template is served
+    # without server-side consent verification and rendering result data
+    # would bypass the consent gate.  The client fetches results via the
+    # consent-protected /api/results/{job_id} endpoint instead.
     return templates.TemplateResponse(
         request=request,
         name="index.html",
         context={
             "job_id": job_id,
-            "job": job,
             "scroll_to": "results",
             "research_json": _json.dumps(_RESEARCH_CACHE),
         },
@@ -2047,7 +2112,7 @@ async def readiness_check() -> dict[str, Any]:
     tags=["Agents"],
     summary="Agent system status",
     description="Returns the current status of each agent in the multi-agent system, including active jobs and uptime.",
-    dependencies=[Depends(rate_limit(60, 60))],
+    dependencies=[Depends(rate_limit(60, 60)), Depends(require_consent("telomere_analysis"))],
 )
 async def agents_status() -> AgentSystemStatus:
     """Return status of each agent in the multi-agent system."""
@@ -2116,12 +2181,22 @@ async def upload_image(file: UploadFile = File(...)) -> UploadResponse:
     ext: str = Path(file.filename).suffix.lower()
     dest: Path = _UPLOAD_DIR / f"{job_id}{ext}"
 
-    contents: bytes = await file.read()
-    if len(contents) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File exceeds the 50 MiB limit.",
-        )
+    # Read in chunks to avoid loading multi-GB payloads into memory before
+    # the size check fires.  Abort as soon as the limit is exceeded.
+    chunks: list[bytes] = []
+    total_size = 0
+    while True:
+        chunk = await file.read(1024 * 1024)  # 1 MiB chunks
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > _MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="File exceeds the 50 MiB limit.",
+            )
+        chunks.append(chunk)
+    contents = b"".join(chunks)
     dest.write_bytes(contents)
     safe_filename = file.filename.replace('\n', '_').replace('\r', '_')
     logger.info("Saved upload %s → %s (%d bytes)", safe_filename, dest, len(contents))
@@ -2216,7 +2291,7 @@ async def full_analysis(
     ext: str = Path(file.filename).suffix.lower()
     dest: Path = _UPLOAD_DIR / f"{job_id}{ext}"
 
-    contents: bytes = await file.read()
+    contents: bytes = await _read_upload_chunked(file, _MAX_UPLOAD_BYTES)
     if len(contents) > _MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -2363,7 +2438,7 @@ async def validate_image(file: UploadFile = File(...)) -> ImageValidationRespons
             valid=False,
             issues=[f"Invalid file type. Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}"],
         )
-    contents: bytes = await file.read()
+    contents: bytes = await _read_upload_chunked(file, _MAX_UPLOAD_BYTES)
     if len(contents) > _MAX_UPLOAD_BYTES:
         return ImageValidationResponse(
             valid=False,
@@ -2549,8 +2624,8 @@ async def health_checkup(request: HealthCheckupRequest) -> HealthCheckupResponse
         )
     try:
         response = await asyncio.to_thread(_health_analyzer.analyze, request)
-    except Exception:
-        logger.exception("health-checkup analysis failed")
+    except Exception as exc:
+        logger.error("health-checkup analysis failed: %s", type(exc).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Health checkup analysis failed. Please try again.",
@@ -2591,12 +2666,7 @@ async def parse_report_preview(file: UploadFile = File(...)) -> ReportParsePrevi
             detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(_REPORT_ALLOWED_EXTENSIONS))}",
         )
 
-    contents: bytes = await file.read()
-    if len(contents) > _MAX_REPORT_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File exceeds the 20 MiB limit for report uploads.",
-        )
+    contents: bytes = await _read_upload_chunked(file, _MAX_REPORT_BYTES)
     if not contents:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2714,12 +2784,7 @@ async def health_checkup_upload(
             detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(_REPORT_ALLOWED_EXTENSIONS))}",
         )
 
-    contents: bytes = await file.read()
-    if len(contents) > _MAX_REPORT_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File exceeds the 20 MiB limit for report uploads.",
-        )
+    contents: bytes = await _read_upload_chunked(file, _MAX_REPORT_BYTES)
     if not contents:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2805,8 +2870,8 @@ async def health_checkup_upload(
 
     try:
         response = await asyncio.to_thread(_health_analyzer.analyze, checkup_request)
-    except Exception:
-        logger.exception("health-checkup upload analysis failed")
+    except Exception as exc:
+        logger.error("health-checkup upload analysis failed: %s", type(exc).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Health checkup analysis failed. Please try again.",

@@ -1300,9 +1300,31 @@
             font-size: .78rem;
         }
         .footer-links a:hover { color: var(--accent); }
+
+        /* noscript fallback */
+        .noscript-block {
+            background: var(--bg-card-solid, #1a2035); color: var(--text, #e0e6ed);
+            padding: 3rem 2rem; text-align: center; min-height: 100vh;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .noscript-block h2 { margin-bottom: 1rem; }
+        .noscript-block p { max-width: 500px; line-height: 1.6; color: var(--text-dim, #8f9bb3); }
+        .noscript-block a { color: var(--accent, #00d4aa); }
     </style>
 </head>
 <body>
+
+<noscript>
+<div class="noscript-block">
+    <h2>JavaScript Required</h2>
+    <p>Teloscopy requires JavaScript to function, including displaying the mandatory data consent notice
+       required by the Digital Personal Data Protection Act, 2023. Please enable JavaScript and reload this page.</p>
+    <p style="margin-top:1rem;">
+        <a href="/docs/privacy-policy">Privacy Policy</a> &middot;
+        <a href="/docs/terms-of-service">Terms of Service</a>
+    </p>
+</div>
+</noscript>
 
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
@@ -2456,11 +2478,11 @@
             if (!raw) return false;
             var data = JSON.parse(raw);
             if (!data.accepted || !data.timestamp) return false;
-            /* Client-side consent lasts 30 days (controls when the full consent
-               overlay auto-shows).  The *server* token TTL is 24 h; when it
-               expires the browser silently re-obtains one — see refreshConsentToken(). */
+            /* Client-side consent expires after 1 day to match the server token
+               TTL of 24 h.  When it expires the full consent overlay re-appears
+               to ensure informed, periodic re-consent per DPDP Act requirements. */
             var daysSince = (Date.now() - data.timestamp) / (1000 * 60 * 60 * 24);
-            return daysSince < 30;
+            return daysSince < 1;
         } catch (_) { return false; }
     }
 

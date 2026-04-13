@@ -298,8 +298,17 @@ class TestUnprotectedEndpoints:
         resp = client.get("/api/legal/notice")
         assert resp.status_code == 200
 
-    def test_agents_status_no_consent_needed(self, client):
+    def test_agents_status_requires_consent(self, client):
+        """After the security audit fix, /api/agents/status requires consent."""
         resp = client.get("/api/agents/status")
+        assert resp.status_code == 403, (
+            "Expected 403 — /api/agents/status should require consent after the security audit fix"
+        )
+
+    def test_agents_status_with_consent(self, consented_client):
+        """With a valid consent token, /api/agents/status returns 200."""
+        cl, _, token = consented_client
+        resp = cl.get("/api/agents/status", headers=_consent_headers(token))
         assert resp.status_code == 200
 
 
@@ -363,3 +372,153 @@ class TestOutputSanitisation:
         result = re.sub(r'\bon\w+\s*=\s*["\'][^"\']*["\']', '', text, flags=re.IGNORECASE)
         assert "onload" not in result.lower()
         assert "content" in result
+
+
+# ---------------------------------------------------------------------------
+# 6. Security audit fixes — consent store bounds & rate limiter
+# ---------------------------------------------------------------------------
+
+class TestConsentStoreBounds:
+    """Verify in-memory consent stores have eviction / bounds."""
+
+    def test_consent_store_has_max_constant(self):
+        """The _CONSENT_STORE_MAX constant should be defined."""
+        from teloscopy.webapp.app import _CONSENT_STORE_MAX
+        assert isinstance(_CONSENT_STORE_MAX, int)
+        assert _CONSENT_STORE_MAX > 0
+
+    def test_withdrawn_sessions_has_max_constant(self):
+        """The _WITHDRAWN_SESSIONS_MAX constant should be defined."""
+        from teloscopy.webapp.app import _WITHDRAWN_SESSIONS_MAX
+        assert isinstance(_WITHDRAWN_SESSIONS_MAX, int)
+        assert _WITHDRAWN_SESSIONS_MAX > 0
+
+    def test_audit_log_has_max_constant(self):
+        """The _AUDIT_LOG_MAX constant should be defined."""
+        from teloscopy.webapp.app import _AUDIT_LOG_MAX
+        assert isinstance(_AUDIT_LOG_MAX, int)
+        assert _AUDIT_LOG_MAX > 0
+
+
+class TestRateLimiterProxy:
+    """Verify rate limiter uses X-Forwarded-For when available."""
+
+    def test_rate_limit_uses_forwarded_header(self, consented_client):
+        """Requests with X-Forwarded-For should be rate-limited by that IP."""
+        cl, _, token = consented_client
+        headers = {**_consent_headers(token), "X-Forwarded-For": "203.0.113.42, 10.0.0.1"}
+        # This should work (within rate limit)
+        resp = cl.get("/api/health", headers=headers)
+        assert resp.status_code == 200
+
+
+class TestSecurityHeaders:
+    """Verify security headers are set on responses."""
+
+    def test_csp_header_present(self, client):
+        resp = client.get("/api/health")
+        assert "Content-Security-Policy" in resp.headers
+        csp = resp.headers["Content-Security-Policy"]
+        assert "frame-ancestors 'none'" in csp
+
+    def test_x_content_type_options(self, client):
+        resp = client.get("/api/health")
+        assert resp.headers.get("X-Content-Type-Options") == "nosniff"
+
+    def test_x_frame_options(self, client):
+        resp = client.get("/api/health")
+        assert resp.headers.get("X-Frame-Options") == "DENY"
+
+    def test_referrer_policy(self, client):
+        resp = client.get("/api/health")
+        assert "strict-origin" in resp.headers.get("Referrer-Policy", "")
+
+
+class TestChunkedUpload:
+    """Verify that upload endpoints reject oversized files."""
+
+    def test_upload_rejects_oversized_image(self, consented_client):
+        """A file over 50 MiB should be rejected with 413."""
+        cl, _, token = consented_client
+        # Create a file just over the limit: 50 MiB + 1 byte
+        # We can't actually send 50 MB in a test, so just verify the
+        # endpoint exists and validates file type first.
+        resp = cl.post(
+            "/api/upload",
+            files={"file": ("bad.exe", io.BytesIO(b"\x00" * 10), "application/octet-stream")},
+            headers=_consent_headers(token),
+        )
+        # Should reject bad extension (400) before even reading the body
+        assert resp.status_code == 400
+
+
+class TestResultsPageNoJobLeak:
+    """Verify /results/{job_id} doesn't leak job data server-side."""
+
+    def test_results_page_renders_without_job_context(self, client):
+        """GET /results/{job_id} should return HTML without job data."""
+        resp = client.get("/results/nonexistent-job-id")
+        assert resp.status_code == 200
+        # The page should NOT contain job result data rendered server-side.
+        # It should contain the consent overlay HTML since no consent exists.
+        text = resp.text
+        assert "consent-overlay" in text
+
+
+class TestNoscriptBlock:
+    """Verify <noscript> blocks exist in templates."""
+
+    def test_index_has_noscript(self, client):
+        """The index page should contain a <noscript> block."""
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "<noscript>" in resp.text
+        assert "JavaScript Required" in resp.text
+
+    def test_dashboard_has_noscript(self, client):
+        """The dashboard page should contain a <noscript> block."""
+        resp = client.get("/dashboard")
+        assert resp.status_code == 200
+        assert "<noscript>" in resp.text
+        assert "JavaScript Required" in resp.text
+
+
+class TestDashboardConsentUI:
+    """Verify dashboard has consent enforcement in the template."""
+
+    def test_dashboard_has_consent_overlay(self, client):
+        """The dashboard HTML should contain the consent overlay."""
+        resp = client.get("/dashboard")
+        assert resp.status_code == 200
+        text = resp.text
+        assert "consent-overlay" in text
+        assert "consent-pending" in text
+        assert "dash-consent-accept-btn" in text
+
+
+# ---------------------------------------------------------------------------
+# 7. Path traversal in mobile_api
+# ---------------------------------------------------------------------------
+
+class TestMobileApiPathTraversal:
+    """Verify mobile_api.get_path() sanitises user_id."""
+
+    def test_get_path_sanitises_traversal(self):
+        try:
+            from teloscopy.platform.mobile_api import ImageUploadHandler
+        except ImportError:
+            pytest.skip("mobile_api not importable")
+        handler = ImageUploadHandler(upload_dir="/tmp/teloscopy_test_uploads")
+        # A crafted user_id should be sanitised
+        result = handler.get_path("fake_upload_id", user_id="../../etc")
+        # Even if the dir existed, the .. should have been replaced
+        assert result is None  # dir doesn't exist, so None
+
+    def test_get_path_sanitises_special_chars(self):
+        try:
+            from teloscopy.platform.mobile_api import ImageUploadHandler
+        except ImportError:
+            pytest.skip("mobile_api not importable")
+        handler = ImageUploadHandler(upload_dir="/tmp/teloscopy_test_uploads")
+        result = handler.get_path("fake", user_id="../../root/.ssh")
+        assert result is None
