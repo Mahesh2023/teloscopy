@@ -5,11 +5,13 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -30,12 +32,14 @@ import com.teloscopy.app.ui.screens.ConsentScreen
 import com.teloscopy.app.ui.screens.HealthCheckupScreen
 import com.teloscopy.app.ui.screens.HomeScreen
 import com.teloscopy.app.ui.screens.ProfileAnalysisScreen
+import com.teloscopy.app.ui.screens.PsychiatryScreen
 import com.teloscopy.app.ui.screens.RequireConsent
 import com.teloscopy.app.ui.screens.ResultsScreen
 import com.teloscopy.app.ui.screens.SettingsScreen
 import com.teloscopy.app.viewmodel.AnalysisViewModel
 import com.teloscopy.app.viewmodel.HealthCheckupViewModel
 import com.teloscopy.app.viewmodel.ProfileViewModel
+import com.teloscopy.app.viewmodel.PsychiatryViewModel
 import kotlinx.coroutines.flow.map
 
 /**
@@ -75,6 +79,9 @@ sealed class Screen(val route: String) {
 
     /** Legal consent / DPDP compliance screen (shown before first use). */
     data object Consent : Screen("consent")
+
+    /** Psychiatry counselling chat. */
+    data object Psychiatry : Screen("psychiatry")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -117,10 +124,10 @@ val bottomNavItems = listOf(
         unselectedIcon = Icons.Outlined.MedicalServices
     ),
     BottomNavItem(
-        route = Screen.ProfileAnalysis.route,
-        label = "Profile",
-        selectedIcon = Icons.Filled.Person,
-        unselectedIcon = Icons.Outlined.Person
+        route = Screen.Psychiatry.route,
+        label = "Counsel",
+        selectedIcon = Icons.Filled.Psychology,
+        unselectedIcon = Icons.Outlined.Psychology
     ),
     BottomNavItem(
         route = Screen.Settings.route,
@@ -283,6 +290,26 @@ fun TeloscopyNavHost(
             ) {
                 val viewModel: HealthCheckupViewModel = hiltViewModel()
                 HealthCheckupScreen(
+                    viewModel = viewModel,
+                    onBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+        }
+
+        // -- Psychiatry Counselling -------------------------------------------
+        composable(Screen.Psychiatry.route) {
+            RequireConsent(
+                dataStore = dataStore,
+                onConsentRequired = {
+                    navController.navigate(Screen.Consent.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                val viewModel: PsychiatryViewModel = hiltViewModel()
+                PsychiatryScreen(
                     viewModel = viewModel,
                     onBack = {
                         navController.popBackStack()

@@ -846,3 +846,103 @@ enum AppNetworkError: LocalizedError {
         }
     }
 }
+
+// MARK: - Psychiatry / Counselling Models
+
+struct CounselRequest: Codable {
+    let message: String
+    let conversation: [CounselMessage]
+    let history: [[String: String]]
+    
+    init(message: String, conversation: [CounselMessage], history: [[String: String]] = []) {
+        self.message = message
+        self.conversation = conversation
+        self.history = history
+    }
+}
+
+struct CounselMessage: Codable {
+    let role: String
+    let text: String
+}
+
+struct CounselResponse: Codable {
+    let theme: String
+    let themeTitle: String?
+    let aiResponse: String?
+    let response: String?
+    let inquiry: String?
+    let insight: String?
+    let sourceQuote: String?
+    let sourceAuthor: String?
+    let mode: String
+    let followups: [String]
+    
+    enum CodingKeys: String, CodingKey {
+        case theme
+        case themeTitle = "theme_title"
+        case aiResponse = "ai_response"
+        case response, inquiry, insight
+        case sourceQuote = "source_quote"
+        case sourceAuthor = "source_author"
+        case mode, followups
+    }
+    
+    var displayText: String {
+        if let ai = aiResponse, !ai.isEmpty { return ai }
+        if let r = response, !r.isEmpty { return r }
+        let parts = [inquiry, insight].compactMap { $0 }.filter { !$0.isEmpty }
+        return parts.isEmpty ? "I hear you. Let's explore that together." : parts.joined(separator: "\n\n")
+    }
+}
+
+struct ThemesResponse: Codable {
+    let themes: [String: ThemeInfo]
+    let count: Int
+}
+
+struct ThemeInfo: Codable {
+    let title: String
+    let description: String
+    let coreInsights: [String]
+    let quoteCount: Int
+    let inquiryCount: Int
+    
+    enum CodingKeys: String, CodingKey {
+        case title, description
+        case coreInsights = "core_insights"
+        case quoteCount = "quote_count"
+        case inquiryCount = "inquiry_count"
+    }
+}
+
+struct ConsentTokenRequest: Codable {
+    let sessionId: String
+    let dataPrincipalAgeConfirmed: Bool
+    let consents: [ConsentPurposeItem]
+    
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case dataPrincipalAgeConfirmed = "data_principal_age_confirmed"
+        case consents
+    }
+}
+
+struct ConsentPurposeItem: Codable {
+    let purpose: String
+    let granted: Bool
+}
+
+struct ConsentTokenResponse: Codable {
+    let status: String
+    let consentToken: String
+    let sessionId: String
+    let grantedPurposes: [String]
+    
+    enum CodingKeys: String, CodingKey {
+        case status
+        case consentToken = "consent_token"
+        case sessionId = "session_id"
+        case grantedPurposes = "granted_purposes"
+    }
+}

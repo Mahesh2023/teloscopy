@@ -456,3 +456,80 @@ data class HealthCheckupResponse(
     @Json(name = "analyzed_at") val analyzedAt: String = "",
     @Json(name = "disclaimer") val disclaimer: String = ""
 )
+
+// ---------------------------------------------------------------------------
+// Psychiatry / Counselling
+// ---------------------------------------------------------------------------
+
+@JsonClass(generateAdapter = true)
+data class CounselRequest(
+    @Json(name = "message") val message: String,
+    @Json(name = "conversation") val conversation: List<CounselMessage> = emptyList(),
+    @Json(name = "history") val history: List<Map<String, Any>> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
+data class CounselMessage(
+    @Json(name = "role") val role: String,
+    @Json(name = "text") val text: String
+)
+
+@JsonClass(generateAdapter = true)
+data class CounselResponse(
+    @Json(name = "theme") val theme: String = "",
+    @Json(name = "theme_title") val themeTitle: String = "",
+    @Json(name = "ai_response") val aiResponse: String? = null,
+    @Json(name = "response") val response: String? = null,
+    @Json(name = "inquiry") val inquiry: String? = null,
+    @Json(name = "insight") val insight: String? = null,
+    @Json(name = "source_quote") val sourceQuote: String? = null,
+    @Json(name = "source_author") val sourceAuthor: String? = null,
+    @Json(name = "mode") val mode: String = "template",
+    @Json(name = "followups") val followups: List<String> = emptyList()
+) {
+    /** Get the best available response text */
+    val displayText: String
+        get() = aiResponse
+            ?: response
+            ?: listOfNotNull(inquiry, insight).joinToString("\n\n").ifEmpty { "I hear you. Let's explore that together." }
+}
+
+@JsonClass(generateAdapter = true)
+data class ThemesResponse(
+    @Json(name = "themes") val themes: Map<String, ThemeInfo> = emptyMap(),
+    @Json(name = "count") val count: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class ThemeInfo(
+    @Json(name = "title") val title: String = "",
+    @Json(name = "description") val description: String = "",
+    @Json(name = "core_insights") val coreInsights: List<String> = emptyList(),
+    @Json(name = "quote_count") val quoteCount: Int = 0,
+    @Json(name = "inquiry_count") val inquiryCount: Int = 0
+)
+
+// ---------------------------------------------------------------------------
+// Consent Token (server-side DPDP compliance)
+// ---------------------------------------------------------------------------
+
+@JsonClass(generateAdapter = true)
+data class ConsentTokenRequest(
+    @Json(name = "session_id") val sessionId: String,
+    @Json(name = "data_principal_age_confirmed") val agConfirmed: Boolean = true,
+    @Json(name = "consents") val consents: List<ConsentPurpose>
+)
+
+@JsonClass(generateAdapter = true)
+data class ConsentPurpose(
+    @Json(name = "purpose") val purpose: String,
+    @Json(name = "granted") val granted: Boolean = true
+)
+
+@JsonClass(generateAdapter = true)
+data class ConsentTokenResponse(
+    @Json(name = "status") val status: String = "",
+    @Json(name = "consent_token") val consentToken: String = "",
+    @Json(name = "session_id") val sessionId: String = "",
+    @Json(name = "granted_purposes") val grantedPurposes: List<String> = emptyList()
+)

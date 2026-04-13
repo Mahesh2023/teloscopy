@@ -136,13 +136,19 @@ struct MainTabView: View {
             }
             .tag(2)
             
+            PsychiatryView()
+                .tabItem {
+                    Label("Counsel", systemImage: "brain.head.profile")
+                }
+                .tag(3)
+            
             NavigationStack {
                 ResultsView()
             }
             .tabItem {
                 Label("Results", systemImage: "chart.bar.xaxis")
             }
-            .tag(3)
+            .tag(4)
             
             NavigationStack {
                 ProfileView()
@@ -150,7 +156,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Profile", systemImage: "person.crop.circle")
             }
-            .tag(4)
+            .tag(5)
             
             NavigationStack {
                 SettingsView()
@@ -158,7 +164,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Settings", systemImage: "gearshape.fill")
             }
-            .tag(5)
+            .tag(6)
         }
         .tint(TeloscopyTheme.primaryBlue)
         .sheet(isPresented: $showLoginSheet) {

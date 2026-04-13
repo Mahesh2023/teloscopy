@@ -118,4 +118,33 @@ interface TeloscopyApi {
         @Part("meal_plan_days") mealPlanDays: RequestBody?,
         @Part("health_conditions") healthConditions: RequestBody?
     ): HealthCheckupResponse
+
+    // ----- Psychiatry / Counselling -----
+
+    /**
+     * Get available counselling themes and metadata.
+     */
+    @GET("api/psychiatry/themes")
+    suspend fun getCounsellingThemes(
+        @retrofit2.http.Header("X-Consent-Token") consentToken: String
+    ): Response<ThemesResponse>
+
+    /**
+     * Send a counselling message and get an AI/template response.
+     */
+    @POST("api/psychiatry/counsel")
+    suspend fun sendCounselMessage(
+        @retrofit2.http.Header("X-Consent-Token") consentToken: String,
+        @Body request: CounselRequest
+    ): Response<CounselResponse>
+
+    // ----- Legal / Consent Token -----
+
+    /**
+     * Submit consent and receive a signed consent token for API access.
+     */
+    @POST("api/legal/consent")
+    suspend fun submitConsent(
+        @Body request: ConsentTokenRequest
+    ): Response<ConsentTokenResponse>
 }
