@@ -2,19 +2,16 @@
   {
     "id": "knowledge-base",
     "title": "Gene Sequencing & Telomere Analysis",
-    "file": "KNOWLEDGE_BASE.md",
-    "category": "telomere"
+    "file": "KNOWLEDGE_BASE.md"
   },
   {
     "id": "research",
     "title": "Scientific Foundation & Research",
-    "file": "docs/RESEARCH.md",
-    "category": "telomere"
+    "file": "docs/RESEARCH.md"
   },
   {
     "id": "psychiatry-knowledge-base",
     "title": "Modern Psychiatry — Comprehensive Knowledge Base",
-    "file": "PSYCHIATRY_KNOWLEDGE_BASE.md",
-    "category": "psychiatry"
+    "file": "PSYCHIATRY_KNOWLEDGE_BASE.md"
   }
 ]
