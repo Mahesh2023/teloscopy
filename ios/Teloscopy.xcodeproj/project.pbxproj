@@ -27,6 +27,9 @@
 		AA000013 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013 /* ProfileView.swift */; };
 		AA000014 /* ConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014 /* ConsentView.swift */; };
 		AA000015 /* HealthCheckupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* HealthCheckupView.swift */; };
+		AA000016 /* PsychiatryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016 /* PsychiatryService.swift */; };
+		AA000017 /* PsychiatryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* PsychiatryView.swift */; };
+		AA000018 /* TraumaFirstAidView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000018 /* TraumaFirstAidView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +54,9 @@
 		AB000013 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		AB000014 /* ConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentView.swift; sourceTree = "<group>"; };
 		AB000015 /* HealthCheckupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthCheckupView.swift; sourceTree = "<group>"; };
+		AB000016 /* PsychiatryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PsychiatryService.swift; sourceTree = "<group>"; };
+		AB000017 /* PsychiatryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PsychiatryView.swift; sourceTree = "<group>"; };
+		AB000018 /* TraumaFirstAidView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TraumaFirstAidView.swift; sourceTree = "<group>"; };
 		AB000020 /* Teloscopy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Teloscopy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -103,6 +109,7 @@
 				AB000004 /* APIService.swift */,
 				AB000005 /* SettingsStore.swift */,
 				AB000012 /* SyncManager.swift */,
+				AB000016 /* PsychiatryService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -118,6 +125,8 @@
 				AB000013 /* ProfileView.swift */,
 				AB000014 /* ConsentView.swift */,
 				AB000015 /* HealthCheckupView.swift */,
+				AB000017 /* PsychiatryView.swift */,
+				AB000018 /* TraumaFirstAidView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -229,6 +238,9 @@
 				AA000013 /* ProfileView.swift in Sources */,
 				AA000014 /* ConsentView.swift in Sources */,
 				AA000015 /* HealthCheckupView.swift in Sources */,
+				AA000016 /* PsychiatryService.swift in Sources */,
+				AA000017 /* PsychiatryView.swift in Sources */,
+				AA000018 /* TraumaFirstAidView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
