@@ -111,6 +111,7 @@ struct MainTabView: View {
     @State private var showLoginSheet = false
     @State private var showTraumaSheet = false
     @State private var crisisSeverity: String? = nil
+    @ObservedObject private var psychiatryService = PsychiatryService.shared
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -196,6 +197,13 @@ struct MainTabView: View {
         .sheet(isPresented: $showLoginSheet) {
             LoginView()
                 .environmentObject(apiService)
+        }
+        .onChange(of: psychiatryService.crisisAlert) { alert in
+            if let alert = alert {
+                crisisSeverity = alert.severity
+                showTraumaSheet = true
+                psychiatryService.clearCrisisAlert()
+            }
         }
     }
 }

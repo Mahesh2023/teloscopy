@@ -7,7 +7,7 @@ import SwiftUI
 import AVFoundation
 
 struct PsychiatryView: View {
-    @StateObject private var service = PsychiatryService.shared
+    @ObservedObject private var service = PsychiatryService.shared
     @State private var inputText = ""
     @State private var synthesizer = AVSpeechSynthesizer()
     @FocusState private var inputFocused: Bool

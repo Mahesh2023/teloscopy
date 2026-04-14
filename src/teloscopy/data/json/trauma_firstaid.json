@@ -535,32 +535,57 @@
   },
 
   "crisis_keywords": {
+    "_note": "These keywords use word-boundary matching (not raw substring). Multi-word phrases match as complete sequences. Single words match on word boundaries to avoid false positives (e.g. 'numb' won't match 'number').",
     "high_severity": [
       "kill myself", "kill me", "killing myself", "end my life", "end it all",
       "want to die", "wanna die", "wish i was dead", "wish i were dead",
-      "better off dead", "suicide", "suicidal", "take my own life",
-      "don't want to be alive", "don't want to live", "not worth living",
-      "going to die", "plan to die", "overdose", "jump off", "hang myself",
-      "slit my", "cut my wrists", "shoot myself", "swallow pills",
-      "no reason to live", "goodbye forever", "final goodbye",
-      "can't take it anymore", "can't do this anymore"
+      "better off dead", "better off without me", "suicide", "suicidal",
+      "take my own life", "don't want to be alive", "don't want to live",
+      "not worth living", "going to die", "plan to die",
+      "overdose", "overdosed", "jump off", "hang myself", "slit my", "cut my wrists",
+      "shoot myself", "swallow pills", "no reason to live",
+      "goodbye forever", "final goodbye", "ready to end it",
+      "can't take it anymore", "can't do this anymore",
+      "don't want to wake up", "wish i wasn't born", "wish i had never been born",
+      "bleed out", "drink myself to death",
+      "raped", "rape me", "sexual assault", "sexually assaulted",
+      "molested", "sexually abused",
+      "being abused", "abusing me", "he hits me", "she hits me",
+      "he beats me", "she beats me", "threatening to kill",
+      "child abuse", "hurting my child", "abusing my child"
     ],
     "moderate_severity": [
       "self-harm", "self harm", "cutting myself", "hurting myself",
       "hurt myself", "harm myself", "burn myself", "punish myself",
-      "can't go on", "give up on life", "no way out", "trapped",
+      "can't go on", "give up on life", "no way out",
       "nobody would miss me", "nobody cares about me", "burden to everyone",
-      "everyone hates me", "nothing matters", "what's the point",
+      "i am a burden", "everyone hates me", "nothing matters",
       "i deserve to suffer", "i deserve pain", "i'm broken",
-      "voices telling me", "hearing voices", "seeing things that aren't there"
+      "voices telling me", "hearing voices", "seeing things that aren't there",
+      "domestic violence", "domestic abuse", "partner hits me",
+      "partner hurts me", "afraid of my partner", "afraid of my husband",
+      "afraid of my wife", "controlling me",
+      "sexual abuse", "sexual violence", "groped",
+      "touched me inappropriately", "being stalked",
+      "starving myself", "purging", "binging and purging",
+      "making myself throw up", "anorexia", "bulimia",
+      "want to disappear", "want to vanish",
+      "hitting my child", "hitting my kid", "child is being hurt",
+      "i'm not safe", "not safe at home"
     ],
     "low_severity": [
-      "hopeless", "helpless", "worthless", "useless", "no point",
+      "hopeless", "helpless", "worthless", "useless",
       "give up", "falling apart", "can't cope", "overwhelmed",
       "panic attack", "can't breathe", "losing my mind", "going crazy",
       "flashback", "nightmare", "can't sleep", "afraid to sleep",
-      "triggered", "dissociating", "numb", "empty inside",
-      "nobody understands", "alone", "isolated", "abandoned"
+      "dissociating", "empty inside", "dead inside", "dying inside",
+      "nobody understands",
+      "can't feel anything", "don't care about anything",
+      "nothing feels real", "self destruct", "self-destruct",
+      "substance abuse", "drug abuse", "addicted to", "drinking problem",
+      "alcoholic", "drug problem", "withdrawal symptoms", "relapse",
+      "want to run away", "nothing will ever get better",
+      "life is not worth it"
     ]
   },
 

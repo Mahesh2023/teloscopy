@@ -1600,9 +1600,56 @@
         /* Responsive: collapse TOC on narrow screens */
         @media (max-width: 600px) {
             .research-toc { display: none; }
+            .research-toc.mobile-visible { display: block; position: absolute; left: 0; top: 0; bottom: 0; width: 260px; z-index: 5; box-shadow: 4px 0 20px rgba(0,0,0,.4); }
             .research-content { padding: 1rem; }
             .research-panel { width: 100vw; }
         }
+
+        /* Research panel filter bar */
+        .research-filter-bar {
+            display: flex; align-items: center; gap: .5rem;
+            padding: .5rem 1rem; border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary); flex-shrink: 0; flex-wrap: wrap;
+        }
+        .research-filter-pill {
+            padding: .3rem .75rem; font-size: .72rem; font-weight: 600;
+            border: 1px solid var(--border-solid); border-radius: 20px;
+            background: transparent; color: var(--text-dim);
+            cursor: pointer; transition: all .2s ease; white-space: nowrap;
+        }
+        .research-filter-pill:hover { border-color: #7c8cf8; color: var(--text); }
+        .research-filter-pill.active {
+            background: rgba(124,140,248,.15); border-color: #7c8cf8;
+            color: #7c8cf8;
+        }
+        .research-search-box {
+            flex: 1; min-width: 120px; padding: .3rem .65rem;
+            font-size: .75rem; border: 1px solid var(--border-solid);
+            border-radius: 6px; background: var(--bg-primary);
+            color: var(--text); outline: none; transition: border-color .2s;
+        }
+        .research-search-box:focus { border-color: #7c8cf8; }
+        .research-search-box::placeholder { color: var(--text-dim); opacity: .6; }
+        .research-mobile-toc-btn {
+            display: none; padding: .3rem .65rem; font-size: .72rem;
+            border: 1px solid var(--border-solid); border-radius: 6px;
+            background: transparent; color: var(--text-dim); cursor: pointer;
+        }
+        @media (max-width: 600px) {
+            .research-mobile-toc-btn { display: inline-flex; align-items: center; gap: .3rem; }
+        }
+
+        /* Collapsible TOC doc groups */
+        .research-toc-doc { cursor: pointer; user-select: none; }
+        .research-toc-doc::before {
+            content: '\25BE'; display: inline-block; width: 1em;
+            font-size: .65rem; transition: transform .2s;
+        }
+        .research-toc-doc.collapsed::before { transform: rotate(-90deg); }
+        .research-toc-doc.collapsed + .research-toc-group { display: none; }
+        .research-toc-group { /* wrapper for section items under a doc heading */ }
+        .research-toc-item.search-hidden { display: none; }
+        .research-toc-doc.search-hidden { display: none; }
 
         /* ============================================================
            TRAUMA FIRST AID SIDEBAR — slide-out from right
@@ -3412,6 +3459,16 @@
         </h2>
         <button class="research-panel-close" onclick="closeResearchPanel()" aria-label="Close">&times;</button>
     </div>
+    <div class="research-filter-bar" id="research-filter-bar">
+        <button class="research-filter-pill active" data-filter="all">All</button>
+        <button class="research-filter-pill" data-filter="telomere">Telomere</button>
+        <button class="research-filter-pill" data-filter="psychiatry">Psychiatry</button>
+        <input type="text" class="research-search-box" id="research-search" placeholder="Search sections..." aria-label="Search research sections">
+        <button class="research-mobile-toc-btn" id="research-mobile-toc-btn" onclick="toggleMobileResearchToc()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+            TOC
+        </button>
+    </div>
     <div class="research-panel-body">
         <nav class="research-toc" id="research-toc" aria-label="Research table of contents">
             <div class="research-loading" id="research-toc-loading">
@@ -4160,7 +4217,9 @@ function _renderHotlines(hotlines) {
     var html = '';
     hotlines.forEach(function (h) {
         var isEmergency = h.priority === 0;
-        var callHref = 'tel:' + h.number.replace(/[^0-9+]/g, '');
+        var cleanNum = h.number.replace(/[^0-9+]/g, '');
+        /* Use sms: for text-only hotlines, tel: otherwise */
+        var linkHref = (h.method === 'text') ? 'sms:' + cleanNum + '?body=HELLO' : 'tel:' + cleanNum;
         var badges = '';
         if (h.method === 'call' || h.method === 'call_or_text') {
             badges += '<span class="hotline-badge call">Call</span>';
@@ -4171,15 +4230,15 @@ function _renderHotlines(hotlines) {
         if (h.chat_url) {
             badges += '<span class="hotline-badge chat">Chat</span>';
         }
-        badges += '<span class="hotline-badge hours">' + (h.hours || '24/7') + '</span>';
-        if (h.region) badges += '<span class="hotline-badge hours">' + h.region + '</span>';
+        badges += '<span class="hotline-badge hours">' + escapeHtml(h.hours || '24/7') + '</span>';
+        if (h.region) badges += '<span class="hotline-badge hours">' + escapeHtml(h.region) + '</span>';
 
-        html += '<a href="' + callHref + '" class="trauma-card hotline-card' + (isEmergency ? ' emergency' : '') + '" style="display:block;text-decoration:none;color:inherit;">';
-        html += '<div class="trauma-card-title">' + h.name + '</div>';
-        html += '<div class="hotline-number">' + h.number;
-        if (h.note) html += ' <span style="font-size:.7rem;font-weight:400;color:var(--text-dim);">(' + h.note + ')</span>';
+        html += '<a href="' + linkHref + '" class="trauma-card hotline-card' + (isEmergency ? ' emergency' : '') + '" style="display:block;text-decoration:none;color:inherit;">';
+        html += '<div class="trauma-card-title">' + escapeHtml(h.name) + '</div>';
+        html += '<div class="hotline-number">' + escapeHtml(h.number);
+        if (h.note) html += ' <span style="font-size:.7rem;font-weight:400;color:var(--text-dim);">(' + escapeHtml(h.note) + ')</span>';
         html += '</div>';
-        if (h.description) html += '<div class="trauma-card-subtitle">' + h.description + '</div>';
+        if (h.description) html += '<div class="trauma-card-subtitle">' + escapeHtml(h.description) + '</div>';
         html += '<div class="hotline-meta">' + badges + '</div>';
         html += '</a>';
     });
@@ -4487,8 +4546,8 @@ window._showCrisisBanner = function (crisisData) {
     var resp = crisisData.response || {};
     var banner = document.createElement('div');
     banner.className = 'crisis-banner';
-    banner.innerHTML = '<div class="crisis-banner-text">' + (resp.banner || 'Help is available.') + '</div>' +
-        '<p style="font-size:.78rem;color:var(--text-dim);margin:.25rem 0 .5rem;line-height:1.4;">' + (resp.message || '') + '</p>' +
+    banner.innerHTML = '<div class="crisis-banner-text">' + escapeHtml(resp.banner || 'Help is available.') + '</div>' +
+        '<p style="font-size:.78rem;color:var(--text-dim);margin:.25rem 0 .5rem;line-height:1.4;">' + escapeHtml(resp.message || '') + '</p>' +
         '<button class="crisis-banner-btn" onclick="openTraumaPanel(\'crisis\')">View Crisis Resources</button>';
     chat.insertBefore(banner, chat.firstChild);
     /* Auto-open sidebar to crisis tab */
@@ -4561,18 +4620,93 @@ function renderResearchToc(documents) {
     if (!toc) return;
     var html = '';
     documents.forEach(function (doc) {
-        html += '<div class="research-toc-doc">' + escapeHtml(doc.title) + '</div>';
+        var cat = doc.category || '';
+        html += '<div class="research-toc-doc" data-category="' + cat + '" onclick="this.classList.toggle(\'collapsed\')">' +
+                escapeHtml(doc.title) + '</div>';
+        html += '<div class="research-toc-group" data-category="' + cat + '">';
         doc.sections.forEach(function (sec, idx) {
             var sectionId = doc.id + '-' + idx;
             /* Skip ToC-like sections */
             if (sec.title === 'Table of Contents' || sec.title === 'Complete Technical Knowledge Base') return;
-            html += '<a class="research-toc-item" data-section="' + sectionId + '" ' +
+            html += '<a class="research-toc-item" data-section="' + sectionId + '" data-category="' + cat + '" ' +
                     'onclick="scrollToResearchSection(\'' + sectionId + '\'); return false;" ' +
                     'href="#" title="' + escapeHtml(sec.title) + '">' +
                     escapeHtml(sec.title) + '</a>';
         });
+        html += '</div>';
     });
     toc.innerHTML = html;
+    /* Wire up filter pills */
+    var pills = document.querySelectorAll('.research-filter-pill');
+    pills.forEach(function (pill) {
+        pill.addEventListener('click', function () {
+            pills.forEach(function (p) { p.classList.remove('active'); });
+            pill.classList.add('active');
+            _applyResearchFilters();
+        });
+    });
+    /* Wire up search box */
+    var searchBox = document.getElementById('research-search');
+    if (searchBox) {
+        var _searchTimer = null;
+        searchBox.addEventListener('input', function () {
+            clearTimeout(_searchTimer);
+            _searchTimer = setTimeout(_applyResearchFilters, 200);
+        });
+    }
+}
+
+/* Apply both category filter + search text to TOC and content */
+function _applyResearchFilters() {
+    var activePill = document.querySelector('.research-filter-pill.active');
+    var filter = activePill ? activePill.getAttribute('data-filter') : 'all';
+    var searchBox = document.getElementById('research-search');
+    var query = searchBox ? searchBox.value.trim().toLowerCase() : '';
+
+    /* TOC items */
+    document.querySelectorAll('.research-toc-doc').forEach(function (el) {
+        var cat = el.getAttribute('data-category') || '';
+        var catMatch = (filter === 'all' || cat === filter);
+        el.classList.toggle('search-hidden', !catMatch);
+    });
+    document.querySelectorAll('.research-toc-group').forEach(function (group) {
+        var cat = group.getAttribute('data-category') || '';
+        var catMatch = (filter === 'all' || cat === filter);
+        group.style.display = catMatch ? '' : 'none';
+        if (catMatch && query) {
+            group.querySelectorAll('.research-toc-item').forEach(function (item) {
+                var title = (item.textContent || '').toLowerCase();
+                item.classList.toggle('search-hidden', title.indexOf(query) === -1);
+            });
+        } else if (catMatch) {
+            group.querySelectorAll('.research-toc-item').forEach(function (item) {
+                item.classList.remove('search-hidden');
+            });
+        }
+    });
+
+    /* Content sections */
+    document.querySelectorAll('.research-doc-group').forEach(function (dg) {
+        var cat = dg.getAttribute('data-category') || '';
+        var catMatch = (filter === 'all' || cat === filter);
+        dg.style.display = catMatch ? '' : 'none';
+        if (catMatch && query) {
+            dg.querySelectorAll('.research-section').forEach(function (sec) {
+                var txt = (sec.textContent || '').toLowerCase();
+                sec.style.display = txt.indexOf(query) === -1 ? 'none' : '';
+            });
+        } else if (catMatch) {
+            dg.querySelectorAll('.research-section').forEach(function (sec) {
+                sec.style.display = '';
+            });
+        }
+    });
+}
+
+/* Toggle mobile TOC drawer */
+function toggleMobileResearchToc() {
+    var toc = document.getElementById('research-toc');
+    if (toc) toc.classList.toggle('mobile-visible');
 }
 
 function renderResearchContent(documents) {
@@ -4580,6 +4714,8 @@ function renderResearchContent(documents) {
     if (!container) return;
     var html = '';
     documents.forEach(function (doc) {
+        var cat = doc.category || '';
+        html += '<div class="research-doc-group" data-category="' + cat + '">';
         html += '<div style="margin-bottom:.5rem;"><span style="font-size:.7rem;font-weight:700;' +
                 'text-transform:uppercase;letter-spacing:.8px;color:#7c8cf8;">' +
                 escapeHtml(doc.title) + '</span></div>';
@@ -4591,6 +4727,7 @@ function renderResearchContent(documents) {
                     '<div class="research-section-body">' + markdownToHtml(sec.content) + '</div>' +
                     '</div>';
         });
+        html += '</div>';
     });
     container.innerHTML = html;
 }
@@ -4611,10 +4748,14 @@ function scrollToResearchSection(sectionId) {
 function setupResearchScrollSpy() {
     var contentEl = document.getElementById('research-content');
     if (!contentEl) return;
+    var _scrollSpyTimer = null;
     contentEl.addEventListener('scroll', function () {
-        var sections = contentEl.querySelectorAll('.research-section');
-        var scrollTop = contentEl.scrollTop;
-        var activeId = null;
+        if (_scrollSpyTimer) return;
+        _scrollSpyTimer = setTimeout(function () {
+            _scrollSpyTimer = null;
+            var sections = contentEl.querySelectorAll('.research-section');
+            var scrollTop = contentEl.scrollTop;
+            var activeId = null;
         sections.forEach(function (sec) {
             if (sec.offsetTop - contentEl.offsetTop <= scrollTop + 80) {
                 activeId = sec.id.replace('rs-', '');
@@ -4638,6 +4779,7 @@ function setupResearchScrollSpy() {
                 }
             }
         }
+        }, 60); /* 60ms debounce */
     });
 }
 

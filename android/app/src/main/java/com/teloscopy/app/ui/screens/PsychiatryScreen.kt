@@ -84,12 +84,21 @@ import java.util.Locale
 @Composable
 fun PsychiatryScreen(
     viewModel: PsychiatryViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onCrisisDetected: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val messages by viewModel.messages.collectAsState()
     val currentTheme by viewModel.currentTheme.collectAsState()
     val themes by viewModel.themes.collectAsState()
+    val crisisAlert by viewModel.crisisAlert.collectAsState()
+
+    LaunchedEffect(crisisAlert) {
+        crisisAlert?.let { crisis ->
+            onCrisisDetected(crisis.severity)
+            viewModel.clearCrisisAlert()
+        }
+    }
 
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()

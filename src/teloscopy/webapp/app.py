@@ -2033,6 +2033,7 @@ def _load_research_documents() -> dict[str, Any]:
             {
                 "id": doc_meta["id"],
                 "title": doc_meta["title"],
+                "category": doc_meta.get("category", ""),
                 "sections": sections,
             }
         )
@@ -2069,6 +2070,24 @@ _CRISIS_KEYWORDS_MOD: list[str] = _TRAUMA_FIRSTAID.get("crisis_keywords", {}).ge
 _CRISIS_KEYWORDS_LOW: list[str] = _TRAUMA_FIRSTAID.get("crisis_keywords", {}).get("low_severity", [])
 _CRISIS_RESPONSE_MSGS: dict[str, dict[str, Any]] = _TRAUMA_FIRSTAID.get("crisis_response_messages", {})
 
+# Pre-compile word-boundary regex patterns for crisis keywords to avoid
+# substring false positives (e.g. "numb" matching "number", "alone" matching
+# "standalone").  Multi-word phrases get \b only at the outer edges.
+import re as _re_crisis
+
+def _compile_crisis_patterns(keywords: list[str]) -> list[tuple["_re_crisis.Pattern[str]", str]]:
+    """Return a list of (compiled_regex, original_keyword) tuples."""
+    patterns: list[tuple[_re_crisis.Pattern[str], str]] = []
+    for kw in keywords:
+        # \b on both sides; re.escape handles apostrophes safely
+        pat = _re_crisis.compile(r"\b" + _re_crisis.escape(kw) + r"\b", _re_crisis.IGNORECASE)
+        patterns.append((pat, kw))
+    return patterns
+
+_CRISIS_PATTERNS_HIGH = _compile_crisis_patterns(_CRISIS_KEYWORDS_HIGH)
+_CRISIS_PATTERNS_MOD = _compile_crisis_patterns(_CRISIS_KEYWORDS_MOD)
+_CRISIS_PATTERNS_LOW = _compile_crisis_patterns(_CRISIS_KEYWORDS_LOW)
+
 _counsel_phrases: dict[str, list[str]] = _load_json("counselling_phrases.json")
 _OPENING_PHRASES: list[str] = _counsel_phrases["opening_phrases"]
 _ACKNOWLEDGMENT_PHRASES: list[str] = _counsel_phrases["acknowledgment_phrases"]
@@ -2097,32 +2116,52 @@ def _match_counselling_theme(user_message: str) -> str:
     return "self_knowledge"
 
 
+def _normalize_crisis_text(text: str) -> str:
+    """Normalize unicode smart-quotes/dashes so keyword matching is robust.
+
+    Mobile keyboards, autocorrect, and copy-paste from rich-text sources often
+    produce curly quotes (U+2018/2019) instead of ASCII apostrophes.  Without
+    normalization, phrases like "can\u2019t take it anymore" silently bypass
+    detection — a critical safety failure.
+    """
+    return (
+        text.replace("\u2018", "'")   # left single curly quote
+            .replace("\u2019", "'")   # right single curly quote (smart apostrophe)
+            .replace("\u201c", '"')   # left double curly quote
+            .replace("\u201d", '"')   # right double curly quote
+            .replace("\u2013", "-")   # en dash
+            .replace("\u2014", "-")   # em dash
+    )
+
+
 def _detect_crisis(user_message: str) -> dict[str, Any] | None:
     """Scan a message for crisis-related language and return severity + resources.
 
     Returns ``None`` if no crisis indicators are found, otherwise a dict with
     ``severity``, ``response``, and ``hotlines`` suitable for immediate display.
-    This uses keyword matching (not LLM) for reliability — it must never fail.
+    This uses word-boundary regex matching (not LLM) for reliability — it must
+    never fail.  Word boundaries prevent false positives like "numb" matching
+    "number" or "alone" matching "standalone".
     """
-    msg = user_message.lower()
-    for kw in _CRISIS_KEYWORDS_HIGH:
-        if kw in msg:
+    msg = _normalize_crisis_text(user_message)
+    for pattern, _kw in _CRISIS_PATTERNS_HIGH:
+        if pattern.search(msg):
             return {
                 "is_crisis": True,
                 "severity": "high",
                 "response": _CRISIS_RESPONSE_MSGS.get("high", {}),
                 "hotlines": _TRAUMA_FIRSTAID.get("crisis_hotlines", [])[:5],
             }
-    for kw in _CRISIS_KEYWORDS_MOD:
-        if kw in msg:
+    for pattern, _kw in _CRISIS_PATTERNS_MOD:
+        if pattern.search(msg):
             return {
                 "is_crisis": True,
                 "severity": "moderate",
                 "response": _CRISIS_RESPONSE_MSGS.get("moderate", {}),
                 "hotlines": _TRAUMA_FIRSTAID.get("crisis_hotlines", [])[:5],
             }
-    for kw in _CRISIS_KEYWORDS_LOW:
-        if kw in msg:
+    for pattern, _kw in _CRISIS_PATTERNS_LOW:
+        if pattern.search(msg):
             return {
                 "is_crisis": True,
                 "severity": "low",

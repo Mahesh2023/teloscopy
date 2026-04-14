@@ -162,7 +162,8 @@ fun TeloscopyNavHost(
     navController: NavHostController,
     dataStore: DataStore<Preferences>,
     modifier: Modifier = Modifier,
-    onOpenDrawer: () -> Unit = {}
+    onOpenDrawer: () -> Unit = {},
+    onCrisisDetected: (String) -> Unit = {}
 ) {
     // Observe consent state from DataStore
     val consentAccepted by dataStore.data
@@ -313,7 +314,8 @@ fun TeloscopyNavHost(
                     viewModel = viewModel,
                     onBack = {
                         navController.popBackStack()
-                    }
+                    },
+                    onCrisisDetected = onCrisisDetected
                 )
             }
         }

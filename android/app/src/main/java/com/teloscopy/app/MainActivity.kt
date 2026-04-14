@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.DrawerValue
@@ -114,6 +115,7 @@ class MainActivity : ComponentActivity() {
                     Scaffold(
                         containerColor = Background,
                         floatingActionButton = {
+                            if (currentRoute != null && currentRoute != Screen.Consent.route) {
                             FloatingActionButton(
                                 onClick = { showTraumaSheet = true },
                                 containerColor = Color(0xFFFF6B6B),
@@ -123,12 +125,14 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 Icon(Icons.Filled.Favorite, contentDescription = "Trauma First Aid", modifier = Modifier.size(26.dp))
                             }
+                            }
                         },
                         bottomBar = {
                             if (currentRoute != null && currentRoute != Screen.Consent.route && currentRoute in listOf(
                                     Screen.Home.route,
                                     Screen.Analysis.route,
                                     Screen.HealthCheckup.route,
+                                    Screen.Psychiatry.route,
                                     Screen.ProfileAnalysis.route,
                                     Screen.Settings.route
                                 )
@@ -207,6 +211,29 @@ class MainActivity : ComponentActivity() {
                                         )
                                     )
                                     NavigationBarItem(
+                                        selected = currentRoute == Screen.Psychiatry.route,
+                                        onClick = {
+                                            navController.navigate(Screen.Psychiatry.route) {
+                                                popUpTo(Screen.Home.route)
+                                                launchSingleTop = true
+                                            }
+                                        },
+                                        icon = {
+                                            Icon(
+                                                Icons.Outlined.Psychology,
+                                                contentDescription = "Counsel"
+                                            )
+                                        },
+                                        label = { Text("Counsel") },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                                            indicatorColor = MaterialTheme.colorScheme.primary.copy(
+                                                alpha = 0.12f
+                                            )
+                                        )
+                                    )
+                                    NavigationBarItem(
                                         selected = currentRoute == Screen.Settings.route,
                                         onClick = {
                                             navController.navigate(Screen.Settings.route) {
@@ -244,6 +271,10 @@ class MainActivity : ComponentActivity() {
                                 dataStore = dataStore,
                                 onOpenDrawer = {
                                     scope.launch { drawerState.open() }
+                                },
+                                onCrisisDetected = { severity ->
+                                    crisisSeverity = severity
+                                    showTraumaSheet = true
                                 }
                             )
                         }

@@ -175,7 +175,7 @@ struct TraumaFirstAidView: View {
         ScrollView {
             VStack(spacing: 12) {
                 // Emergency 911
-                Button(action: { openURL(URL(string: "tel:911")!) }) {
+                Button(action: { if let url = URL(string: "tel:911") { openURL(url) } }) {
                     HStack(spacing: 12) {
                         ZStack {
                             Circle()
@@ -250,7 +250,9 @@ struct TraumaFirstAidView: View {
 
             HStack(spacing: 10) {
                 Button(action: {
-                    openURL(URL(string: "tel:\(hotline.number.replacingOccurrences(of: "-", with: ""))")!)
+                    if let url = URL(string: "tel:\(hotline.number.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: ""))") {
+                        openURL(url)
+                    }
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: "phone.fill")
@@ -268,8 +270,9 @@ struct TraumaFirstAidView: View {
 
                 if let sms = hotline.smsNumber {
                     Button(action: {
-                        let body = hotline.smsBody ?? ""
-                        openURL(URL(string: "sms:\(sms)&body=\(body)")!)
+                        if let url = URL(string: "sms:\(sms.replacingOccurrences(of: "-", with: ""))") {
+                            openURL(url)
+                        }
                     }) {
                         HStack(spacing: 6) {
                             Image(systemName: "message.fill")
@@ -871,7 +874,7 @@ struct TraumaFirstAidView: View {
                         }
                     }
 
-                    Button(action: { openURL(URL(string: "tel:911")!) }) {
+                    Button(action: { if let url = URL(string: "tel:911") { openURL(url) } }) {
                         HStack(spacing: 8) {
                             Image(systemName: "phone.fill")
                             Text("Call 911")
@@ -1155,8 +1158,8 @@ private let crisisHotlines: [CrisisHotline] = [
     ),
     CrisisHotline(
         name: "Veterans Crisis Line",
-        number: "1-800-273-8255",
-        description: "Support for veterans and their families. Press 1 after dialing.",
+        number: "988",
+        description: "Support for veterans and their families. Press 1 after dialing 988.",
         hours: "24/7",
         smsNumber: "838255",
         smsBody: nil
@@ -1174,7 +1177,7 @@ private let crisisHotlines: [CrisisHotline] = [
         number: "1-800-799-7233",
         description: "Confidential support for anyone affected by domestic violence.",
         hours: "24/7",
-        smsNumber: "22522",
+        smsNumber: "88788",
         smsBody: "START"
     ),
     CrisisHotline(
@@ -1192,6 +1195,38 @@ private let crisisHotlines: [CrisisHotline] = [
         hours: "24/7",
         smsNumber: "678-678",
         smsBody: "START"
+    ),
+    CrisisHotline(
+        name: "iCall (India)",
+        number: "9152987821",
+        description: "Psychosocial helpline by TISS for emotional support and crisis intervention.",
+        hours: "Mon-Sat 8am-10pm IST",
+        smsNumber: nil,
+        smsBody: nil
+    ),
+    CrisisHotline(
+        name: "Vandrevala Foundation (India)",
+        number: "1860-2662-345",
+        description: "Mental health support helpline available across India. 24/7.",
+        hours: "24/7",
+        smsNumber: nil,
+        smsBody: nil
+    ),
+    CrisisHotline(
+        name: "Samaritans (UK/Ireland)",
+        number: "116 123",
+        description: "Emotional support for anyone in distress or at risk of suicide.",
+        hours: "24/7",
+        smsNumber: nil,
+        smsBody: nil
+    ),
+    CrisisHotline(
+        name: "Beyond Blue (Australia)",
+        number: "1300 22 4636",
+        description: "Support for anxiety, depression, and suicide prevention.",
+        hours: "24/7",
+        smsNumber: nil,
+        smsBody: nil
     )
 ]
 
