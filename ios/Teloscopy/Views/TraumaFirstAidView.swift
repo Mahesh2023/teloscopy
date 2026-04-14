@@ -174,8 +174,8 @@ struct TraumaFirstAidView: View {
     private var crisisLinesTab: some View {
         ScrollView {
             VStack(spacing: 12) {
-                // Emergency 911
-                Button(action: { if let url = URL(string: "tel:911") { openURL(url) } }) {
+                // Emergency 112
+                Button(action: { if let url = URL(string: "tel:112") { openURL(url) } }) {
                     HStack(spacing: 12) {
                         ZStack {
                             Circle()
@@ -189,7 +189,7 @@ struct TraumaFirstAidView: View {
                             Text("Emergency Services")
                                 .font(.system(size: 16, weight: .bold))
                                 .foregroundColor(.white)
-                            Text("911")
+                            Text("112")
                                 .font(.system(size: 22, weight: .heavy, design: .monospaced))
                                 .foregroundColor(traumaCoral)
                             Text("Immediate danger to life")
@@ -621,7 +621,7 @@ struct TraumaFirstAidView: View {
                     step: 5,
                     title: "Professionals & Agencies",
                     prompt: "Professional contacts and crisis services I can reach out to:",
-                    examples: ["Therapist", "988 Lifeline", "Crisis Text Line", "Local ER"],
+                    examples: ["Therapist", "Vandrevala Foundation", "iCall", "Local ER"],
                     binding: $safetyStep5
                 )
                 safetyPlanStep(
@@ -851,13 +851,13 @@ struct TraumaFirstAidView: View {
                         .stroke(Color.red.opacity(0.2), lineWidth: 1)
                 )
 
-                // When to Call 911
+                // When to Call 112
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 16))
                             .foregroundColor(Color.red)
-                        Text("When to Call 911")
+                        Text("When to Call 112")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(Color.red)
                     }
@@ -874,10 +874,10 @@ struct TraumaFirstAidView: View {
                         }
                     }
 
-                    Button(action: { if let url = URL(string: "tel:911") { openURL(url) } }) {
+                    Button(action: { if let url = URL(string: "tel:112") { openURL(url) } }) {
                         HStack(spacing: 8) {
                             Image(systemName: "phone.fill")
-                            Text("Call 911")
+                            Text("Call 112")
                                 .font(.system(size: 15, weight: .bold))
                         }
                         .foregroundColor(.white)
@@ -940,8 +940,8 @@ struct TraumaFirstAidView: View {
                     )
                 }
 
-                // SAMHSA 6 Principles
-                sectionHeader(title: "SAMHSA's 6 Principles", icon: "list.bullet.clipboard.fill")
+                // 6 Principles of Trauma-Informed Care
+                sectionHeader(title: "6 Principles of Trauma-Informed Care", icon: "list.bullet.clipboard.fill")
 
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(samhsaPrinciples, id: \.title) { principle in
@@ -1141,33 +1141,33 @@ private struct PFAStep {
 
 private let crisisHotlines: [TraumaCrisisHotline] = [
     TraumaCrisisHotline(
-        name: "988 Suicide & Crisis Lifeline",
-        number: "988",
-        description: "Free, confidential 24/7 support for people in suicidal crisis or emotional distress.",
+        name: "Vandrevala Foundation Helpline",
+        number: "1860-2662-345",
+        description: "24/7 mental health support helpline available across India.",
         hours: "24/7",
-        smsNumber: "988",
-        smsBody: "HELLO"
-    ),
-    TraumaCrisisHotline(
-        name: "Crisis Text Line",
-        number: "741741",
-        description: "Text-based crisis support. Text HELLO to connect with a trained crisis counselor.",
-        hours: "24/7",
-        smsNumber: "741741",
-        smsBody: "HELLO"
-    ),
-    TraumaCrisisHotline(
-        name: "Veterans Crisis Line",
-        number: "988",
-        description: "Support for veterans and their families. Press 1 after dialing 988.",
-        hours: "24/7",
-        smsNumber: "838255",
+        smsNumber: nil,
         smsBody: nil
     ),
     TraumaCrisisHotline(
-        name: "SAMHSA National Helpline",
-        number: "1-800-662-4357",
-        description: "Free referral and information service for substance abuse and mental health.",
+        name: "iCall (TISS) Helpline",
+        number: "9152987821",
+        description: "Psychosocial helpline by TISS for emotional support and crisis intervention.",
+        hours: "Mon-Sat 8am-10pm IST",
+        smsNumber: nil,
+        smsBody: nil
+    ),
+    TraumaCrisisHotline(
+        name: "KIRAN Mental Health Helpline",
+        number: "1800-599-0019",
+        description: "Government of India 24/7 toll-free mental health helpline.",
+        hours: "24/7",
+        smsNumber: nil,
+        smsBody: nil
+    ),
+    TraumaCrisisHotline(
+        name: "AASRA",
+        number: "9820466726",
+        description: "24/7 crisis intervention for the suicidal & despairing (Mumbai).",
         hours: "24/7",
         smsNumber: nil,
         smsBody: nil
@@ -1195,22 +1195,6 @@ private let crisisHotlines: [TraumaCrisisHotline] = [
         hours: "24/7",
         smsNumber: "678-678",
         smsBody: "START"
-    ),
-    TraumaCrisisHotline(
-        name: "iCall (India)",
-        number: "9152987821",
-        description: "Psychosocial helpline by TISS for emotional support and crisis intervention.",
-        hours: "Mon-Sat 8am-10pm IST",
-        smsNumber: nil,
-        smsBody: nil
-    ),
-    TraumaCrisisHotline(
-        name: "Vandrevala Foundation (India)",
-        number: "1860-2662-345",
-        description: "Mental health support helpline available across India. 24/7.",
-        hours: "24/7",
-        smsNumber: nil,
-        smsBody: nil
     ),
     TraumaCrisisHotline(
         name: "Samaritans (UK/Ireland)",

@@ -246,93 +246,89 @@ private fun CrisisLinesTab(highlightEmergency: Boolean) {
     val hotlines = remember {
         listOf(
             CrisisHotline(
-                name = "Emergency Services",
-                number = "911",
-                description = "Immediate danger to life. Call if someone is in imminent risk of harm.",
+                name = "Emergency Services (India)",
+                number = "112",
+                description = "India's unified emergency number — also 108 (ambulance) or 100 (police)",
                 hours = "24/7",
-                region = "US",
+                region = "India",
                 isEmergency = true
             ),
             CrisisHotline(
-                name = "988 Suicide & Crisis Lifeline",
-                number = "988",
-                description = "Free, confidential support for people in suicidal crisis or emotional distress.",
+                name = "Vandrevala Foundation Helpline",
+                number = "1860-2662-345",
+                description = "Free, confidential 24/7 mental health support across India",
                 hours = "24/7",
-                region = "US",
-                textNumber = "988"
+                region = "India"
             ),
             CrisisHotline(
-                name = "Crisis Text Line",
-                number = "741741",
-                description = "Text HOME to 741741 to connect with a trained crisis counselor.",
-                hours = "24/7",
-                region = "US",
-                textNumber = "741741"
-            ),
-            CrisisHotline(
-                name = "SAMHSA National Helpline",
-                number = "1-800-662-4357",
-                description = "Free referral and information service for mental health and substance use disorders.",
-                hours = "24/7, 365 days",
-                region = "US"
-            ),
-            CrisisHotline(
-                name = "Veterans Crisis Line",
-                number = "988",
-                description = "Press 1 after dialing 988. Support for veterans, service members, and their families.",
-                hours = "24/7",
-                region = "US",
-                textNumber = "838255"
-            ),
-            CrisisHotline(
-                name = "iCall (TISS)",
-                number = "+91-9152987821",
-                description = "Psychosocial helpline by Tata Institute of Social Sciences for emotional support.",
+                name = "iCall (TISS) Helpline",
+                number = "9152987821",
+                description = "Mon-Sat 8am-10pm IST — emotional support & crisis intervention (TISS)",
                 hours = "Mon-Sat 8am-10pm IST",
                 region = "India"
             ),
             CrisisHotline(
-                name = "Vandrevala Foundation",
-                number = "1860-2662-345",
-                description = "24/7 mental health support in multiple Indian languages.",
-                hours = "24/7",
-                region = "India"
-            ),
-            CrisisHotline(
                 name = "AASRA",
-                number = "+91-9820466726",
-                description = "Crisis intervention centre for the depressed and suicidal.",
+                number = "9820466726",
+                description = "24/7 crisis intervention for the suicidal & despairing (Mumbai)",
                 hours = "24/7",
                 region = "India"
             ),
             CrisisHotline(
-                name = "Samaritans",
-                number = "116 123",
-                description = "Emotional support for anyone in distress or struggling to cope.",
+                name = "KIRAN Mental Health Helpline",
+                number = "1800-599-0019",
+                description = "Govt of India 24/7 toll-free helpline for mental health support",
                 hours = "24/7",
-                region = "UK"
+                region = "India"
             ),
             CrisisHotline(
-                name = "Shout Crisis Text Line",
-                number = "85258",
-                description = "Text SHOUT to 85258 for free, confidential crisis support.",
+                name = "Women Helpline (NCW)",
+                number = "7827-170-170",
+                description = "National Commission for Women helpline for women in distress.",
                 hours = "24/7",
-                region = "UK",
-                textNumber = "85258"
+                region = "India"
             ),
             CrisisHotline(
-                name = "Lifeline Australia",
-                number = "13 11 14",
-                description = "24-hour crisis support and suicide prevention services.",
+                name = "One Stop Centre",
+                number = "181",
+                description = "Women affected by violence — integrated support (medical, legal, counselling).",
                 hours = "24/7",
-                region = "Australia"
+                region = "India"
             ),
             CrisisHotline(
-                name = "Beyond Blue",
-                number = "1300 22 4636",
-                description = "Support for anxiety, depression, and suicide prevention.",
+                name = "CHILDLINE India",
+                number = "1098",
+                description = "24/7 helpline for children in need of care and protection.",
                 hours = "24/7",
-                region = "Australia"
+                region = "India"
+            ),
+            CrisisHotline(
+                name = "Snehi",
+                number = "044-24640050",
+                description = "Emotional support and crisis intervention helpline based in Chennai.",
+                hours = "24/7",
+                region = "India"
+            ),
+            CrisisHotline(
+                name = "NIMHANS Helpline",
+                number = "080-46110007",
+                description = "India's premier mental health institution — psychosocial support & referrals.",
+                hours = "Mon-Sat 9:30am-4:30pm IST",
+                region = "India"
+            ),
+            CrisisHotline(
+                name = "Roshni Trust",
+                number = "040-66202000",
+                description = "Hyderabad-based counselling for depression, suicidal feelings, and distress.",
+                hours = "11am-9pm IST, Mon-Sat",
+                region = "India"
+            ),
+            CrisisHotline(
+                name = "Drug De-addiction Helpline",
+                number = "1800-11-0031",
+                description = "Govt of India toll-free helpline for substance abuse & de-addiction support.",
+                hours = "24/7",
+                region = "India"
             )
         )
     }
@@ -366,7 +362,7 @@ private fun CrisisLinesTab(highlightEmergency: Boolean) {
             items(hotlines.filter { it.region == region }) { hotline ->
                 CrisisHotlineCard(
                     hotline = hotline,
-                    highlight = highlightEmergency && (hotline.number == "988" || hotline.isEmergency),
+                    highlight = highlightEmergency && (hotline.number == "1860-2662-345" || hotline.isEmergency),
                     context = context
                 )
             }
@@ -1034,7 +1030,7 @@ private fun SafetyPlanTab() {
                 5,
                 "Professionals & Agencies to Contact",
                 "Which mental health professionals or agencies can I contact during a crisis?",
-                listOf("Therapist", "Psychiatrist", "988 Lifeline", "Crisis Text Line", "Local ER")
+                listOf("Therapist", "Psychiatrist", "Vandrevala Foundation", "iCall (TISS)", "Local ER")
             ),
             SafetyPlanStep(
                 6,
@@ -1421,7 +1417,7 @@ private fun DeEscalationTab() {
             }
         }
 
-        // When to call 911
+        // When to call 112
         item {
             Spacer(modifier = Modifier.height(16.dp))
             Card(
@@ -1441,7 +1437,7 @@ private fun DeEscalationTab() {
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "When to Call 911",
+                            text = "When to Call 112",
                             color = Color(0xFFFF1744),
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold
@@ -1481,7 +1477,7 @@ private fun DeEscalationTab() {
 
                     Button(
                         onClick = {
-                            val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:911"))
+                            val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:112"))
                             context.startActivity(dialIntent)
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -1497,7 +1493,7 @@ private fun DeEscalationTab() {
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Call 911", fontWeight = FontWeight.Bold)
+                        Text("Call 112", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -1597,8 +1593,8 @@ private fun LearnTab() {
             }
         }
 
-        // SAMHSA Principles
-        item { LearnSectionHeader("SAMHSA's 6 Principles of Trauma-Informed Care") }
+        // Trauma-Informed Care Principles
+        item { LearnSectionHeader("6 Principles of Trauma-Informed Care") }
 
         item {
             val principles = listOf(

@@ -2243,7 +2243,7 @@ SAFETY PLANNING (Stanley-Brown):
   2. Internal coping strategies (distraction, self-soothing)
   3. People and social settings that provide distraction
   4. People to ask for help (family, friends)
-  5. Professionals and agencies to contact (988 Suicide Lifeline, crisis services)
+  5. Professionals and agencies to contact (Vandrevala Foundation, iCall, KIRAN Helpline)
   6. Making the environment safe (lethal means restriction)
 ```
 

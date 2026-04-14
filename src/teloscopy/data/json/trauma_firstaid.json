@@ -4,195 +4,183 @@
 
   "crisis_hotlines": [
     {
-      "id": "988",
-      "name": "988 Suicide & Crisis Lifeline",
-      "number": "988",
-      "method": "call_or_text",
-      "region": "US",
-      "hours": "24/7/365",
-      "description": "Free, confidential support for people in suicidal crisis or emotional distress.",
-      "languages": ["English", "Spanish (press 2)"],
-      "chat_url": "https://988lifeline.org/chat",
-      "priority": 1
-    },
-    {
-      "id": "crisis_text",
-      "name": "Crisis Text Line",
-      "number": "741741",
-      "method": "text",
-      "keyword": "HELLO",
-      "region": "US/CA/UK/IE",
-      "hours": "24/7/365",
-      "description": "Free crisis counseling via text message. Text HELLO to 741741.",
-      "languages": ["English"],
-      "priority": 2
-    },
-    {
-      "id": "veterans",
-      "name": "Veterans Crisis Line",
-      "number": "988",
-      "method": "call_or_text",
-      "note": "Press 1 after dialing 988",
-      "text_number": "838255",
-      "region": "US",
-      "hours": "24/7/365",
-      "description": "Specialized support for veterans, service members, and their families.",
-      "languages": ["English"],
-      "priority": 3
-    },
-    {
-      "id": "trevor",
-      "name": "Trevor Project",
-      "number": "1-866-488-7386",
-      "method": "call",
-      "text_number": "678-678",
-      "text_keyword": "START",
-      "region": "US",
-      "hours": "24/7/365",
-      "description": "Crisis intervention and suicide prevention for LGBTQ+ young people.",
-      "languages": ["English"],
-      "chat_url": "https://www.thetrevorproject.org/get-help",
-      "priority": 4
-    },
-    {
-      "id": "samhsa",
-      "name": "SAMHSA National Helpline",
-      "number": "1-800-662-4357",
-      "method": "call",
-      "region": "US",
-      "hours": "24/7/365",
-      "description": "Free referrals and information for mental health and substance use disorders.",
-      "languages": ["English", "Spanish"],
-      "priority": 5
-    },
-    {
-      "id": "trans_lifeline",
-      "name": "Trans Lifeline",
-      "number": "1-877-565-8860",
-      "method": "call",
-      "region": "US",
-      "hours": "Staffed hours vary",
-      "description": "Peer support by and for trans people. No non-consensual active rescue.",
-      "languages": ["English"],
-      "priority": 6
-    },
-    {
-      "id": "disaster",
-      "name": "Disaster Distress Helpline",
-      "number": "1-800-985-5990",
-      "method": "call_or_text",
-      "text_keyword": "TalkWithUs",
-      "text_number": "66746",
-      "region": "US",
-      "hours": "24/7/365",
-      "description": "Immediate crisis counseling for people experiencing emotional distress from disasters.",
-      "languages": ["English", "Spanish"],
-      "priority": 7
-    },
-    {
-      "id": "domestic_violence",
-      "name": "National Domestic Violence Hotline",
-      "number": "1-800-799-7233",
-      "method": "call_or_text",
-      "text_keyword": "START",
-      "text_number": "88788",
-      "region": "US",
-      "hours": "24/7/365",
-      "description": "Support for victims and survivors of domestic violence.",
-      "languages": ["English", "Spanish", "200+ via interpreters"],
-      "priority": 8
-    },
-    {
-      "id": "rainn",
-      "name": "RAINN (Sexual Assault)",
-      "number": "1-800-656-4673",
-      "method": "call",
-      "region": "US",
-      "hours": "24/7/365",
-      "description": "Nation's largest anti-sexual violence organization. Routes to local provider.",
-      "languages": ["English", "Spanish"],
-      "chat_url": "https://hotline.rainn.org",
-      "priority": 9
-    },
-    {
-      "id": "child_abuse",
-      "name": "Childhelp National Child Abuse Hotline",
-      "number": "1-800-422-4453",
-      "method": "call_or_text",
-      "region": "US",
-      "hours": "24/7/365",
-      "description": "Crisis intervention, information, and referrals for child abuse situations.",
-      "languages": ["English", "Spanish"],
-      "priority": 10
-    },
-    {
-      "id": "nami",
-      "name": "NAMI Helpline",
-      "number": "1-800-950-6264",
-      "method": "call",
-      "text_number": "741741",
-      "text_keyword": "NAMI",
-      "region": "US",
-      "hours": "Mon-Fri 10am-10pm ET",
-      "description": "Free information, referrals, and support for mental health conditions.",
-      "languages": ["English"],
-      "priority": 11
-    },
-    {
-      "id": "icall_india",
-      "name": "iCall (India)",
-      "number": "9152987821",
+      "id": "emergency_india",
+      "name": "Emergency Services (India)",
+      "number": "112",
       "method": "call",
       "region": "India",
-      "hours": "Mon-Sat 8am-10pm IST",
-      "description": "Psychosocial helpline by TISS for emotional support and crisis intervention.",
-      "languages": ["English", "Hindi", "Marathi"],
-      "priority": 12
+      "hours": "24/7/365",
+      "description": "India's unified emergency number for police, fire, and ambulance. Also dial 108 (ambulance) or 100 (police).",
+      "priority": 0
     },
     {
-      "id": "vandrevala_india",
-      "name": "Vandrevala Foundation (India)",
+      "id": "vandrevala",
+      "name": "Vandrevala Foundation Helpline",
       "number": "1860-2662-345",
       "method": "call",
       "region": "India",
       "hours": "24/7/365",
-      "description": "Mental health support helpline available across India.",
-      "languages": ["English", "Hindi", "Multiple Indian languages"],
+      "description": "Free, confidential mental health support helpline available across India. Also reachable at 1800-2333-330 (toll-free).",
+      "languages": ["English", "Hindi", "Gujarati", "Marathi", "Tamil", "Telugu", "Kannada", "Malayalam", "Bengali"],
+      "chat_url": "https://www.vandrevalafoundation.com",
+      "priority": 1
+    },
+    {
+      "id": "icall",
+      "name": "iCall — TISS Helpline",
+      "number": "9152987821",
+      "method": "call",
+      "region": "India",
+      "hours": "Mon-Sat 8am-10pm IST",
+      "description": "Psychosocial helpline run by Tata Institute of Social Sciences (TISS) for emotional support, crisis intervention, and referrals.",
+      "languages": ["English", "Hindi", "Marathi"],
+      "email": "icall@tiss.edu",
+      "priority": 2
+    },
+    {
+      "id": "aasra",
+      "name": "AASRA",
+      "number": "9820466726",
+      "method": "call",
+      "region": "India",
+      "hours": "24/7/365",
+      "description": "Crisis intervention centre for the suicidal and the despairing, based in Mumbai.",
+      "languages": ["English", "Hindi"],
+      "chat_url": "http://www.aasra.info",
+      "priority": 3
+    },
+    {
+      "id": "snehi",
+      "name": "Snehi",
+      "number": "044-24640050",
+      "method": "call",
+      "region": "India",
+      "hours": "24/7/365",
+      "description": "Emotional support and crisis intervention helpline based in Chennai.",
+      "languages": ["English", "Hindi", "Tamil"],
+      "priority": 4
+    },
+    {
+      "id": "nimhans",
+      "name": "NIMHANS Helpline",
+      "number": "080-46110007",
+      "method": "call",
+      "region": "India",
+      "hours": "Mon-Sat 9:30am-4:30pm IST",
+      "description": "National Institute of Mental Health and Neurosciences — India's premier mental health institution, providing psychosocial support and psychiatric referrals.",
+      "languages": ["English", "Hindi", "Kannada"],
+      "priority": 5
+    },
+    {
+      "id": "kiran",
+      "name": "KIRAN Mental Health Helpline",
+      "number": "1800-599-0019",
+      "method": "call",
+      "region": "India",
+      "hours": "24/7/365",
+      "description": "Government of India toll-free helpline by the Ministry of Social Justice & Empowerment for mental health support, early screening, and referrals to professionals.",
+      "languages": ["English", "Hindi", "Regional languages"],
+      "priority": 6
+    },
+    {
+      "id": "connecting_trust",
+      "name": "Connecting Trust",
+      "number": "9922001122",
+      "method": "call",
+      "region": "India",
+      "hours": "12pm-8pm IST, every day",
+      "description": "Free, confidential emotional support helpline based in Bengaluru. Also provides in-person counselling referrals.",
+      "languages": ["English", "Hindi", "Kannada"],
+      "priority": 7
+    },
+    {
+      "id": "sos_women",
+      "name": "Women Helpline (NCW)",
+      "number": "7827-170-170",
+      "method": "call",
+      "region": "India",
+      "hours": "24/7/365",
+      "description": "National Commission for Women helpline for women facing domestic violence, harassment, dowry-related issues, and other distress. Also dial 181 (Women Helpline).",
+      "languages": ["English", "Hindi", "Regional languages"],
+      "priority": 8
+    },
+    {
+      "id": "childline",
+      "name": "CHILDLINE India",
+      "number": "1098",
+      "method": "call",
+      "region": "India",
+      "hours": "24/7/365",
+      "description": "India's first toll-free tele-helpline for children in need of care and protection. For child abuse, trafficking, missing children, and child labour.",
+      "languages": ["English", "Hindi", "Regional languages"],
+      "priority": 9
+    },
+    {
+      "id": "one_stop_centre",
+      "name": "One Stop Centre (Sakhi)",
+      "number": "181",
+      "method": "call",
+      "region": "India",
+      "hours": "24/7/365",
+      "description": "Government scheme providing integrated support to women affected by violence — medical, legal, police, psycho-social counselling under one roof.",
+      "languages": ["English", "Hindi", "Regional languages"],
+      "priority": 10
+    },
+    {
+      "id": "roshni",
+      "name": "Roshni Trust",
+      "number": "040-66202000",
+      "method": "call",
+      "region": "India",
+      "hours": "11am-9pm IST, Mon-Sat",
+      "description": "Hyderabad-based helpline offering counselling for depression, suicidal feelings, and emotional distress.",
+      "languages": ["English", "Hindi", "Telugu"],
+      "priority": 11
+    },
+    {
+      "id": "mann_talks",
+      "name": "Mann Talks",
+      "number": "8686139139",
+      "method": "call",
+      "region": "India",
+      "hours": "9am-8pm IST, every day",
+      "description": "Free, professional mental health counselling for youth and adults across India.",
+      "languages": ["English", "Hindi"],
+      "priority": 12
+    },
+    {
+      "id": "hitguj",
+      "name": "Hitguj — The Samaritans Mumbai",
+      "number": "022-25706000",
+      "method": "call",
+      "region": "India",
+      "hours": "24/7/365",
+      "description": "Mumbai-based emotional support helpline — confidential, non-judgmental listening for anyone in distress.",
+      "languages": ["English", "Hindi", "Marathi"],
       "priority": 13
     },
     {
-      "id": "samaritans_uk",
-      "name": "Samaritans (UK/Ireland)",
-      "number": "116 123",
+      "id": "lgbtq_plus",
+      "name": "iCall LGBTQ+ Support",
+      "number": "9152987821",
       "method": "call",
-      "region": "UK/Ireland",
-      "hours": "24/7/365",
-      "description": "Emotional support for anyone in distress or at risk of suicide.",
-      "languages": ["English"],
-      "email": "jo@samaritans.org",
+      "note": "Request LGBTQ+ counsellor",
+      "region": "India",
+      "hours": "Mon-Sat 8am-10pm IST",
+      "description": "iCall (TISS) provides affirming mental health support for LGBTQ+ individuals. Also see Sweekar — The Rainbow Parents (for family acceptance).",
+      "languages": ["English", "Hindi", "Marathi"],
       "priority": 14
     },
     {
-      "id": "beyond_blue_au",
-      "name": "Beyond Blue (Australia)",
-      "number": "1300 22 4636",
+      "id": "substance_abuse",
+      "name": "Drug De-addiction Helpline (NDPS)",
+      "number": "1800-11-0031",
       "method": "call",
-      "region": "Australia",
+      "region": "India",
       "hours": "24/7/365",
-      "description": "Support for anxiety, depression, and suicide prevention.",
-      "languages": ["English"],
-      "chat_url": "https://www.beyondblue.org.au/get-support",
+      "description": "Government of India toll-free helpline for substance abuse, drug de-addiction counselling, and rehabilitation referrals.",
+      "languages": ["English", "Hindi"],
       "priority": 15
-    },
-    {
-      "id": "emergency",
-      "name": "Emergency Services",
-      "number": "911",
-      "method": "call",
-      "region": "US",
-      "hours": "24/7/365",
-      "description": "For immediate life-threatening emergencies. Other regions: 999 (UK), 000 (AU), 112 (EU), 108 (India).",
-      "priority": 0
     }
   ],
 
@@ -330,7 +318,7 @@
   "safety_plan": {
     "title": "My Safety Plan",
     "subtitle": "Based on the Stanley-Brown Safety Planning Intervention",
-    "evidence": "The Stanley-Brown Safety Planning Intervention is recommended by the VA, SAMHSA, Joint Commission, and 988 Lifeline. Studies show it reduces suicidal behavior by 43% compared to standard care.",
+    "evidence": "The Stanley-Brown Safety Planning Intervention is an evidence-based approach recommended by leading mental health organisations. Studies show it reduces suicidal behaviour by 43% compared to standard care. Adapted for Indian crisis resources.",
     "instructions": "Complete this plan when you are feeling calm. Keep it somewhere easily accessible — your phone, wallet, or refrigerator. Review and update it regularly.",
     "steps": [
       {
@@ -371,11 +359,12 @@
         "icon": "professional",
         "prompt": "Professionals and agencies I can contact during a crisis:",
         "defaults": [
-          "988 Suicide & Crisis Lifeline — call or text 988",
-          "Crisis Text Line — text HELLO to 741741",
-          "My therapist/counselor: ___",
-          "Nearest emergency room: ___",
-          "Emergency services: 911"
+          "Vandrevala Foundation — 1860-2662-345 (24/7)",
+          "iCall (TISS) — 9152987821 (Mon-Sat 8am-10pm)",
+          "KIRAN Helpline — 1800-599-0019 (24/7, toll-free)",
+          "My therapist/counsellor: ___",
+          "Nearest hospital emergency: ___",
+          "Emergency services: 112"
         ],
         "placeholder": "e.g., My therapist Dr. Sharma — 98765-12345"
       },
@@ -426,7 +415,7 @@
       "Don't tell them how they 'should' feel",
       "Don't engage bystanders or create an audience"
     ],
-    "when_to_call_911": [
+    "when_to_call_112": [
       "The person has a weapon",
       "The person is actively hurting themselves or others",
       "The person is unconscious or unresponsive",
@@ -464,8 +453,8 @@
         }
       ]
     },
-    "samhsa_principles": {
-      "title": "SAMHSA's 6 Principles of Trauma-Informed Care",
+    "trauma_informed_principles": {
+      "title": "6 Principles of Trauma-Informed Care",
       "principles": [
         {"name": "Safety", "description": "Feeling physically and psychologically safe is the foundation of recovery."},
         {"name": "Trustworthiness & Transparency", "description": "Building trust through honesty, consistency, and clear communication."},
@@ -592,15 +581,15 @@
   "crisis_response_messages": {
     "high": {
       "banner": "You are not alone. Help is available right now.",
-      "message": "It sounds like you may be going through an incredibly difficult time. Your life matters, and support is available 24/7. Please reach out to a crisis service — a trained counselor is ready to listen without judgment.",
-      "primary_action": "Call or text 988 now",
-      "primary_number": "988"
+      "message": "It sounds like you may be going through an incredibly difficult time. Your life matters, and support is available 24/7. Please reach out to a crisis service — a trained counsellor is ready to listen without judgment.",
+      "primary_action": "Call Vandrevala Foundation now",
+      "primary_number": "1860-2662-345"
     },
     "moderate": {
       "banner": "Support is available if you need it.",
-      "message": "What you're feeling is real and valid. You don't have to go through this alone. If you're in distress, trained crisis counselors are available anytime.",
-      "primary_action": "Text HELLO to 741741",
-      "primary_number": "741741"
+      "message": "What you're feeling is real and valid. You don't have to go through this alone. If you're in distress, trained crisis counsellors are available anytime.",
+      "primary_action": "Call iCall (TISS) Helpline",
+      "primary_number": "9152987821"
     },
     "low": {
       "banner": "It's okay to ask for help.",
