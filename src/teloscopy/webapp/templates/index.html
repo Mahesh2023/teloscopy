@@ -989,6 +989,119 @@
             color: var(--text);
             border-bottom-left-radius: 4px;
         }
+        /* Sentiment-responsive counsellor bubble accents */
+        .counsel-msg.counsellor.sentiment-severe,
+        .counsel-msg.counsellor.sentiment-high {
+            border-left: 3px solid rgba(255,77,106,.5);
+            background: rgba(255,77,106,.06);
+        }
+        .counsel-msg.counsellor.sentiment-positive {
+            border-left: 3px solid rgba(0,212,170,.5);
+            background: rgba(0,212,170,.06);
+        }
+        .counsel-msg.counsellor.sentiment-moderate {
+            border-left: 3px solid rgba(251,191,36,.5);
+            background: rgba(251,191,36,.04);
+        }
+        /* Conversation phase indicator */
+        .counsel-phase-tag {
+            display: inline-block;
+            font-size: .68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            padding: .15rem .5rem;
+            border-radius: 8px;
+            margin-bottom: .4rem;
+            opacity: .7;
+        }
+        .counsel-phase-tag.phase-validation { background: rgba(255,77,106,.12); color: #ff6b8a; }
+        .counsel-phase-tag.phase-reflection { background: rgba(251,191,36,.12); color: #f5c842; }
+        .counsel-phase-tag.phase-inquiry    { background: rgba(147,51,234,.12); color: #a78bfa; }
+        /* Mood check-in card */
+        .counsel-mood-checkin {
+            align-self: center;
+            background: rgba(147,51,234,.06);
+            border: 1px solid rgba(147,51,234,.15);
+            border-radius: 14px;
+            padding: 1rem 1.25rem;
+            text-align: center;
+            max-width: 90%;
+            animation: fadeIn .3s ease;
+        }
+        .counsel-mood-checkin p {
+            font-size: .88rem;
+            color: var(--text-dim);
+            margin-bottom: .6rem;
+        }
+        .counsel-mood-btns {
+            display: flex;
+            gap: .5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .counsel-mood-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: .2rem;
+            padding: .5rem .75rem;
+            border: 1px solid rgba(147,51,234,.2);
+            border-radius: 10px;
+            background: rgba(147,51,234,.05);
+            cursor: pointer;
+            transition: all .2s;
+            font-size: .78rem;
+            color: var(--text-dim);
+        }
+        .counsel-mood-btn:hover {
+            background: rgba(147,51,234,.15);
+            border-color: rgba(147,51,234,.4);
+            transform: translateY(-1px);
+        }
+        .counsel-mood-btn .mood-emoji { font-size: 1.5rem; }
+        /* Breathing exercise inline card */
+        .counsel-breathe-card {
+            align-self: center;
+            background: linear-gradient(135deg, rgba(0,212,170,.08), rgba(147,51,234,.08));
+            border: 1px solid rgba(0,212,170,.2);
+            border-radius: 14px;
+            padding: 1.25rem;
+            text-align: center;
+            max-width: 90%;
+            animation: fadeIn .3s ease;
+        }
+        .counsel-breathe-card p { font-size: .88rem; color: var(--text-dim); margin-bottom: .5rem; }
+        .counsel-breathe-circle {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: rgba(0,212,170,.15);
+            border: 2px solid rgba(0,212,170,.4);
+            margin: .75rem auto;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .85rem; color: var(--accent);
+            font-weight: 600;
+        }
+        .counsel-breathe-circle.inhale  { animation: breathe-in 4s ease-in-out; }
+        .counsel-breathe-circle.hold    { animation: breathe-hold 4s ease; }
+        .counsel-breathe-circle.exhale  { animation: breathe-out 4s ease-in-out; }
+        @keyframes breathe-in  { from { transform: scale(.7); opacity: .5; } to { transform: scale(1.2); opacity: 1; } }
+        @keyframes breathe-hold { 0%, 100% { transform: scale(1.2); opacity: 1; } }
+        @keyframes breathe-out { from { transform: scale(1.2); opacity: 1; } to { transform: scale(.7); opacity: .5; } }
+        .counsel-breathe-btn {
+            display: inline-block;
+            padding: .4rem 1rem;
+            border: 1px solid rgba(0,212,170,.3);
+            border-radius: 8px;
+            background: rgba(0,212,170,.1);
+            color: var(--accent);
+            cursor: pointer;
+            font-size: .82rem;
+            font-weight: 600;
+            margin-top: .5rem;
+            transition: all .2s;
+        }
+        .counsel-breathe-btn:hover { background: rgba(0,212,170,.2); }
         .counsel-msg.counsellor .counsel-insight {
             display: block;
             margin-top: .6rem;
@@ -7633,29 +7746,25 @@ function escapeHtml(str) {
             .then(function(data) {
                 if (typingDiv.parentNode === counselChat) counselChat.removeChild(typingDiv);
 
-                if (!data || (!data.response && !data.ai_response)) {
+                if (!data || (!data.response && !data.ai_response && !data.composed_response)) {
                     addMessage('No response received. Please try again.', 'system');
                     return;
                 }
 
                 var fullText, extras, followups;
                 followups = data.followups || [];
+                var sentimentIntensity = (data.sentiment || {}).intensity || 'neutral';
+                var convSentiment = data.conversation_sentiment || {};
+                var phase = convSentiment.phase || '';
+                var turnCount = convSentiment.user_turn_count || 0;
 
                 if (data.mode === 'ai' && data.ai_response) {
                     /* AI-powered response — single flowing text */
                     fullText = data.ai_response;
                     extras = {};
-                } else if (data.response) {
-                    /* Template fallback — assemble from parts */
-                    var resp = data.response;
-                    var parts = [];
-                    if (resp.acknowledgment) parts.push(resp.acknowledgment);
-                    if (resp.opening) parts.push(resp.opening);
-                    if (resp.inquiry) parts.push(resp.inquiry);
-                    if (resp.deepening) parts.push(resp.deepening);
-                    if (resp.reflection) parts.push(resp.reflection);
-                    if (resp.closing) parts.push(resp.closing);
-                    fullText = parts.join('\n\n');
+                } else if (data.composed_response) {
+                    /* Template with composed flowing prose */
+                    fullText = data.composed_response;
                     extras = { insight: data.core_insight, quote: data.quote };
 
                     /* Track indices for de-duplication in future template requests */
@@ -7668,6 +7777,28 @@ function escapeHtml(str) {
                         if (idx.closing_idx !== undefined) entry.closing_idx = idx.closing_idx;
                         _counselIndexHistory.push(entry);
                     }
+                } else if (data.response) {
+                    /* Legacy template fallback — assemble from parts */
+                    var resp = data.response;
+                    var parts = [];
+                    if (resp.opening) parts.push(resp.opening);
+                    if (resp.acknowledgment) parts.push(resp.acknowledgment);
+                    if (resp.inquiry) parts.push(resp.inquiry);
+                    if (resp.deepening) parts.push(resp.deepening);
+                    if (resp.reflection) parts.push(resp.reflection);
+                    if (resp.closing) parts.push(resp.closing);
+                    fullText = parts.join(' ');
+                    extras = { insight: data.core_insight, quote: data.quote };
+
+                    if (data._indices) {
+                        var entry2 = { theme: data.theme };
+                        var idx2 = data._indices;
+                        if (idx2.quote_idx !== undefined) entry2.quote_idx = idx2.quote_idx;
+                        if (idx2.inquiry_idx !== undefined) entry2.inquiry_idx = idx2.inquiry_idx;
+                        if (idx2.opening_idx !== undefined) entry2.opening_idx = idx2.opening_idx;
+                        if (idx2.closing_idx !== undefined) entry2.closing_idx = idx2.closing_idx;
+                        _counselIndexHistory.push(entry2);
+                    }
                 } else {
                     fullText = 'I hear you. Let us sit with that for a moment.';
                     extras = {};
@@ -7677,8 +7808,27 @@ function escapeHtml(str) {
                     fullText = 'I hear you. Let us sit with that for a moment.';
                 }
 
-                /* Animate the response word-by-word */
-                addMessageAnimated(fullText, 'counsellor', extras, function() {
+                /* Determine sentiment class for bubble styling */
+                var sentimentClass = '';
+                if (sentimentIntensity === 'severe' || sentimentIntensity === 'high') {
+                    sentimentClass = 'sentiment-' + sentimentIntensity;
+                } else if (sentimentIntensity === 'positive') {
+                    sentimentClass = 'sentiment-positive';
+                } else if (sentimentIntensity === 'moderate') {
+                    sentimentClass = 'sentiment-moderate';
+                }
+
+                /* Add phase indicator before the message */
+                if (phase && turnCount > 0) {
+                    var phaseDiv = document.createElement('div');
+                    phaseDiv.className = 'counsel-phase-tag phase-' + phase;
+                    var phaseLabels = { validation: 'Listening', reflection: 'Reflecting', inquiry: 'Exploring' };
+                    phaseDiv.textContent = phaseLabels[phase] || phase;
+                    counselChat.appendChild(phaseDiv);
+                }
+
+                /* Animate the response word-by-word with sentiment styling */
+                var msgDiv = addMessageAnimated(fullText, 'counsellor', extras, function() {
                     /* Show follow-up suggestions after animation completes */
                     showFollowups(followups);
 
@@ -7686,7 +7836,21 @@ function escapeHtml(str) {
                     if (autoSpeakToggle && autoSpeakToggle.checked && synthesis) {
                         speakText(fullText);
                     }
+
+                    /* Interactive mood check-in every 3 turns */
+                    if (turnCount > 0 && turnCount % 3 === 0) {
+                        _showMoodCheckin();
+                    }
+
+                    /* Breathing exercise for severe/high distress */
+                    if ((sentimentIntensity === 'severe' || sentimentIntensity === 'high') && turnCount <= 2) {
+                        _showBreathingExercise();
+                    }
                 });
+                if (sentimentClass && msgDiv) {
+                    msgDiv.classList.add(sentimentClass);
+                }
+
                 counsellingHistory.push({ role: 'counsellor', text: fullText, theme: data.theme });
 
                 /* Crisis detection — show banner and open sidebar if crisis detected */
@@ -7702,6 +7866,75 @@ function escapeHtml(str) {
             })
             .finally(function() {
                 counselSendBtn.disabled = false;
+            });
+        }
+
+        /* ---- Interactive mood check-in ---- */
+        function _showMoodCheckin() {
+            var card = document.createElement('div');
+            card.className = 'counsel-mood-checkin';
+            card.innerHTML = '<p>How are you feeling right now in this moment?</p>' +
+                '<div class="counsel-mood-btns">' +
+                '<button class="counsel-mood-btn" data-mood="heavy"><span class="mood-emoji">&#x1F614;</span>Heavy</button>' +
+                '<button class="counsel-mood-btn" data-mood="mixed"><span class="mood-emoji">&#x1F615;</span>Mixed</button>' +
+                '<button class="counsel-mood-btn" data-mood="lighter"><span class="mood-emoji">&#x1F60C;</span>Lighter</button>' +
+                '<button class="counsel-mood-btn" data-mood="hopeful"><span class="mood-emoji">&#x1F33F;</span>Hopeful</button>' +
+                '</div>';
+            counselChat.appendChild(card);
+            counselChat.scrollTop = counselChat.scrollHeight;
+
+            card.querySelectorAll('.counsel-mood-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var mood = this.getAttribute('data-mood');
+                    card.innerHTML = '<p>Thank you for checking in. You selected: <strong>' + mood + '</strong></p>';
+                    /* Feed mood back as context for the next message */
+                    counsellingHistory.push({ role: 'mood_checkin', text: mood });
+                    setTimeout(function() { card.style.opacity = '0.5'; }, 2000);
+                });
+            });
+        }
+
+        /* ---- Inline breathing exercise ---- */
+        function _showBreathingExercise() {
+            var card = document.createElement('div');
+            card.className = 'counsel-breathe-card';
+            card.innerHTML = '<p>Before we continue, would you like to take a moment to breathe?</p>' +
+                '<button class="counsel-breathe-btn" data-action="start">Begin breathing exercise</button>' +
+                '<button class="counsel-breathe-btn" style="background:transparent;border-color:rgba(147,51,234,.2);color:var(--text-dim);margin-left:.5rem" data-action="skip">Skip</button>';
+            counselChat.appendChild(card);
+            counselChat.scrollTop = counselChat.scrollHeight;
+
+            card.querySelector('[data-action="skip"]').addEventListener('click', function() {
+                card.style.display = 'none';
+            });
+            card.querySelector('[data-action="start"]').addEventListener('click', function() {
+                /* Run 3 cycles: inhale 4s, hold 4s, exhale 4s */
+                var phases = [
+                    { label: 'Breathe in', cls: 'inhale', dur: 4000 },
+                    { label: 'Hold', cls: 'hold', dur: 4000 },
+                    { label: 'Breathe out', cls: 'exhale', dur: 4000 }
+                ];
+                var cycles = 3, pi = 0, ci = 0;
+                card.innerHTML = '<p>Follow the circle\u2026</p>' +
+                    '<div class="counsel-breathe-circle"></div>' +
+                    '<p class="breathe-counter" style="font-size:.75rem;color:var(--text-dim);margin-top:.3rem"></p>';
+                var circle = card.querySelector('.counsel-breathe-circle');
+                var counter = card.querySelector('.breathe-counter');
+                function runPhase() {
+                    if (ci >= cycles) {
+                        card.innerHTML = '<p>Well done. Take your time before continuing.</p>';
+                        setTimeout(function() { card.style.opacity = '0.5'; }, 3000);
+                        return;
+                    }
+                    var p = phases[pi];
+                    circle.textContent = p.label;
+                    circle.className = 'counsel-breathe-circle ' + p.cls;
+                    counter.textContent = 'Cycle ' + (ci + 1) + ' of ' + cycles;
+                    pi++;
+                    if (pi >= phases.length) { pi = 0; ci++; }
+                    setTimeout(runPhase, p.dur);
+                }
+                runPhase();
             });
         }
 

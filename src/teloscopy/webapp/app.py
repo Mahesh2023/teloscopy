@@ -3402,6 +3402,38 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
     response["mode"] = "template"
     response["sentiment"] = sentiment
     response["conversation_sentiment"] = conv_sentiment
+
+    # Compose template parts into flowing prose so the frontend can render
+    # it like an AI response — one natural, conversational text.
+    resp = response.get("response", {})
+    prose_parts: list[str] = []
+    # Opening and acknowledgment together as the first paragraph
+    _open = resp.get("opening", "").strip()
+    _ack = resp.get("acknowledgment", "").strip()
+    if _open and _ack:
+        prose_parts.append(f"{_open} {_ack}")
+    elif _ack:
+        prose_parts.append(_ack)
+    elif _open:
+        prose_parts.append(_open)
+    # Inquiry as a natural follow-on
+    _inq = resp.get("inquiry", "").strip()
+    if _inq:
+        prose_parts.append(_inq)
+    # Deepening question woven in
+    _deep = resp.get("deepening", "").strip()
+    if _deep:
+        prose_parts.append(_deep)
+    # Reflection
+    _refl = resp.get("reflection", "").strip()
+    if _refl:
+        prose_parts.append(_refl)
+    # Closing — always last
+    _close = resp.get("closing", "").strip()
+    if _close:
+        prose_parts.append(_close)
+    response["composed_response"] = " ".join(prose_parts)
+
     response["followups"] = _suggest_followups(
         theme_key, len(history),
         intensity=sentiment.get("intensity", "neutral"),
