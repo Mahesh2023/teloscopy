@@ -2264,13 +2264,15 @@ def _build_counselling_response(
     Uses randomised selection with history-aware de-duplication so the user
     never receives the same quote, inquiry, or opening twice in a row.
 
-    When *sentiment* is provided, the response adapts its warmth and depth
-    to the user's emotional intensity:
-      - severe/high → gentler opening, prioritise reflective acknowledgment
-      - mild/neutral/positive → standard inquiry-led approach
+    Sentiment responsiveness at every level:
+      - severe/high → warm holding, de-escalation offer, gentle closings
+      - moderate → balanced gentleness with reflective inquiry
+      - mild → light acknowledgment, natural conversational tone
+      - neutral → standard inquiry-led approach
+      - positive → curious, celebratory, inviting deeper exploration
+      - worsening trajectory → closings check in on wellbeing
 
-    When *conv_sentiment* is provided, the response uses the graduated phase
-    to determine how much philosophical content to include:
+    Graduated phase controls philosophical depth:
       - validation (turns 1-2): pure emotional validation, no philosophy
       - reflection (turns 3-4): gentle mirroring, light questions
       - inquiry (turns 5+): full philosophical inquiry approach
@@ -2278,6 +2280,8 @@ def _build_counselling_response(
     theme = _COUNSEL_THEMES.get(theme_key, _COUNSEL_THEMES["self_knowledge"])
     history = history or []
     intensity = (sentiment or {}).get("intensity", "neutral")
+    trajectory = (conv_sentiment or {}).get("trajectory", "stable")
+    phase = (conv_sentiment or {}).get("phase", "inquiry")
 
     # ── Collect previously-used indices to avoid repetition ──
     used_quotes: set[int] = set()
@@ -2306,7 +2310,7 @@ def _build_counselling_response(
     opening, opening_idx = _pick(_OPENING_PHRASES, used_openings)
     acknowledgment = random.choice(_ACKNOWLEDGMENT_PHRASES)
 
-    # ── Intensity-aware warmth: prefix gentle holding phrases for distress ──
+    # ── Intensity-aware warmth: adapt tone to emotional state ──
     if intensity in ("severe", "high"):
         _warm_prefixes = [
             "I hear you, and what you're feeling matters deeply. ",
@@ -2324,6 +2328,22 @@ def _build_counselling_response(
         ]
         if random.random() < 0.6:  # not always, to avoid repetitiveness
             acknowledgment = random.choice(_gentle_prefixes) + acknowledgment
+    elif intensity == "mild":
+        _mild_prefixes = [
+            "I notice there's something stirring in what you shared. ",
+            "There's something here worth looking at together. ",
+            "Thank you for bringing that here. ",
+        ]
+        if random.random() < 0.4:
+            acknowledgment = random.choice(_mild_prefixes) + acknowledgment
+    elif intensity == "positive":
+        _positive_prefixes = [
+            "There's something alive and open in what you're sharing. ",
+            "I can hear a kind of clarity in your words. ",
+            "That's a really beautiful observation. ",
+            "Something seems to be opening up for you. ",
+        ]
+        acknowledgment = random.choice(_positive_prefixes) + acknowledgment
 
     # Personalise the acknowledgment by echoing back the user's words
     # Extract a short, meaningful snippet (first sentence or ~80 chars)
@@ -2354,7 +2374,23 @@ def _build_counselling_response(
     else:
         deepening = random.choice(_DEEPENING_QUESTIONS)
 
-    closing, closing_idx = _pick(_CLOSING_PHRASES, used_closings)
+    # ── Sentiment-aware closing selection ──
+    if trajectory == "worsening":
+        closing = random.choice(_CLOSINGS_WORSENING)
+        closing_idx = -1
+    elif intensity in ("severe", "high"):
+        closing = random.choice(_CLOSINGS_DISTRESS)
+        closing_idx = -1
+    elif intensity == "moderate":
+        closing = random.choice(_CLOSINGS_MODERATE)
+        closing_idx = -1
+    elif intensity == "positive":
+        closing = random.choice(_CLOSINGS_POSITIVE)
+        closing_idx = -1
+    else:
+        # mild / neutral — use pool-based selection with dedup
+        closing, closing_idx = _pick(_CLOSING_PHRASES, used_closings)
+
     quote, quote_idx = _pick(theme["quotes"], used_quotes)
 
     # Pick a reflection
@@ -2365,8 +2401,17 @@ def _build_counselling_response(
     insights = theme.get("core_insights", [])
     core_insight = random.choice(insights) if insights else ""
 
+    # ── Severity de-escalation: for severe distress, offer a pause ──
+    if intensity == "severe" and phase != "validation":
+        # Prepend a breathing/grounding invitation before any inquiry
+        _deesc = random.choice([
+            "Before we go further — would it help to take a slow breath together? There is absolutely no rush.",
+            "Let's pause for a moment. You don't have to figure anything out right now.",
+            "I want to make sure you're okay to continue. We can stop or slow down anytime.",
+        ])
+        acknowledgment = acknowledgment + " " + _deesc
+
     # ── Graduated phase: adjust response components based on conversation depth ──
-    phase = (conv_sentiment or {}).get("phase", "inquiry")
     if phase == "validation":
         # Early turns: pure emotional validation — no philosophy, no inquiry
         return {
@@ -2392,6 +2437,13 @@ def _build_counselling_response(
         }
     elif phase == "reflection":
         # Mid turns: gentle reflection + one question, but no philosophical quotes
+        # For high distress, soften the inquiry into a gentler invitation
+        if intensity in ("severe", "high"):
+            inquiry = random.choice([
+                "Only if it feels right — what are you noticing inside right now?",
+                "There's no need to analyse anything. But if you'd like to, what comes up when you sit with this?",
+                "Can you tell me a little more about what you're feeling? Only what feels safe to share.",
+            ])
         return {
             "theme": theme_key,
             "theme_title": theme["title"],
@@ -2415,6 +2467,14 @@ def _build_counselling_response(
         }
 
     # Full inquiry phase (turns 5+): all components including philosophy
+    # But still temper depth when sentiment is severe/high
+    if intensity in ("severe", "high"):
+        # Even in inquiry phase, prioritise warmth over philosophy
+        deepening = random.choice([
+            "What would it feel like to let go of needing to understand this, even for a moment?",
+            "Is there something beneath this pain that is asking to be seen?",
+            "Can we simply be with what is, without trying to change it?",
+        ])
     return {
         "theme": theme_key,
         "theme_title": theme["title"],
@@ -2780,21 +2840,48 @@ def _build_llm_messages(
             f"Emotional intensity: {intensity} (compound={compound:.2f}). "
             f"Detected themes: {themes_str}. "
         )
-        if intensity in ("severe", "high"):
+        if intensity == "severe":
             sentiment_hint += (
-                "The user appears to be in significant distress. Respond with extra warmth, "
-                "gentleness, and holding. Prioritise acknowledgment over inquiry. "
-                "Do not push reflective questions too quickly — sit with the pain first."
+                "The user appears to be in SEVERE distress. This is your highest priority: "
+                "respond with deep warmth, gentleness, and emotional holding. "
+                "Do NOT ask probing questions yet. Sit with the pain. Validate fully. "
+                "Offer to pause or breathe together. Acknowledge their courage in sharing. "
+                "Only when they feel truly heard should you gently invite any reflection."
+            )
+        elif intensity == "high":
+            sentiment_hint += (
+                "The user is in significant emotional pain. Respond with extra warmth "
+                "and gentleness. Prioritise acknowledgment over inquiry. "
+                "Do not push reflective questions too quickly — sit with the pain first. "
+                "One simple, soft question is enough. Let them feel held."
             )
         elif intensity == "moderate":
             sentiment_hint += (
                 "The user is experiencing moderate emotional difficulty. "
-                "Balance gentle acknowledgment with reflective inquiry."
+                "Balance gentle acknowledgment with reflective inquiry. "
+                "Validate what they're feeling before inviting them to look deeper. "
+                "Your tone should be warm but not overly cautious."
+            )
+        elif intensity == "mild":
+            sentiment_hint += (
+                "The user's tone carries a subtle emotional undercurrent. "
+                "Acknowledge it lightly without dramatising. Be naturally warm. "
+                "You can gently explore what's beneath the surface — "
+                "they may not fully realise what they're feeling yet."
+            )
+        elif intensity == "neutral":
+            sentiment_hint += (
+                "The user's tone is emotionally neutral. They may be thinking "
+                "more than feeling, or keeping things at a distance. "
+                "Meet them where they are — be present, curious, and inviting. "
+                "Gently help them connect thought with feeling."
             )
         elif intensity == "positive":
             sentiment_hint += (
-                "The user's tone is positive. You may explore with curiosity and lightness, "
-                "while still inviting depth."
+                "The user's tone is positive and open. Explore with curiosity and lightness. "
+                "Celebrate any clarity or insight they're finding without being effusive. "
+                "Invite them to go deeper into what they're noticing — "
+                "positive moments can be doorways to profound understanding."
             )
         msgs.append({"role": "system", "content": sentiment_hint})
 
@@ -2820,6 +2907,12 @@ def _build_llm_messages(
                 "Simply be present. No questions about 'the observer' or 'thought'. "
                 "Just listen, hold space, and let them feel heard."
             )
+            if trajectory == "worsening":
+                phase_directive += (
+                    " The user's emotional state is WORSENING even in early turns. "
+                    "Be extra careful. Prioritise safety and warmth above all. "
+                    "Gently check in: 'How are you feeling right now?'"
+                )
         elif phase == "reflection":
             phase_directive += (
                 "This is a MID conversation (turns 3-4). "
@@ -2830,6 +2923,17 @@ def _build_llm_messages(
                 "Keep it grounded in THEIR words and experience. "
                 "Light philosophical framing is okay but don't lead with it."
             )
+            if trajectory == "worsening":
+                phase_directive += (
+                    " Note: The user's emotional state has been declining across turns. "
+                    "Ease back on reflective questions. Offer more holding and warmth. "
+                    "Consider asking: 'Would you like to slow down or take a breath?'"
+                )
+            elif trajectory == "improving":
+                phase_directive += (
+                    " The user's emotional tone is improving. They may be finding "
+                    "their footing. You can gently lean into reflection with more confidence."
+                )
         elif phase == "inquiry":
             phase_directive += (
                 "This is a DEEPER conversation (turn 5+). "
@@ -2840,8 +2944,16 @@ def _build_llm_messages(
             )
             if trajectory == "worsening":
                 phase_directive += (
-                    " Note: The user's emotional state has been declining. "
-                    "Ease back on deep inquiry and offer more holding and warmth."
+                    " IMPORTANT: Despite being deep into conversation, the user's emotional "
+                    "state has been declining. Ease back on philosophical inquiry. "
+                    "Return to warmth and holding. Check in on how they're doing. "
+                    "Offer to pause or change direction."
+                )
+            elif trajectory == "improving":
+                phase_directive += (
+                    " The user's emotional trajectory is positive — they seem to be "
+                    "finding insight or relief. Build on this momentum. "
+                    "Invite deeper exploration of what they're discovering."
                 )
         msgs.append({"role": "system", "content": phase_directive})
 
@@ -2861,6 +2973,44 @@ def _build_llm_messages(
     return msgs
 
 
+# ── Sentiment-aware closing phrase pools ──
+
+_CLOSINGS_DISTRESS = [
+    "There is no hurry. We can sit here together for as long as you need.",
+    "You don't have to carry this alone. I'm right here with you.",
+    "Take a breath whenever you need to. This space isn't going anywhere.",
+    "Whatever you're feeling right now — it's allowed to be here.",
+    "You've shown real courage in sharing this. Let's keep going at your pace.",
+]
+
+_CLOSINGS_MODERATE = [
+    "Take your time with this. There's no need to rush to an answer.",
+    "Let's stay with what's here and see what it reveals.",
+    "You're looking at something important. Let it unfold naturally.",
+    "There's no need to resolve anything right now — just notice.",
+]
+
+_CLOSINGS_MILD_NEUTRAL = [
+    "Let's see where this thread leads.",
+    "There may be something interesting beneath this — shall we look?",
+    "Stay with that observation for a moment.",
+    "What comes up when you sit with that quietly?",
+]
+
+_CLOSINGS_POSITIVE = [
+    "There's a lovely clarity in what you're seeing. Let's explore it further.",
+    "That's a beautiful observation. What else opens up from here?",
+    "That lightness you're feeling — can we stay with it and see what it shows?",
+    "Something is moving in a good direction here. Shall we follow it?",
+]
+
+_CLOSINGS_WORSENING = [
+    "I notice things have been heavier as we've talked. Would you like to pause and just breathe for a moment?",
+    "We can slow down whenever you need. There's no obligation to keep exploring if it feels like too much.",
+    "Sometimes the kindest thing is to simply stop and be still. Would that help right now?",
+    "You matter more than any insight we might find. How are you feeling right now?",
+]
+
 # ── Follow-up suggestion pools (context-aware conversation starters) ──
 
 _FOLLOWUP_GENERAL = [
@@ -2871,6 +3021,22 @@ _FOLLOWUP_GENERAL = [
     "I feel something but can't name it",
     "That resonates with me",
     "I'd like to sit with that",
+]
+
+_FOLLOWUP_DISTRESS = [
+    "I just need someone to listen",
+    "I don't know what I need right now",
+    "Can we just sit with this for a moment?",
+    "I'm struggling but I'm still here",
+    "I need to say this out loud",
+]
+
+_FOLLOWUP_POSITIVE = [
+    "I'm starting to see something clearly",
+    "Something feels different today",
+    "I want to understand this lightness",
+    "Can we build on this feeling?",
+    "I feel more open right now",
 ]
 
 _FOLLOWUP_BY_THEME: dict[str, list[str]] = {
@@ -3009,17 +3175,33 @@ _FOLLOWUP_DEEPENING = [
 ]
 
 
-def _suggest_followups(theme_key: str, turn_count: int) -> list[str]:
-    """Return 2-3 contextual follow-up suggestions for the user."""
+def _suggest_followups(
+    theme_key: str,
+    turn_count: int,
+    intensity: str = "neutral",
+    trajectory: str = "stable",
+) -> list[str]:
+    """Return 2-3 contextual follow-up suggestions adapted to sentiment."""
     pool: list[str] = []
     # Theme-specific suggestions
     pool.extend(_FOLLOWUP_BY_THEME.get(theme_key, []))
-    # Add general follow-ups
+
+    # Sentiment-aware follow-ups
+    if intensity in ("severe", "high"):
+        pool.extend(_FOLLOWUP_DISTRESS)
+    elif intensity == "positive":
+        pool.extend(_FOLLOWUP_POSITIVE)
+
+    # Depth-aware follow-ups
     if turn_count < 3:
         pool.extend(_FOLLOWUP_GENERAL)
     else:
         # Deeper into conversation — offer deeper prompts
         pool.extend(_FOLLOWUP_DEEPENING)
+
+    # Worsening trajectory → gentler options
+    if trajectory == "worsening":
+        pool.extend(_FOLLOWUP_DISTRESS[:3])
     pool.extend(_FOLLOWUP_GENERAL[:3])
     # Pick 3 random unique suggestions
     if len(pool) <= 3:
@@ -3094,7 +3276,11 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
             "mode": "ai",
             "sentiment": sentiment,
             "conversation_sentiment": conv_sentiment,
-            "followups": _suggest_followups(theme_key, len(conversation)),
+            "followups": _suggest_followups(
+                theme_key, len(conversation),
+                intensity=sentiment.get("intensity", "neutral"),
+                trajectory=conv_sentiment.get("trajectory", "stable"),
+            ),
         }
         if crisis:
             result["crisis_detected"] = True
@@ -3106,7 +3292,11 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
     response["mode"] = "template"
     response["sentiment"] = sentiment
     response["conversation_sentiment"] = conv_sentiment
-    response["followups"] = _suggest_followups(theme_key, len(history))
+    response["followups"] = _suggest_followups(
+        theme_key, len(history),
+        intensity=sentiment.get("intensity", "neutral"),
+        trajectory=conv_sentiment.get("trajectory", "stable"),
+    )
     if crisis:
         response["crisis_detected"] = True
         response["crisis_resources"] = crisis
