@@ -1926,33 +1926,6 @@ def _render_legal_doc(filename: str, title: str) -> HTMLResponse:
 
 
 # ===================================================================== #
-#  Mobile app download links                                             #
-# ===================================================================== #
-
-_GITHUB_RELEASES_URL = "https://github.com/Mahesh2023/teloscopy/releases"
-
-
-@app.get("/api/download/android")
-async def download_android_redirect() -> dict[str, str]:
-    """Return the GitHub Releases URL for the Android APK."""
-    return {
-        "url": f"{_GITHUB_RELEASES_URL}/latest",
-        "platform": "android",
-        "message": "Download the latest APK from the GitHub Releases page.",
-    }
-
-
-@app.get("/api/download/ios")
-async def download_ios_redirect() -> dict[str, str]:
-    """Return the GitHub Releases URL for the iOS build."""
-    return {
-        "url": f"{_GITHUB_RELEASES_URL}/latest",
-        "platform": "ios",
-        "message": "Download the latest iOS build from the GitHub Releases page.",
-    }
-
-
-# ===================================================================== #
 #  JSON data loader (shared by Research & Counselling)                    #
 # ===================================================================== #
 

@@ -599,33 +599,6 @@ class TestHealthCheckupUpload:
 
 
 # ---------------------------------------------------------------------------
-# Android APK download
-# ---------------------------------------------------------------------------
-
-
-class TestAndroidDownload:
-    """Tests for mobile download redirect endpoints (APK/IPA removed, redirects to GitHub Releases)."""
-
-    def test_android_download_returns_github_link(self, client):
-        """GET /api/download/android should return GitHub Releases URL."""
-        resp = client.get("/api/download/android")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "url" in data
-        assert "github.com" in data["url"]
-        assert data["platform"] == "android"
-
-    def test_ios_download_returns_github_link(self, client):
-        """GET /api/download/ios should return GitHub Releases URL."""
-        resp = client.get("/api/download/ios")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "url" in data
-        assert "github.com" in data["url"]
-        assert data["platform"] == "ios"
-
-
-# ---------------------------------------------------------------------------
 # Legal document pages
 # ---------------------------------------------------------------------------
 
