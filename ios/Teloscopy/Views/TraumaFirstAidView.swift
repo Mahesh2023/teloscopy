@@ -222,7 +222,7 @@ struct TraumaFirstAidView: View {
         }
     }
 
-    private func crisisCard(hotline: CrisisHotline) -> some View {
+    private func crisisCard(hotline: TraumaCrisisHotline) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(hotline.name)
@@ -1106,7 +1106,7 @@ struct TraumaFirstAidView: View {
 
 // MARK: - Data Models
 
-private struct CrisisHotline {
+private struct TraumaCrisisHotline {
     let name: String
     let number: String
     let description: String
@@ -1139,8 +1139,8 @@ private struct PFAStep {
 
 // MARK: - Static Data
 
-private let crisisHotlines: [CrisisHotline] = [
-    CrisisHotline(
+private let crisisHotlines: [TraumaCrisisHotline] = [
+    TraumaCrisisHotline(
         name: "988 Suicide & Crisis Lifeline",
         number: "988",
         description: "Free, confidential 24/7 support for people in suicidal crisis or emotional distress.",
@@ -1148,7 +1148,7 @@ private let crisisHotlines: [CrisisHotline] = [
         smsNumber: "988",
         smsBody: "HELLO"
     ),
-    CrisisHotline(
+    TraumaCrisisHotline(
         name: "Crisis Text Line",
         number: "741741",
         description: "Text-based crisis support. Text HELLO to connect with a trained crisis counselor.",
@@ -1156,7 +1156,7 @@ private let crisisHotlines: [CrisisHotline] = [
         smsNumber: "741741",
         smsBody: "HELLO"
     ),
-    CrisisHotline(
+    TraumaCrisisHotline(
         name: "Veterans Crisis Line",
         number: "988",
         description: "Support for veterans and their families. Press 1 after dialing 988.",
@@ -1164,7 +1164,7 @@ private let crisisHotlines: [CrisisHotline] = [
         smsNumber: "838255",
         smsBody: nil
     ),
-    CrisisHotline(
+    TraumaCrisisHotline(
         name: "SAMHSA National Helpline",
         number: "1-800-662-4357",
         description: "Free referral and information service for substance abuse and mental health.",
@@ -1172,7 +1172,7 @@ private let crisisHotlines: [CrisisHotline] = [
         smsNumber: nil,
         smsBody: nil
     ),
-    CrisisHotline(
+    TraumaCrisisHotline(
         name: "National Domestic Violence Hotline",
         number: "1-800-799-7233",
         description: "Confidential support for anyone affected by domestic violence.",
@@ -1180,7 +1180,7 @@ private let crisisHotlines: [CrisisHotline] = [
         smsNumber: "88788",
         smsBody: "START"
     ),
-    CrisisHotline(
+    TraumaCrisisHotline(
         name: "RAINN Sexual Assault Hotline",
         number: "1-800-656-4673",
         description: "Connects to a local sexual assault service provider for confidential support.",
@@ -1188,7 +1188,7 @@ private let crisisHotlines: [CrisisHotline] = [
         smsNumber: nil,
         smsBody: nil
     ),
-    CrisisHotline(
+    TraumaCrisisHotline(
         name: "Trevor Project (LGBTQ+ Youth)",
         number: "1-866-488-7386",
         description: "Crisis intervention and suicide prevention for LGBTQ+ young people under 25.",
@@ -1196,7 +1196,7 @@ private let crisisHotlines: [CrisisHotline] = [
         smsNumber: "678-678",
         smsBody: "START"
     ),
-    CrisisHotline(
+    TraumaCrisisHotline(
         name: "iCall (India)",
         number: "9152987821",
         description: "Psychosocial helpline by TISS for emotional support and crisis intervention.",
@@ -1204,7 +1204,7 @@ private let crisisHotlines: [CrisisHotline] = [
         smsNumber: nil,
         smsBody: nil
     ),
-    CrisisHotline(
+    TraumaCrisisHotline(
         name: "Vandrevala Foundation (India)",
         number: "1860-2662-345",
         description: "Mental health support helpline available across India. 24/7.",
@@ -1212,7 +1212,7 @@ private let crisisHotlines: [CrisisHotline] = [
         smsNumber: nil,
         smsBody: nil
     ),
-    CrisisHotline(
+    TraumaCrisisHotline(
         name: "Samaritans (UK/Ireland)",
         number: "116 123",
         description: "Emotional support for anyone in distress or at risk of suicide.",
@@ -1220,7 +1220,7 @@ private let crisisHotlines: [CrisisHotline] = [
         smsNumber: nil,
         smsBody: nil
     ),
-    CrisisHotline(
+    TraumaCrisisHotline(
         name: "Beyond Blue (Australia)",
         number: "1300 22 4636",
         description: "Support for anxiety, depression, and suicide prevention.",

@@ -953,7 +953,7 @@ struct ConsentTokenResponse: Codable {
 
 // MARK: - Trauma First Aid Models
 
-struct CrisisResources: Codable {
+struct CrisisResources: Codable, Equatable {
     let isCrisis: Bool
     let severity: String
     let response: CrisisResponseMessage?
@@ -969,7 +969,7 @@ struct CrisisResources: Codable {
     }
 }
 
-struct CrisisResponseMessage: Codable {
+struct CrisisResponseMessage: Codable, Equatable {
     let banner: String
     let message: String
     let primaryAction: String
@@ -982,7 +982,7 @@ struct CrisisResponseMessage: Codable {
     }
 }
 
-struct CrisisHotline: Codable, Identifiable {
+struct CrisisHotline: Codable, Identifiable, Equatable {
     var id: String { hotlineId }
     let hotlineId: String
     let name: String

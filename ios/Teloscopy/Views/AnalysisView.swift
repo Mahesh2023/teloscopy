@@ -250,7 +250,7 @@ struct AnalysisView: View {
                     
                     Button(action: {
                         withAnimation {
-                            selectedImages.remove(at: index)
+                            _ = selectedImages.remove(at: index)
                         }
                     }) {
                         Image(systemName: "xmark.circle.fill")

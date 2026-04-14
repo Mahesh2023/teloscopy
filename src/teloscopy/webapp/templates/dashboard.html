@@ -885,7 +885,24 @@
         }
     </style>
 </head>
-<body>
+<body class="consent-pending">
+<script>
+(function(){
+  try {
+    var raw = localStorage.getItem('teloscopy_consent_v1');
+    if (raw) {
+      var d = JSON.parse(raw);
+      if (d.accepted && d.timestamp && (Date.now() - d.timestamp) / 864e5 < 1) {
+        document.body.classList.remove('consent-pending');
+        var s = document.createElement('style');
+        s.textContent = '.consent-overlay { display: none !important; }';
+        s.id = 'consent-hide-style';
+        document.head.appendChild(s);
+      }
+    }
+  } catch(_){}
+})();
+</script>
 
 <noscript>
 <div class="noscript-block">
@@ -902,7 +919,7 @@
 <!-- ================================================================
      CONSENT & LEGAL NOTICE MODAL (DPDP Act 2023 Section 5 & 6)
      ================================================================ -->
-<div class="consent-overlay" id="consent-overlay" role="dialog" aria-modal="true" aria-label="Data consent and privacy notice">
+<div class="consent-overlay visible" id="consent-overlay" role="dialog" aria-modal="true" aria-label="Data consent and privacy notice">
     <div class="consent-modal">
         <h2>Privacy Notice &amp; Data Consent</h2>
         <p>Before using the Teloscopy dashboard, please review this notice and provide your consent.
@@ -1281,9 +1298,15 @@
     }
 
     function enforceConsentGate() {
+        var hideStyle = document.getElementById('consent-hide-style');
+        if (hideStyle) hideStyle.remove();
+
         if (!hasValidConsent()) {
             document.body.classList.add('consent-pending');
             document.getElementById('consent-overlay').classList.add('visible');
+        } else {
+            document.body.classList.remove('consent-pending');
+            document.getElementById('consent-overlay').classList.remove('visible');
         }
     }
 

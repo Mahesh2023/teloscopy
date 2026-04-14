@@ -159,6 +159,4 @@ class HealthCheckupViewModel @Inject constructor(
         }
     }
 
-    private fun String.toRequestBody(mediaType: okhttp3.MediaType) =
-        this.toRequestBody(mediaType)
 }

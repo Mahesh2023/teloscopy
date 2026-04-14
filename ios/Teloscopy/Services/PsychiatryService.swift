@@ -96,7 +96,14 @@ class PsychiatryService: ObservableObject {
     // MARK: - API Calls
     
     func loadThemes() async {
-        guard let token = consentToken ?? (await refreshConsentToken()) else { return }
+        let token: String
+        if let existing = consentToken {
+            token = existing
+        } else if let refreshed = await refreshConsentToken() {
+            token = refreshed
+        } else {
+            return
+        }
         
         let url = URL(string: "\(baseURL)/api/psychiatry/themes")!
         var request = URLRequest(url: url)
@@ -135,7 +142,12 @@ class PsychiatryService: ObservableObject {
         error = nil
         
         do {
-            guard let token = consentToken ?? (await refreshConsentToken()) else {
+            let token: String
+            if let existing = consentToken {
+                token = existing
+            } else if let refreshed = await refreshConsentToken() {
+                token = refreshed
+            } else {
                 throw NSError(domain: "Teloscopy", code: 403, userInfo: [NSLocalizedDescriptionKey: "Could not obtain consent token"])
             }
             

@@ -2229,7 +2229,30 @@
         .noscript-block a { color: var(--accent, #00d4aa); }
     </style>
 </head>
-<body>
+<body class="consent-pending">
+<script>
+/* Immediately check consent BEFORE any content paints.
+   If valid consent exists in localStorage, remove the blocking class
+   so users don't see a flash of blurred/locked content.
+   The consent overlay itself is hidden once DOM is ready (see enforceConsentGate). */
+(function(){
+  try {
+    var raw = localStorage.getItem('teloscopy_consent_v1');
+    if (raw) {
+      var d = JSON.parse(raw);
+      if (d.accepted && d.timestamp && (Date.now() - d.timestamp) / 864e5 < 1) {
+        document.body.classList.remove('consent-pending');
+        /* Inject a style rule to hide the consent overlay immediately
+           since the element doesn't exist yet at this point in the DOM. */
+        var s = document.createElement('style');
+        s.textContent = '.consent-overlay { display: none !important; }';
+        s.id = 'consent-hide-style';
+        document.head.appendChild(s);
+      }
+    }
+  } catch(_){}
+})();
+</script>
 
 <noscript>
 <div class="noscript-block">
@@ -3622,7 +3645,7 @@
 <!-- ================================================================
      CONSENT & LEGAL NOTICE MODAL (DPDP Act 2023 Section 5 & 6)
      ================================================================ -->
-<div class="consent-overlay" id="consent-overlay" role="dialog" aria-modal="true" aria-label="Data consent and privacy notice" onclick="if(event.target===this && !document.body.classList.contains('consent-pending')){this.classList.remove('visible');}">
+<div class="consent-overlay visible" id="consent-overlay" role="dialog" aria-modal="true" aria-label="Data consent and privacy notice" onclick="if(event.target===this && !document.body.classList.contains('consent-pending')){this.classList.remove('visible');}">
     <div class="consent-modal">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
             <h2 style="flex:1;">
@@ -3774,10 +3797,17 @@
 
     /* Show consent modal IMMEDIATELY on first visit or expired consent — block all UI */
     function enforceConsentGate() {
+        /* Remove the early-injected hide-style so the overlay CSS works normally */
+        var hideStyle = document.getElementById('consent-hide-style');
+        if (hideStyle) hideStyle.remove();
+
         if (!hasValidConsent()) {
             document.body.classList.add('consent-pending');
             document.getElementById('consent-overlay').classList.add('visible');
         } else {
+            /* Valid consent — hide the overlay (it starts visible in HTML) */
+            document.body.classList.remove('consent-pending');
+            document.getElementById('consent-overlay').classList.remove('visible');
             /* Migrate stale consent data — older versions may lack the
                'psychiatry' purpose.  Silently upgrade localStorage and
                refresh the server-side token so all features work. */
