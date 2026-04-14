@@ -1,6 +1,15 @@
 package com.teloscopy.app.ui.screens
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -30,6 +39,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -67,6 +78,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.teloscopy.app.ui.theme.Background
 import com.teloscopy.app.ui.theme.OnBackground
 import com.teloscopy.app.ui.theme.OnSurfaceVariant
@@ -109,6 +121,101 @@ fun PsychiatryScreen(
     val context = LocalContext.current
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     var ttsReady by remember { mutableStateOf(false) }
+
+    // STT (Speech-to-Text)
+    var isListening by remember { mutableStateOf(false) }
+    var hasMicPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val speechAvailable = remember { SpeechRecognizer.isRecognitionAvailable(context) }
+    var speechRecognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasMicPermission = granted
+        if (!granted) {
+            scope.launch {
+                snackbarHostState.showSnackbar("Microphone permission is required for voice input")
+            }
+        }
+    }
+
+    // Create SpeechRecognizer
+    DisposableEffect(Unit) {
+        if (speechAvailable) {
+            val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
+            recognizer.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) { isListening = true }
+                override fun onBeginningOfSpeech() {}
+                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                override fun onEndOfSpeech() { isListening = false }
+                override fun onError(error: Int) {
+                    isListening = false
+                    if (error != SpeechRecognizer.ERROR_NO_MATCH &&
+                        error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+                        val msg = when (error) {
+                            SpeechRecognizer.ERROR_NETWORK -> "Network error — check connection"
+                            SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
+                            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission denied"
+                            else -> "Voice recognition error ($error)"
+                        }
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                    }
+                }
+                override fun onResults(results: Bundle?) {
+                    isListening = false
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    if (!matches.isNullOrEmpty()) {
+                        val spoken = matches[0]
+                        inputText = if (inputText.isBlank()) spoken
+                            else "$inputText $spoken"
+                    }
+                }
+                override fun onPartialResults(partialResults: Bundle?) {
+                    val partial = partialResults
+                        ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    if (!partial.isNullOrEmpty()) {
+                        // Show partial transcription as placeholder hint
+                    }
+                }
+                override fun onEvent(eventType: Int, params: Bundle?) {}
+            })
+            speechRecognizer = recognizer
+        }
+        onDispose {
+            speechRecognizer?.destroy()
+        }
+    }
+
+    fun startListening() {
+        if (!hasMicPermission) {
+            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+        if (!speechAvailable) {
+            scope.launch {
+                snackbarHostState.showSnackbar("Speech recognition not available on this device")
+            }
+            return
+        }
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        }
+        speechRecognizer?.startListening(intent)
+    }
+
+    fun stopListening() {
+        speechRecognizer?.stopListening()
+        isListening = false
+    }
 
     DisposableEffect(Unit) {
         val engine = TextToSpeech(context) { status ->
@@ -272,14 +379,40 @@ fun PsychiatryScreen(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Microphone button
+                IconButton(
+                    onClick = {
+                        if (isListening) stopListening() else startListening()
+                    },
+                    enabled = uiState !is PsychiatryUiState.Sending,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isListening) Color(0xFFE53935)
+                            else Secondary.copy(alpha = 0.15f)
+                        )
+                ) {
+                    Icon(
+                        if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
+                        contentDescription = if (isListening) "Stop listening" else "Voice input",
+                        tint = if (isListening) Color.White else Primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = { inputText = it },
                     modifier = Modifier.weight(1f),
                     placeholder = {
                         Text(
-                            "Share what's on your mind\u2026",
-                            color = OnSurfaceVariant.copy(alpha = 0.6f)
+                            if (isListening) "Listening\u2026"
+                            else "Share what's on your mind\u2026",
+                            color = if (isListening) Color(0xFFE53935).copy(alpha = 0.8f)
+                            else OnSurfaceVariant.copy(alpha = 0.6f)
                         )
                     },
                     maxLines = 4,
@@ -301,6 +434,7 @@ fun PsychiatryScreen(
                 IconButton(
                     onClick = {
                         if (inputText.isNotBlank()) {
+                            if (isListening) stopListening()
                             val text = inputText
                             inputText = ""
                             viewModel.sendMessage(text)

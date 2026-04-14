@@ -78,7 +78,7 @@ class PsychiatryViewModel @Inject constructor(
     }
 
     private suspend fun getConsentToken(): String? {
-        return dataStore.data.map { it[CONSENT_TOKEN_KEY] }.first()
+        return dataStore.data.map { it[CONSENT_TOKEN_KEY] }.first()?.takeIf { it.isNotBlank() }
     }
 
     private suspend fun getOrCreateSessionId(): String {
@@ -91,7 +91,7 @@ class PsychiatryViewModel @Inject constructor(
 
     private suspend fun ensureConsentToken() {
         val existing = getConsentToken()
-        if (existing != null) return
+        if (!existing.isNullOrBlank()) return
         try {
             val sessionId = getOrCreateSessionId()
             val request = ConsentTokenRequest(
@@ -102,7 +102,9 @@ class PsychiatryViewModel @Inject constructor(
             val response = api.submitConsent(request)
             if (response.isSuccessful) {
                 response.body()?.let { body ->
-                    dataStore.edit { it[CONSENT_TOKEN_KEY] = body.consentToken }
+                    if (body.consentToken.isNotBlank()) {
+                        dataStore.edit { it[CONSENT_TOKEN_KEY] = body.consentToken }
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -111,27 +113,33 @@ class PsychiatryViewModel @Inject constructor(
     }
 
     private suspend fun refreshConsentToken(): String? {
-        try {
-            val sessionId = getOrCreateSessionId()
-            val request = ConsentTokenRequest(
-                sessionId = sessionId,
-                agConfirmed = true,
-                consents = ALL_PURPOSES.map { ConsentPurpose(purpose = it, granted = true) }
-            )
-            val response = api.submitConsent(request)
-            if (response.isSuccessful) {
-                response.body()?.let { body ->
-                    dataStore.edit { it[CONSENT_TOKEN_KEY] = body.consentToken }
-                    return body.consentToken
+        val sessionId = getOrCreateSessionId()
+        val request = ConsentTokenRequest(
+            sessionId = sessionId,
+            agConfirmed = true,
+            consents = ALL_PURPOSES.map { ConsentPurpose(purpose = it, granted = true) }
+        )
+        val response = api.submitConsent(request)
+        if (response.isSuccessful) {
+            response.body()?.let { body ->
+                val token = body.consentToken
+                if (token.isNotBlank()) {
+                    dataStore.edit { it[CONSENT_TOKEN_KEY] = token }
+                    return token
                 }
             }
-        } catch (_: Exception) {}
-        return null
+        }
+        // Surface the actual HTTP error for debugging
+        val code = response.code()
+        val errorBody = response.errorBody()?.string()?.take(200) ?: "no body"
+        throw Exception("Consent request failed ($code): $errorBody")
     }
 
     private suspend fun loadThemes() {
         try {
-            val token = getConsentToken() ?: refreshConsentToken() ?: run {
+            val token = getConsentToken() ?: try {
+                refreshConsentToken()
+            } catch (_: Exception) { null } ?: run {
                 _uiState.value = PsychiatryUiState.Ready
                 return
             }
@@ -139,12 +147,15 @@ class PsychiatryViewModel @Inject constructor(
             if (response.isSuccessful) {
                 response.body()?.let { _themes.value = it.themes }
             } else if (response.code() == 403) {
-                refreshConsentToken()?.let { newToken ->
-                    val retry = api.getCounsellingThemes(newToken)
-                    if (retry.isSuccessful) {
-                        retry.body()?.let { _themes.value = it.themes }
+                try {
+                    val newToken = refreshConsentToken()
+                    if (newToken != null) {
+                        val retry = api.getCounsellingThemes(newToken)
+                        if (retry.isSuccessful) {
+                            retry.body()?.let { _themes.value = it.themes }
+                        }
                     }
-                }
+                } catch (_: Exception) {}
             }
         } catch (_: Exception) {}
         _uiState.value = PsychiatryUiState.Ready
@@ -159,7 +170,7 @@ class PsychiatryViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val token = getConsentToken() ?: refreshConsentToken()
-                    ?: throw Exception("Could not obtain consent token")
+                    ?: throw Exception("Consent token is empty after refresh")
 
                 val conversation = _messages.value.map {
                     CounselMessage(role = it.role, text = it.text)

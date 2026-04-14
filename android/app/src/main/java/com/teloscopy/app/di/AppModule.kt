@@ -64,20 +64,20 @@ object AppModule {
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor { chain ->
-                val token = runBlocking {
-                    dataStore.data.map { it[stringPreferencesKey("consent_token")] }.first()
+                val original = chain.request()
+                val builder = original.newBuilder()
+                    .addHeader("X-Requested-With", "TeloscopyAndroid")
+                // Only add consent token if the request doesn't already have one
+                // (Retrofit @Header may have set it explicitly for retry flows)
+                if (original.header("X-Consent-Token") == null) {
+                    val token = runBlocking {
+                        dataStore.data.map { it[stringPreferencesKey("consent_token")] }.first()
+                    }
+                    if (token != null) {
+                        builder.addHeader("X-Consent-Token", token)
+                    }
                 }
-                val request = if (token != null) {
-                    chain.request().newBuilder()
-                        .addHeader("X-Consent-Token", token)
-                        .addHeader("X-Requested-With", "TeloscopyAndroid")
-                        .build()
-                } else {
-                    chain.request().newBuilder()
-                        .addHeader("X-Requested-With", "TeloscopyAndroid")
-                        .build()
-                }
-                chain.proceed(request)
+                chain.proceed(builder.build())
             }
             .addInterceptor(loggingInterceptor)
             .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
