@@ -2258,11 +2258,16 @@ def _build_counselling_response(
     history: list[dict[str, Any]] | None = None,
     sentiment: dict[str, Any] | None = None,
     conv_sentiment: dict[str, Any] | None = None,
+    conversation: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Build an inquiry-based counselling response for the matched theme.
 
     Uses randomised selection with history-aware de-duplication so the user
     never receives the same quote, inquiry, or opening twice in a row.
+
+    When *conversation* is provided, the response threads from the prior
+    exchange — referencing what the counsellor last asked and what the user
+    replied — so the conversation flows naturally rather than jumping topics.
 
     Sentiment responsiveness at every level:
       - severe/high → warm holding, de-escalation offer, gentle closings
@@ -2282,6 +2287,15 @@ def _build_counselling_response(
     intensity = (sentiment or {}).get("intensity", "neutral")
     trajectory = (conv_sentiment or {}).get("trajectory", "stable")
     phase = (conv_sentiment or {}).get("phase", "inquiry")
+    conversation = conversation or []
+
+    # ── Extract last counsellor message for conversational threading ──
+    last_counsellor_msg = ""
+    for turn in reversed(conversation):
+        if turn.get("role") in ("counsellor", "assistant"):
+            last_counsellor_msg = turn.get("text", "").strip()
+            if last_counsellor_msg:
+                break
 
     # ── Collect previously-used indices to avoid repetition ──
     used_quotes: set[int] = set()
@@ -2364,6 +2378,36 @@ def _build_counselling_response(
         acknowledgment = random.choice(_echo_prefixes) + acknowledgment[0].lower() + acknowledgment[1:]
 
     inquiry, inquiry_idx = _pick(theme["inquiry_patterns"], used_inquiries)
+
+    # ── Conversational threading: generate context-aware bridges ──
+    # When we have prior conversation, create a "thread bridge" that connects
+    # the last exchange to the current response, replacing the generic opening.
+    thread_bridge = ""
+    if last_counsellor_msg and len(conversation) >= 2:
+        # Extract the question from the last counsellor message (last sentence)
+        _last_sentences = last_counsellor_msg.rstrip().rstrip(".,!?").split("?")
+        _last_q = (_last_sentences[-2].strip().split(".")[-1].strip() + "?") if len(_last_sentences) > 1 else ""
+
+        # Build a threading bridge that acknowledges the user responded to our question
+        _user_short = user_message.strip()[:120].rstrip(".,!?;:")
+        if _last_q and len(_last_q) > 15:
+            _bridges = [
+                f'I asked about that, and your response — "{_user_short}" — tells me something important. ',
+                f'Thank you for sitting with that question. What you shared opens something up. ',
+                f'You responded to that with real honesty. Let\u2019s stay with what you said. ',
+                f'I hear what you\u2019re saying. That\u2019s worth looking at more closely. ',
+            ]
+        else:
+            _bridges = [
+                f'Building on what you just shared — ',
+                f'Staying with what you\u2019re telling me — ',
+                f'Following the thread of what you said — ',
+                f'Let\u2019s go deeper into what you\u2019re describing. ',
+            ]
+        thread_bridge = random.choice(_bridges)
+        # Replace the generic opening with the thread bridge for continuity
+        opening = thread_bridge
+        opening_idx = -1
 
     # Pick a different inquiry for deepening (or cross-theme deepener)
     remaining_inquiries = [i for i in range(len(theme["inquiry_patterns"]))
@@ -2595,6 +2639,44 @@ Guidelines:
 - End with a gentle question or invitation to look deeper.
 - Speak as a thoughtful, caring human companion — never reveal you are an AI or program.
 - Write in flowing, natural prose.  No bullet points, numbered lists, or markdown headers.
+
+=== CONVERSATIONAL CONTINUITY (critical) ===
+
+This is a LIVING CONVERSATION, not a series of disconnected exchanges.  You MUST:
+
+1. THREAD FROM YOUR LAST RESPONSE — If you asked a question in your previous message, \
+acknowledge that the person responded to it.  Reference what they said.  Build on it.  \
+Never ignore your own previous question and jump to something unrelated.
+
+2. FOLLOW THE PERSON'S THREAD — If the person is talking about a specific memory, feeling, \
+or situation, stay WITH that thread.  Deepen into the SAME territory.  Do not suddenly \
+switch to a different philosophical concept or theme.
+
+3. REFERENCE SPECIFIC WORDS — Use the person's actual words and phrases.  "You said you feel \
+'stuck' — let's look at that stuckness together" is far better than a generic question.
+
+4. BUILD INCREMENTALLY — Each response should carry the conversation ONE step deeper into \
+what is being explored.  Not sideways, not backward, not to a new topic.  One step deeper.
+
+5. AVOID REPETITION — Do not re-ask a question you already asked.  Do not repeat the same \
+philosophical point.  If you introduced the observer/observed distinction already, don't \
+introduce it again — build on what emerged from it.
+
+6. RESPOND TO RESISTANCE — If the person says "I don't know" or seems confused by your \
+question, meet that honestly.  "That 'I don't know' — is that frustrating, or is there \
+something restful in it?"  Don't just move on to a different question.
+
+BAD example (disconnected):
+Turn 1: User: "I feel so anxious." / You: "Can we look at what thought is doing?"
+Turn 2: User: "My thoughts keep racing about work." / You: "What does fear mean to you?"
+← This IGNORES what they just said about work. It jumps to a new topic.
+
+GOOD example (threaded):
+Turn 1: User: "I feel so anxious." / You: "Can we look at what thought is doing?"
+Turn 2: User: "My thoughts keep racing about work." / You: "So when you say your thoughts \
+race about work — is thought rehearsing things that haven't happened yet?  What is it \
+actually worried about?"
+← This BUILDS on their specific answer and goes one step deeper.
 
 === KEY INQUIRY TECHNIQUES (from the San Diego dialogues) ===
 
@@ -2957,6 +3039,34 @@ def _build_llm_messages(
                 )
         msgs.append({"role": "system", "content": phase_directive})
 
+    # ── Inject conversational threading context ──
+    # Extract the last counsellor response and user's reply to create an
+    # explicit continuity directive so the LLM builds on the prior exchange.
+    last_counsellor_text = ""
+    last_user_reply = ""
+    for turn in reversed(conversation):
+        role = turn.get("role", "")
+        text = turn.get("text", "").strip()
+        if not text:
+            continue
+        if role == "user" and not last_user_reply:
+            last_user_reply = text[:300]
+        elif role in ("counsellor", "assistant") and not last_counsellor_text:
+            last_counsellor_text = text[:300]
+        if last_counsellor_text and last_user_reply:
+            break
+
+    if last_counsellor_text and last_user_reply:
+        threading = (
+            "[THREADING — READ CAREFULLY] "
+            f"Your last message to the user was: \"{last_counsellor_text}\" "
+            f"The user has now replied: \"{last_user_reply}\" "
+            "You MUST build your next response directly from this exchange. "
+            "Reference their specific words. Go one step deeper into what they shared. "
+            "Do NOT start a new topic or ask an unrelated question."
+        )
+        msgs.append({"role": "system", "content": threading})
+
     # Include up to the last 20 turns of conversation for context
     for turn in conversation[-20:]:
         role = turn.get("role", "user")
@@ -3288,7 +3398,7 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
         return result
 
     # ── Fallback to template-based engine ──
-    response = _build_counselling_response(theme_key, message, history=history, sentiment=sentiment, conv_sentiment=conv_sentiment)
+    response = _build_counselling_response(theme_key, message, history=history, sentiment=sentiment, conv_sentiment=conv_sentiment, conversation=conversation)
     response["mode"] = "template"
     response["sentiment"] = sentiment
     response["conversation_sentiment"] = conv_sentiment
