@@ -55,6 +55,7 @@ webapp = [
     "pypdf>=3.0",
     "Pillow>=10.0",
     "pytesseract>=0.3.10",
+    "vaderSentiment>=3.3",
 ]
 all = [
     "cellpose>=3.0",

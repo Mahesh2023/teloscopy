@@ -1601,6 +1601,8 @@
         @media (max-width: 600px) {
             .research-toc { display: none; }
             .research-toc.mobile-visible { display: block; position: absolute; left: 0; top: 0; bottom: 0; width: 260px; z-index: 5; box-shadow: 4px 0 20px rgba(0,0,0,.4); }
+            .research-toc-overlay { display: none; }
+            .research-toc-overlay.visible { display: block; position: absolute; inset: 0; z-index: 4; background: rgba(0,0,0,.35); }
             .research-content { padding: 1rem; }
             .research-panel { width: 100vw; }
         }
@@ -3118,9 +3120,10 @@
                 crisis, suicidal thoughts, or self-harm urges, please contact:
             </p>
             <ul>
-                <li><strong>India:</strong> iCall &mdash; 9152987821 &nbsp;|&nbsp; Vandrevala Foundation &mdash; 1860-2662-345</li>
-                <li><strong>International:</strong> Crisis Text Line &mdash; text HOME to 741741</li>
-                <li><strong>Emergency:</strong> Call your local emergency number immediately</li>
+                <li><strong>Vandrevala Foundation:</strong> 1860-2662-345 (24/7) &nbsp;|&nbsp; Toll-free: 1800-2333-330</li>
+                <li><strong>iCall (TISS):</strong> 9152987821 (Mon-Sat 8am-10pm IST)</li>
+                <li><strong>KIRAN Helpline:</strong> 1800-599-0019 (24/7, toll-free)</li>
+                <li><strong>Emergency:</strong> Dial <strong>112</strong> &nbsp;|&nbsp; Ambulance: 108 &nbsp;|&nbsp; Police: 100</li>
             </ul>
 
             <h4>3. AI &amp; Data Processing</h4>
@@ -3513,6 +3516,7 @@
         </button>
     </div>
     <div class="research-panel-body">
+        <div class="research-toc-overlay" id="research-toc-overlay" onclick="toggleMobileResearchToc()"></div>
         <nav class="research-toc" id="research-toc" aria-label="Research table of contents">
             <div class="research-loading" id="research-toc-loading">
                 <div class="spinner"></div>
@@ -3641,8 +3645,8 @@
             <h3 style="font-size:.9rem;font-weight:700;color:#ff4d6a;margin:1.25rem 0 .5rem;">Don'ts</h3>
             <ul class="deesc-list" id="deesc-donts"></ul>
 
-            <h3 style="font-size:.9rem;font-weight:700;color:#ff4d6a;margin:1.25rem 0 .5rem;">When to Call 911</h3>
-            <ul class="deesc-list" id="deesc-911"></ul>
+            <h3 style="font-size:.9rem;font-weight:700;color:#ff4d6a;margin:1.25rem 0 .5rem;">When to Call 112</h3>
+            <ul class="deesc-list" id="deesc-112"></ul>
         </div>
 
         <!-- TAB 5: Learn -->
@@ -4187,6 +4191,11 @@ function closeResearchPanel() {
     var navItem = document.getElementById('nav-research');
     if (navItem) navItem.classList.remove('active');
     document.body.style.overflow = '';
+    /* Also close mobile TOC drawer if open */
+    var toc = document.getElementById('research-toc');
+    var tocOverlay = document.getElementById('research-toc-overlay');
+    if (toc) toc.classList.remove('mobile-visible');
+    if (tocOverlay) tocOverlay.classList.remove('visible');
 }
 
 /* Close on overlay click and Escape key */
@@ -4346,15 +4355,15 @@ function _renderHotlines(hotlines) {
 function _renderFallbackHotlines() {
     var container = document.getElementById('trauma-hotlines-list');
     if (!container) return;
-    container.innerHTML = '<a href="tel:911" class="trauma-card hotline-card emergency" style="display:block;text-decoration:none;color:inherit;">' +
-        '<div class="trauma-card-title">Emergency Services</div><div class="hotline-number">911</div>' +
-        '<div class="trauma-card-subtitle">For immediate life-threatening emergencies</div></a>' +
-        '<a href="tel:988" class="trauma-card hotline-card" style="display:block;text-decoration:none;color:inherit;">' +
-        '<div class="trauma-card-title">988 Suicide & Crisis Lifeline</div><div class="hotline-number">988</div>' +
-        '<div class="trauma-card-subtitle">Call or text 988 — 24/7/365</div></a>' +
-        '<a href="sms:741741?body=HELLO" class="trauma-card hotline-card" style="display:block;text-decoration:none;color:inherit;">' +
-        '<div class="trauma-card-title">Crisis Text Line</div><div class="hotline-number">741741</div>' +
-        '<div class="trauma-card-subtitle">Text HELLO to 741741 — 24/7</div></a>';
+    container.innerHTML = '<a href="tel:112" class="trauma-card hotline-card emergency" style="display:block;text-decoration:none;color:inherit;">' +
+        '<div class="trauma-card-title">Emergency Services (India)</div><div class="hotline-number">112</div>' +
+        '<div class="trauma-card-subtitle">Police, fire, ambulance — also 108 (ambulance) or 100 (police)</div></a>' +
+        '<a href="tel:18602662345" class="trauma-card hotline-card" style="display:block;text-decoration:none;color:inherit;">' +
+        '<div class="trauma-card-title">Vandrevala Foundation Helpline</div><div class="hotline-number">1860-2662-345</div>' +
+        '<div class="trauma-card-subtitle">24/7 mental health support across India</div></a>' +
+        '<a href="tel:9152987821" class="trauma-card hotline-card" style="display:block;text-decoration:none;color:inherit;">' +
+        '<div class="trauma-card-title">iCall (TISS) Helpline</div><div class="hotline-number">9152987821</div>' +
+        '<div class="trauma-card-subtitle">Mon-Sat 8am-10pm IST — emotional support &amp; crisis intervention</div></a>';
 }
 
 /* ── 5-4-3-2-1 Grounding ── */
@@ -4473,7 +4482,7 @@ function _renderSafetyPlan(plan) {
         { step: 2, title: 'My Coping Strategies', prompt: 'Things I can do on my own to cope:', examples: ['Go for a walk', 'Listen to music', 'Box breathing'] },
         { step: 3, title: 'Social Distractions', prompt: 'People and places for healthy distraction:', examples: ['Coffee shop', 'Call a friend', 'Visit family'] },
         { step: 4, title: 'People I Trust', prompt: 'People I can tell I am struggling (name + number):', examples: ['Mom', 'Best friend', 'Partner'] },
-        { step: 5, title: 'Professional Resources', prompt: 'Professionals and agencies for crisis:', examples: ['988 Lifeline', 'Crisis Text Line', 'My therapist'] },
+        { step: 5, title: 'Professional Resources', prompt: 'Professionals and agencies for crisis:', examples: ['Vandrevala Foundation', 'iCall (TISS)', 'KIRAN Helpline', 'My therapist'] },
         { step: 6, title: 'Making My Environment Safe', prompt: 'Steps to reduce access to harmful means:', examples: ['Lock medications', 'Remove sharp objects'] }
     ];
     var html = '';
@@ -4547,10 +4556,10 @@ function _renderDeescalation(data) {
             return '<li><span class="icon-dont">&#10007;</span> ' + d + '</li>';
         }).join('');
     }
-    /* When to call 911 */
-    var nineContainer = document.getElementById('deesc-911');
-    if (nineContainer && data.when_to_call_911) {
-        nineContainer.innerHTML = data.when_to_call_911.map(function (d) {
+    /* When to call 112 (emergency) */
+    var emergContainer = document.getElementById('deesc-112');
+    if (emergContainer && data.when_to_call_112) {
+        emergContainer.innerHTML = data.when_to_call_112.map(function (d) {
             return '<li><span class="icon-dont">&#9888;</span> ' + d + '</li>';
         }).join('');
     }
@@ -4574,10 +4583,10 @@ function _renderLearnContent(data) {
         });
     }
 
-    /* SAMHSA principles */
-    if (data.samhsa_principles) {
-        html += '<h3 style="font-size:.9rem;font-weight:700;color:#ffa726;margin:1.25rem 0 .5rem;">' + (data.samhsa_principles.title || 'SAMHSA Principles') + '</h3>';
-        (data.samhsa_principles.principles || []).forEach(function (p) {
+    /* Trauma-informed care principles */
+    if (data.trauma_informed_principles) {
+        html += '<h3 style="font-size:.9rem;font-weight:700;color:#ffa726;margin:1.25rem 0 .5rem;">' + (data.trauma_informed_principles.title || 'Trauma-Informed Principles') + '</h3>';
+        (data.trauma_informed_principles.principles || []).forEach(function (p) {
             html += '<div class="learn-principle">';
             html += '<div class="learn-principle-name">' + p.name + '</div>';
             html += '<div class="learn-principle-desc">' + p.description + '</div>';
@@ -4734,47 +4743,57 @@ function renderResearchToc(documents) {
         html += '</div>';
     });
     toc.innerHTML = html;
-    /* Wire up filter pills */
+    /* Wire up filter pills — use onclick to avoid duplicate listeners */
     var pills = document.querySelectorAll('.research-filter-pill');
     pills.forEach(function (pill) {
-        pill.addEventListener('click', function () {
+        pill.onclick = function () {
             pills.forEach(function (p) { p.classList.remove('active'); });
             pill.classList.add('active');
             _applyResearchFilters();
-        });
+        };
     });
     /* Wire up search box */
     var searchBox = document.getElementById('research-search');
     if (searchBox) {
         var _searchTimer = null;
-        searchBox.addEventListener('input', function () {
+        searchBox.oninput = function () {
             clearTimeout(_searchTimer);
             _searchTimer = setTimeout(_applyResearchFilters, 200);
-        });
+        };
     }
 }
 
 /* Apply both category filter + search text to TOC and content */
 function _applyResearchFilters() {
     var activePill = document.querySelector('.research-filter-pill.active');
-    var filter = activePill ? activePill.getAttribute('data-filter') : 'all';
+    var filter = activePill ? (activePill.getAttribute('data-filter') || 'all') : 'all';
     var searchBox = document.getElementById('research-search');
     var query = searchBox ? searchBox.value.trim().toLowerCase() : '';
 
-    /* TOC items */
+    /* TOC document headers */
     document.querySelectorAll('.research-toc-doc').forEach(function (el) {
-        var cat = el.getAttribute('data-category') || '';
+        var cat = (el.getAttribute('data-category') || '').toLowerCase();
         var catMatch = (filter === 'all' || cat === filter);
-        el.classList.toggle('search-hidden', !catMatch);
+        if (catMatch) {
+            el.classList.remove('search-hidden');
+        } else {
+            el.classList.add('search-hidden');
+        }
     });
+
+    /* TOC section groups */
     document.querySelectorAll('.research-toc-group').forEach(function (group) {
-        var cat = group.getAttribute('data-category') || '';
+        var cat = (group.getAttribute('data-category') || '').toLowerCase();
         var catMatch = (filter === 'all' || cat === filter);
         group.style.display = catMatch ? '' : 'none';
         if (catMatch && query) {
             group.querySelectorAll('.research-toc-item').forEach(function (item) {
                 var title = (item.textContent || '').toLowerCase();
-                item.classList.toggle('search-hidden', title.indexOf(query) === -1);
+                if (title.indexOf(query) === -1) {
+                    item.classList.add('search-hidden');
+                } else {
+                    item.classList.remove('search-hidden');
+                }
             });
         } else if (catMatch) {
             group.querySelectorAll('.research-toc-item').forEach(function (item) {
@@ -4783,9 +4802,10 @@ function _applyResearchFilters() {
         }
     });
 
-    /* Content sections */
+    /* Content document groups */
+    var contentEl = document.getElementById('research-content');
     document.querySelectorAll('.research-doc-group').forEach(function (dg) {
-        var cat = dg.getAttribute('data-category') || '';
+        var cat = (dg.getAttribute('data-category') || '').toLowerCase();
         var catMatch = (filter === 'all' || cat === filter);
         dg.style.display = catMatch ? '' : 'none';
         if (catMatch && query) {
@@ -4799,12 +4819,23 @@ function _applyResearchFilters() {
             });
         }
     });
+
+    /* Scroll content area to top after filter change */
+    if (contentEl) contentEl.scrollTop = 0;
 }
 
 /* Toggle mobile TOC drawer */
 function toggleMobileResearchToc() {
     var toc = document.getElementById('research-toc');
-    if (toc) toc.classList.toggle('mobile-visible');
+    var overlay = document.getElementById('research-toc-overlay');
+    if (toc) {
+        var willShow = !toc.classList.contains('mobile-visible');
+        toc.classList.toggle('mobile-visible');
+        if (overlay) {
+            if (willShow) { overlay.classList.add('visible'); }
+            else { overlay.classList.remove('visible'); }
+        }
+    }
 }
 
 function renderResearchContent(documents) {
@@ -4841,6 +4872,11 @@ function scrollToResearchSection(sectionId) {
         var active = document.querySelector('.research-toc-item[data-section="' + sectionId + '"]');
         if (active) active.classList.add('active');
     }
+    /* Close mobile TOC drawer after navigating */
+    var toc = document.getElementById('research-toc');
+    var tocOverlay = document.getElementById('research-toc-overlay');
+    if (toc) toc.classList.remove('mobile-visible');
+    if (tocOverlay) tocOverlay.classList.remove('visible');
 }
 
 function setupResearchScrollSpy() {
