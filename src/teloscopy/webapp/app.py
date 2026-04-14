@@ -2284,6 +2284,7 @@ def _build_counselling_response(
     user_message: str,
     history: list[dict[str, Any]] | None = None,
     sentiment: dict[str, Any] | None = None,
+    conv_sentiment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build an inquiry-based counselling response for the matched theme.
 
@@ -2294,6 +2295,12 @@ def _build_counselling_response(
     to the user's emotional intensity:
       - severe/high → gentler opening, prioritise reflective acknowledgment
       - mild/neutral/positive → standard inquiry-led approach
+
+    When *conv_sentiment* is provided, the response uses the graduated phase
+    to determine how much philosophical content to include:
+      - validation (turns 1-2): pure emotional validation, no philosophy
+      - reflection (turns 3-4): gentle mirroring, light questions
+      - inquiry (turns 5+): full philosophical inquiry approach
     """
     theme = _COUNSEL_THEMES.get(theme_key, _COUNSEL_THEMES["self_knowledge"])
     history = history or []
@@ -2385,6 +2392,56 @@ def _build_counselling_response(
     insights = theme.get("core_insights", [])
     core_insight = random.choice(insights) if insights else ""
 
+    # ── Graduated phase: adjust response components based on conversation depth ──
+    phase = (conv_sentiment or {}).get("phase", "inquiry")
+    if phase == "validation":
+        # Early turns: pure emotional validation — no philosophy, no inquiry
+        return {
+            "theme": theme_key,
+            "theme_title": theme["title"],
+            "core_insight": "",
+            "response": {
+                "opening": opening,
+                "acknowledgment": acknowledgment,
+                "inquiry": "",
+                "deepening": "",
+                "reflection": "",
+                "closing": closing,
+            },
+            "quote": "",
+            "all_quotes": [],
+            "_indices": {
+                "opening_idx": opening_idx,
+                "closing_idx": closing_idx,
+                "inquiry_idx": -1,
+                "quote_idx": -1,
+            },
+        }
+    elif phase == "reflection":
+        # Mid turns: gentle reflection + one question, but no philosophical quotes
+        return {
+            "theme": theme_key,
+            "theme_title": theme["title"],
+            "core_insight": "",
+            "response": {
+                "opening": opening,
+                "acknowledgment": acknowledgment,
+                "inquiry": inquiry,
+                "deepening": "",
+                "reflection": reflection,
+                "closing": closing,
+            },
+            "quote": "",
+            "all_quotes": [],
+            "_indices": {
+                "opening_idx": opening_idx,
+                "closing_idx": closing_idx,
+                "inquiry_idx": inquiry_idx,
+                "quote_idx": -1,
+            },
+        }
+
+    # Full inquiry phase (turns 5+): all components including philosophy
     return {
         "theme": theme_key,
         "theme_title": theme["title"],
@@ -2667,10 +2724,73 @@ def _llm_chat(messages: list[dict[str, str]], temperature: float = 0.75) -> str 
         return None
 
 
+def _compute_conversation_sentiment(
+    conversation: list[dict[str, str]],
+    current_sentiment: dict[str, Any],
+) -> dict[str, Any]:
+    """Compute conversation-level sentiment trajectory from all user turns.
+
+    Analyses every user message in *conversation* plus the current message's
+    sentiment to build an aggregate picture: average compound score,
+    trajectory (improving/worsening/stable), and a recommended counselling
+    phase (validation → reflection → inquiry).
+
+    Returns a dict with:
+        avg_compound   : float  — mean compound across all user turns
+        trajectory     : str    — "improving" | "worsening" | "stable"
+        user_turn_count: int    — total user turns (including current)
+        phase          : str    — "validation" | "reflection" | "inquiry"
+    """
+    # Collect VADER compounds for all user turns
+    user_compounds: list[float] = []
+    for turn in conversation:
+        if turn.get("role") == "user" and turn.get("text", "").strip():
+            s = _analyze_sentiment(turn["text"])
+            user_compounds.append(s["compound"])
+    user_compounds.append(current_sentiment.get("compound", 0.0))
+
+    n = len(user_compounds)
+    avg_compound = sum(user_compounds) / n if n else 0.0
+
+    # Trajectory: compare first half vs second half
+    if n >= 4:
+        mid = n // 2
+        first_half = sum(user_compounds[:mid]) / mid
+        second_half = sum(user_compounds[mid:]) / (n - mid)
+        delta = second_half - first_half
+        if delta > 0.15:
+            trajectory = "improving"
+        elif delta < -0.15:
+            trajectory = "worsening"
+        else:
+            trajectory = "stable"
+    else:
+        trajectory = "stable"
+
+    # Graduated counselling phase based on conversation depth
+    # Phase 1 (turns 1-2): Pure emotional validation — no philosophy
+    # Phase 2 (turns 3-4): Gentle reflection — begin mirroring back patterns
+    # Phase 3 (turns 5+): Philosophical inquiry — introduce Krishnamurti insights
+    if n <= 2:
+        phase = "validation"
+    elif n <= 4:
+        phase = "reflection"
+    else:
+        phase = "inquiry"
+
+    return {
+        "avg_compound": round(avg_compound, 4),
+        "trajectory": trajectory,
+        "user_turn_count": n,
+        "phase": phase,
+    }
+
+
 def _build_llm_messages(
     conversation: list[dict[str, str]],
     current_message: str,
     sentiment: dict[str, Any] | None = None,
+    conv_sentiment: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     """Build the messages array for the LLM from conversation history."""
     msgs: list[dict[str, str]] = [
@@ -2704,6 +2824,53 @@ def _build_llm_messages(
                 "while still inviting depth."
             )
         msgs.append({"role": "system", "content": sentiment_hint})
+
+    # ── Inject conversation-level sentiment and graduated phase directive ──
+    if conv_sentiment:
+        phase = conv_sentiment.get("phase", "inquiry")
+        turn_count = conv_sentiment.get("user_turn_count", 0)
+        trajectory = conv_sentiment.get("trajectory", "stable")
+        avg = conv_sentiment.get("avg_compound", 0.0)
+
+        phase_directive = (
+            f"[Conversation context — this is user turn #{turn_count}, "
+            f"avg emotional tone: {avg:.2f}, trajectory: {trajectory}] "
+        )
+        if phase == "validation":
+            phase_directive += (
+                "IMPORTANT: This is an EARLY conversation (turns 1-2). "
+                "Do NOT introduce philosophical concepts, Krishnamurti quotes, or inquiry "
+                "techniques yet. Focus ENTIRELY on: "
+                "(1) Acknowledging and validating what the person is feeling, "
+                "(2) Reflecting their words back with warmth, "
+                "(3) Showing you understand their experience. "
+                "Simply be present. No questions about 'the observer' or 'thought'. "
+                "Just listen, hold space, and let them feel heard."
+            )
+        elif phase == "reflection":
+            phase_directive += (
+                "This is a MID conversation (turns 3-4). "
+                "The user is beginning to open up. You may now: "
+                "(1) Gently reflect patterns you notice in what they've shared, "
+                "(2) Ask one simple, open question that invites them to look closer, "
+                "(3) Mirror back what they seem to be experiencing. "
+                "Keep it grounded in THEIR words and experience. "
+                "Light philosophical framing is okay but don't lead with it."
+            )
+        elif phase == "inquiry":
+            phase_directive += (
+                "This is a DEEPER conversation (turn 5+). "
+                "The person has shared enough context. You may now naturally "
+                "weave in the inquiry approach — the observer and the observed, "
+                "staying with 'what is', questioning thought as the root. "
+                "But always anchor in what they've actually shared, not abstract theory."
+            )
+            if trajectory == "worsening":
+                phase_directive += (
+                    " Note: The user's emotional state has been declining. "
+                    "Ease back on deep inquiry and offer more holding and warmth."
+                )
+        msgs.append({"role": "system", "content": phase_directive})
 
     # Include up to the last 20 turns of conversation for context
     for turn in conversation[-20:]:
@@ -2902,7 +3069,7 @@ async def get_psychiatry_themes() -> dict[str, Any]:
     return {"themes": themes, "count": len(themes)}
 
 
-@app.post("/api/psychiatry/counsel", tags=["Psychiatry"], dependencies=[Depends(rate_limit(20, 60)), Depends(require_consent("psychiatry"))])
+@app.post("/api/psychiatry/counsel", tags=["Psychiatry"], dependencies=[Depends(rate_limit(40, 60)), Depends(require_consent("psychiatry"))])
 async def psychiatry_counsel(request: Request) -> dict[str, Any]:
     """Process a counselling message and return an inquiry-based response.
 
@@ -2936,10 +3103,13 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
     sentiment = _analyze_sentiment(message)
     theme_key = sentiment["primary_theme"]
 
+    # ── Conversation-level sentiment tracking (trajectory + graduated phase) ──
+    conv_sentiment = _compute_conversation_sentiment(conversation, sentiment)
+
     # ── Try AI-powered response first ──
     llm_response = None
     if _LLM_API_KEY or _LLM_BACKEND == "ollama":
-        msgs = _build_llm_messages(conversation, message, sentiment=sentiment)
+        msgs = _build_llm_messages(conversation, message, sentiment=sentiment, conv_sentiment=conv_sentiment)
         llm_response = _llm_chat(msgs)
 
     if llm_response:
@@ -2950,6 +3120,7 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
             "ai_response": llm_response,
             "mode": "ai",
             "sentiment": sentiment,
+            "conversation_sentiment": conv_sentiment,
             "followups": _suggest_followups(theme_key, len(conversation)),
         }
         if crisis:
@@ -2958,9 +3129,10 @@ async def psychiatry_counsel(request: Request) -> dict[str, Any]:
         return result
 
     # ── Fallback to template-based engine ──
-    response = _build_counselling_response(theme_key, message, history=history, sentiment=sentiment)
+    response = _build_counselling_response(theme_key, message, history=history, sentiment=sentiment, conv_sentiment=conv_sentiment)
     response["mode"] = "template"
     response["sentiment"] = sentiment
+    response["conversation_sentiment"] = conv_sentiment
     response["followups"] = _suggest_followups(theme_key, len(history))
     if crisis:
         response["crisis_detected"] = True

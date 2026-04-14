@@ -655,9 +655,23 @@ class TestPsychiatryCounselEndpoint:
         assert data["theme"] == "self_knowledge"
 
     def test_counsel_response_has_all_fields(self, client, consent_headers):
+        # Provide 5+ conversation turns to reach "inquiry" phase where quotes are included
+        conversation = [
+            {"role": "user", "text": "I keep comparing myself to others and feel inadequate."},
+            {"role": "counsellor", "text": "That sounds really difficult."},
+            {"role": "user", "text": "I can't stop measuring myself against everyone."},
+            {"role": "counsellor", "text": "Tell me more about that."},
+            {"role": "user", "text": "It makes me feel I'm never good enough."},
+            {"role": "counsellor", "text": "I hear you."},
+            {"role": "user", "text": "Why do I always compare myself?"},
+            {"role": "counsellor", "text": "Let's explore that."},
+        ]
         resp = client.post(
             "/api/psychiatry/counsel",
-            json={"message": "I keep comparing myself to others and feel inadequate."},
+            json={
+                "message": "I keep comparing myself to others and feel inadequate.",
+                "conversation": conversation,
+            },
             headers=consent_headers,
         )
         assert resp.status_code == 200
@@ -668,6 +682,23 @@ class TestPsychiatryCounselEndpoint:
         assert "all_quotes" in data
         assert isinstance(data["all_quotes"], list)
         assert len(data["all_quotes"]) >= 1
+        # Verify conversation_sentiment is included
+        assert "conversation_sentiment" in data
+        assert data["conversation_sentiment"]["phase"] == "inquiry"
+
+    def test_counsel_validation_phase_no_quotes(self, client, consent_headers):
+        """First message (no history) should be in validation phase with no quotes."""
+        resp = client.post(
+            "/api/psychiatry/counsel",
+            json={"message": "I feel really lost right now."},
+            headers=consent_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "conversation_sentiment" in data
+        assert data["conversation_sentiment"]["phase"] == "validation"
+        # Validation phase: no philosophical quotes
+        assert data.get("all_quotes", []) == [] or data.get("mode") == "ai"
 
     def test_counsel_meditation_theme(self, client, consent_headers):
         resp = client.post(

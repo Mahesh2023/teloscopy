@@ -2242,7 +2242,8 @@
     var raw = localStorage.getItem('teloscopy_consent_v1');
     if (raw) {
       var d = JSON.parse(raw);
-      if (d.accepted && d.timestamp && (Date.now() - d.timestamp) / 864e5 < 1) {
+      if (d.accepted && d.timestamp && (Date.now() - d.timestamp) / 864e5 < 1
+          && d.purposes && d.purposes.indexOf('psychiatry') !== -1) {
         document.body.classList.remove('consent-pending');
         /* Inject a style rule to hide the consent overlay immediately
            since the element doesn't exist yet at this point in the DOM. */
@@ -3733,6 +3734,7 @@
                 <li><strong>Demographic information</strong> (age, sex, region, country, state) &mdash; used to calibrate analysis to your population group.</li>
                 <li><strong>Genetic variant data</strong> (self-reported SNP genotypes) &mdash; used for disease risk assessment and pharmacogenomic analysis.</li>
                 <li><strong>Dietary restrictions &amp; health conditions</strong> &mdash; used for personalized nutrition recommendations.</li>
+                <li><strong>Counselling conversations</strong> &mdash; messages you share in the Psychiatry counselling section are processed by an AI model (with VADER sentiment analysis) to provide reflective responses. Conversations are not stored after your session ends. Emotional intensity and themes are analysed to calibrate response warmth.</li>
             </ul>
         </div>
 
@@ -3773,7 +3775,7 @@
             </label>
             <label>
                 <input type="checkbox" id="consent-processing" />
-                <span><span class="required-star">*</span> I consent to the processing of my personal data (demographics, images, health reports, genetic data) for the purposes described above.</span>
+                <span><span class="required-star">*</span> I consent to the processing of my personal data (demographics, images, health reports, genetic data, counselling conversations) for the purposes described above.</span>
             </label>
             <label>
                 <input type="checkbox" id="consent-research" />
@@ -3838,6 +3840,8 @@
             if (!raw) return false;
             var data = JSON.parse(raw);
             if (!data.accepted || !data.timestamp) return false;
+            /* Require psychiatry purpose — old consent without it is invalid */
+            if (!data.purposes || data.purposes.indexOf('psychiatry') === -1) return false;
             /* Client-side consent expires after 1 day to match the server token
                TTL of 24 h.  When it expires the full consent overlay re-appears
                to ensure informed, periodic re-consent per DPDP Act requirements. */
@@ -3870,20 +3874,8 @@
             document.body.classList.remove('consent-pending');
             document.getElementById('consent-overlay').classList.remove('visible');
             /* Migrate stale consent data — older versions may lack the
-               'psychiatry' purpose.  Silently upgrade localStorage and
-               refresh the server-side token so all features work. */
-            try {
-                var raw = localStorage.getItem(CONSENT_KEY);
-                if (raw) {
-                    var saved = JSON.parse(raw);
-                    if (saved.purposes && saved.purposes.indexOf('psychiatry') === -1) {
-                        saved.purposes.push('psychiatry');
-                        localStorage.setItem(CONSENT_KEY, JSON.stringify(saved));
-                        /* Refresh the consent token in the background */
-                        if (window.refreshConsentToken) window.refreshConsentToken();
-                    }
-                }
-            } catch (_) {}
+               'psychiatry' purpose.  hasValidConsent() now requires it,
+               so old consent will be rejected and the overlay shown. */
         }
     }
     /* Run as early as possible — DOMContentLoaded for element access */
@@ -3992,6 +3984,16 @@
     };
 
     window.withdrawConsent = function () {
+        /* Read session_id from consent token before clearing */
+        var withdrawSessionId = '';
+        try {
+            var tok = sessionStorage.getItem('teloscopy_consent_token');
+            if (tok) {
+                var decoded = atob(tok.replace(/-/g, '+').replace(/_/g, '/'));
+                var parts = decoded.split(':');
+                if (parts.length >= 1) withdrawSessionId = parts[0];
+            }
+        } catch (_) {}
         try { localStorage.removeItem(CONSENT_KEY); } catch (_) {}
         try { sessionStorage.removeItem('teloscopy_consent_token'); } catch (_) {}
         /* Notify backend (invalidates consent token server-side) */
@@ -4000,7 +4002,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    session_id: '',
+                    session_id: withdrawSessionId,
                     purposes: ['telomere_analysis', 'disease_risk', 'nutrition_plan',
                                'facial_analysis', 'health_report', 'genetic_data', 'profile_data', 'psychiatry']
                 })
