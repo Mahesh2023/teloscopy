@@ -8142,7 +8142,7 @@ function escapeHtml(str) {
         /* ---- Web Speech API — Speech Synthesis ---- */
 
         /*
-         * Design: warm, natural voice — calm and measured.
+         * Design: deep, gentle, loving Buddha-like voice — calm, warm, measured.
          *
          * Architecture (deliberately simple for reliability):
          *  - Sentence-level chunking (<180 chars) for Chrome Android.
@@ -8151,7 +8151,8 @@ function escapeHtml(str) {
          *  - Minimal unlock: silent utterance called from user gestures
          *    (Send button, Listen button, mic button).  NO capture-phase
          *    listeners, NO callback queues.
-         *  - Voice params close to defaults — less modification = more natural.
+         *  - Deep male voice with low pitch (0.75) and slow rate (0.82)
+         *    for a warm, meditative quality.
          *
          * Entire section wrapped in try-catch so synthesis bugs
          * can never break voice INPUT.
@@ -8162,42 +8163,87 @@ function escapeHtml(str) {
         var _speakCancelFn = null;
         var _resumeTimer = null;
 
-        /* ---- Voice preferences: natural voices ---- */
+        /* ---- Voice preferences: deep, warm male voices only ----
+         * Ordered by quality and suitability for a calm, Buddha-like tone.
+         * We ONLY want deep male voices — no female voices in the preference list.
+         *
+         * macOS/iOS:    Daniel (en-GB deep male), Rishi (en-IN warm male)
+         * Windows Edge: Microsoft Guy (deep), Eric (deep), Andrew (warm), Ryan (calm)
+         * Chrome:       Google UK English Male, Google US English
+         * Linux:        english_rp, english-us (espeak fallbacks)
+         */
         var _voicePrefs = [
-            'Daniel', 'Evan', 'Rishi',
-            'Moira', 'Fiona', 'Samantha', 'Karen', 'Zoe',
-            'Microsoft Guy Online (Natural)', 'Microsoft Eric Online (Natural)',
+            /* macOS/iOS deep male voices — highest quality */
+            'Daniel',              /* en-GB, deep British male — best for Buddha tone */
+            'Rishi',               /* en-IN, warm Indian male — gentle, measured */
+            'Evan',                /* en-US male if available on newer macOS */
+            /* Windows Edge/Chrome Natural deep male voices */
+            'Microsoft Guy Online (Natural)',
+            'Microsoft Eric Online (Natural)',
+            'Microsoft Andrew Online (Natural)',
+            'Microsoft Ryan Online (Natural)',
             'Microsoft Guy',
-            'Microsoft Jenny Online (Natural)', 'Microsoft Aria Online (Natural)',
-            'Microsoft Jenny', 'Microsoft Aria',
-            'Google UK English Male', 'Google UK English Female', 'Google US English',
-            'English United Kingdom', 'English (United Kingdom)',
-            'English (Great Britain)', 'english_rp', 'english-us',
+            'Microsoft Eric',
+            /* Chrome built-in deep male voices */
+            'Google UK English Male',
+            'Google US English',
+            /* Generic deep male identifiers */
+            'English United Kingdom',
+            'English (United Kingdom)',
+            'English (Great Britain)',
+            /* Linux espeak deep male voices */
+            'english_rp',
+            'english-us',
         ];
 
         function _pickVoice() {
             var voices = synthesis ? synthesis.getVoices() : [];
             if (!voices.length) return null;
+
+            /* Debug: log all available voices */
+            console.log('[Teloscopy voice] Available voices:', voices.length);
+            for (var d = 0; d < Math.min(voices.length, 30); d++) {
+                console.log('  ', voices[d].name, '|', voices[d].lang, '|', voices[d].localService ? 'local' : 'remote');
+            }
+
+            /* First pass: find preferred deep male voice */
             for (var i = 0; i < _voicePrefs.length; i++) {
                 var p = _voicePrefs[i].toLowerCase();
                 for (var j = 0; j < voices.length; j++) {
                     if (voices[j].name.toLowerCase().indexOf(p) > -1 &&
                         voices[j].lang.indexOf('en') === 0) {
-                        console.log('[Teloscopy voice] Selected:', voices[j].name, voices[j].lang);
+                        console.log('[Teloscopy voice] Selected preferred:', voices[j].name, voices[j].lang);
                         return voices[j];
                     }
                 }
             }
+
+            /* Second pass: any male-sounding English voice (heuristic on name) */
+            var maleNames = ['male', 'guy', 'david', 'mark', 'james', 'richard', 'alex', 'tom', 'fred'];
+            for (var m = 0; m < voices.length; m++) {
+                if (voices[m].lang.indexOf('en') === 0) {
+                    var vname = voices[m].name.toLowerCase();
+                    for (var n = 0; n < maleNames.length; n++) {
+                        if (vname.indexOf(maleNames[n]) > -1) {
+                            console.log('[Teloscopy voice] Fallback male:', voices[m].name);
+                            return voices[m];
+                        }
+                    }
+                }
+            }
+
+            /* Third pass: any local English voice */
             for (var k = 0; k < voices.length; k++) {
                 if (voices[k].lang.indexOf('en') === 0 && voices[k].localService) {
                     console.log('[Teloscopy voice] Fallback local:', voices[k].name);
                     return voices[k];
                 }
             }
-            for (var m = 0; m < voices.length; m++) {
-                if (voices[m].lang.indexOf('en') === 0) {
-                    console.log('[Teloscopy voice] Fallback any:', voices[m].name);
-                    return voices[m];
+            /* Last resort: any English voice */
+            for (var q = 0; q < voices.length; q++) {
+                if (voices[q].lang.indexOf('en') === 0) {
+                    console.log('[Teloscopy voice] Fallback any:', voices[q].name);
+                    return voices[q];
                 }
             }
             console.warn('[Teloscopy voice] No English voice found');
@@ -8210,7 +8256,10 @@ function escapeHtml(str) {
          * The utterance is a single space at near-zero volume — completes
          * in milliseconds without audible output.  No capture-phase listeners,
          * no callback queues, no complexity.
-         * _unlockInFlight prevents speakText from canceling this utterance. */
+         * _unlockInFlight prevents speakText from canceling this utterance.
+         *
+         * NOTE: rate=4 (not 10) — some engines reject excessively high rates
+         * which can silently block the unlock and break all subsequent speech. */
         var _unlockInFlight = false;
         function _trySynthUnlock() {
             if (_synthUnlocked || _unlockInFlight || !synthesis) return;
@@ -8218,7 +8267,7 @@ function escapeHtml(str) {
             try {
                 var u = new SpeechSynthesisUtterance(' ');
                 u.volume = 0.01;
-                u.rate = 10;
+                u.rate = 4;    /* fast but within safe range for all engines */
                 u.onend = function() {
                     _synthUnlocked = true;
                     _unlockInFlight = false;
@@ -8227,8 +8276,18 @@ function escapeHtml(str) {
                 u.onerror = function() {
                     _synthUnlocked = true;
                     _unlockInFlight = false;
+                    console.log('[Teloscopy voice] Synthesis unlock (error path — still usable)');
                 };
                 synthesis.speak(u);
+                /* Safety timeout: if neither onend nor onerror fires in 2s,
+                 * consider it unlocked anyway (some engines swallow events) */
+                setTimeout(function() {
+                    if (_unlockInFlight) {
+                        _synthUnlocked = true;
+                        _unlockInFlight = false;
+                        console.log('[Teloscopy voice] Synthesis unlock (timeout fallback)');
+                    }
+                }, 2000);
             } catch (e) {
                 _synthUnlocked = true;
                 _unlockInFlight = false;
@@ -8307,7 +8366,10 @@ function escapeHtml(str) {
 
         /* ---- Main speak function ---- */
         function speakText(text) {
-            if (!synthesis || !text) return;
+            if (!synthesis || !text) {
+                console.warn('[Teloscopy voice] Cannot speak: synthesis=', !!synthesis, 'text=', !!text);
+                return;
+            }
 
             /* Cancel previous speech only if actually active (skip unlock utterance) */
             var wasSpeaking = (synthesis.speaking || synthesis.pending) && !_unlockInFlight;
@@ -8359,9 +8421,13 @@ function escapeHtml(str) {
                 } else {
                     u.lang = 'en-GB';
                 }
-                u.rate   = 0.88;
-                u.pitch  = 0.95;
-                u.volume = 0.9;
+                /* Deep, gentle, loving Buddha-like voice parameters:
+                 *  - rate 0.82: slower, measured, contemplative pace
+                 *  - pitch 0.75: deep, warm, grounding tone
+                 *  - volume 1.0: full volume for clarity on laptop speakers */
+                u.rate   = 0.82;
+                u.pitch  = 0.75;
+                u.volume = 1.0;
 
                 u.onstart = function() {
                     if (idx === 0) { _markSpeakingStart(); }
@@ -8377,7 +8443,9 @@ function escapeHtml(str) {
                     }, 15000);
                 };
                 u.onend = function() {
-                    var gap = c.paraEnd ? 800 : 300;
+                    /* Longer pauses for meditative, Buddha-like pacing:
+                     * 1000ms between paragraphs, 450ms between sentences */
+                    var gap = c.paraEnd ? 1000 : 450;
                     advance(gap);
                 };
                 u.onerror = function(e) {
@@ -8405,9 +8473,11 @@ function escapeHtml(str) {
                 }
             }
 
-            /* Short settle time if we weren't canceling previous speech;
-             * longer settle if we just cancelled to let the engine reset */
-            setTimeout(next, wasSpeaking ? 300 : 50);
+            /* Settle time after cancel — Chrome desktop needs ~500ms to fully
+             * reset the synthesis engine after cancel().  Without this, the
+             * next speak() call can silently fail (no audio, no error events).
+             * First speak (no cancel) starts almost immediately. */
+            setTimeout(next, wasSpeaking ? 500 : 80);
 
             _speakCancelFn = function() {
                 cancelled = true;
@@ -8439,18 +8509,28 @@ function escapeHtml(str) {
             setTimeout(function() { speakText(text); }, 150);
         };
 
-        /* Load voices eagerly and retry — some browsers take time */
+        /* Load voices eagerly and retry — some browsers take time.
+         * Chrome desktop lazily loads voices; getVoices() returns [] until
+         * the voiceschanged event fires, which can take 100-3000ms. */
         if (synthesis) {
+            var _voiceRetries = 0;
             var _loadVoices = function() {
                 _calmVoice = _pickVoice();
                 if (_calmVoice) {
                     console.log('[Teloscopy voice] Voice loaded:', _calmVoice.name, _calmVoice.lang);
+                } else {
+                    _voiceRetries++;
+                    /* Retry up to 6 times over ~8 seconds for slow engines */
+                    if (_voiceRetries <= 6) {
+                        setTimeout(_loadVoices, _voiceRetries * 500);
+                    }
                 }
             };
             synthesis.onvoiceschanged = _loadVoices;
             _loadVoices();
-            setTimeout(_loadVoices, 500);
-            setTimeout(_loadVoices, 2000);  /* extra retry for slow-loading engines */
+            setTimeout(_loadVoices, 300);
+            setTimeout(_loadVoices, 1000);
+            setTimeout(_loadVoices, 2500);  /* extra retry for slow-loading engines */
         }
 
     })();
